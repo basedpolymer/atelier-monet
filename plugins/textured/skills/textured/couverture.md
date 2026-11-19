@@ -15,7 +15,9 @@ couverture: binodale encre bas
 
 - **motif** : choisir par `python3 <skill>/textured.py --motifs "sujet"` (classement en une ligne) ; `oui` le tire de
   l'en-tête. `--planche [domaine]` écrit `nom.couvertures.html`, le document dans chaque motif, pour l'utilisateur.
-- **teinte** : `claire` (pastel), `encre` (aplat), `sombre` (nuit teintée).
+- **teinte** : `claire` (pastel), `encre` (aplat), `sombre` (nuit teintée). En `claire` et `sombre`, l'accent prend
+  la teinte opposée à l'encre, un motif en traits passe en dégradé de l'encre à cette teinte, un motif en formes
+  pleines alterne quatre encres ; `mono` garde une seule encre. `encre` reste d'une couleur.
 - **place** : `haut` (titre, illustration cadrée, fiche) · `bas` (illustration puis titre au tiers bas) · `plein`
   (illustration à fond perdu) · `fond` (motif sur toute la couverture, titre en cartouche).
 - **nombre** : un autre tirage du même motif (`couverture: reseau 2`). Même titre, même couverture.
