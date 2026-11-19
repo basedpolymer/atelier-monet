@@ -1309,16 +1309,31 @@ def ising(r, d):
     champ = lambda i, j: sum(a * math.cos(kx * i + ky * j + p) for kx, ky, p, a in modes)
     seuil = r.uniform(-.4, .4)
     spin = [[(champ(i, j) > seuil) != (r.random() < .05) for j in range(n)] for i in range(n)]
-    pleins, accents = [], []
+    domaine, domaines, accents = {}, [], []
     for i in range(n):
         for j in range(n):
-            if not spin[i][j]:
+            if not spin[i][j] or (i, j) in domaine:
                 continue
-            paroi = any(0 <= i + a < n and 0 <= j + b < n and not spin[i + a][j + b] for a, b in ((1, 0), (-1, 0), (0, 1), (0, -1)))
-            (accents if paroi and r.random() < .22 else pleins).append((8 + i * c + c * .1, 8 + j * c + c * .1))
-    vides = [(8 + (i + .5) * c, 8 + (j + .5) * c) for i in range(n) for j in range(n) if not spin[i][j]]
-    return [points(vides, c * .22, DOUX), f'<path d="{carres(pleins, c * .8)}" fill="{ENCRE}"/>',
-            f'<path d="{carres(accents, c * .8)}" fill="{ACC}"/>' if accents else ""]
+            pile, cases_ = [(i, j)], []
+            domaine[(i, j)] = len(domaines)
+            while pile:
+                a, b = pile.pop()
+                cases_.append((a, b))
+                for da, db in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    q = (a + da, b + db)
+                    if 0 <= q[0] < n and 0 <= q[1] < n and spin[q[0]][q[1]] and q not in domaine:
+                        domaine[q] = len(domaines)
+                        pile.append(q)
+            domaines.append(cases_)
+    out = [points([(8 + (i + .5) * c, 8 + (j + .5) * c) for i in range(n) for j in range(n) if not spin[i][j]], c * .22, DOUX)]
+    for cases_ in sorted(domaines, key=len, reverse=True):
+        pleins = []
+        for a, b in cases_:
+            paroi = any(0 <= a + da < n and 0 <= b + db < n and not spin[a + da][b + db] for da, db in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            (accents if paroi and r.random() < .22 else pleins).append((8 + a * c + c * .1, 8 + b * c + c * .1))
+        if pleins:
+            out.append(f'<path d="{carres(pleins, c * .8)}" fill="{ENCRE}"/>')
+    return out + ([f'<path d="{carres(accents, c * .8)}" fill="{ACC}"/>'] if accents else [])
 
 
 def galaxie(r, d):
@@ -2335,11 +2350,14 @@ def dorsale(r, d):
         x = 0.0
         for i, l in enumerate(largeurs):
             if i % 2 == 0:
+                paire = ""
                 for sg in (1, -1):
                     xa, xb = xc + sg * (x + 1.6), xc + sg * (x + l + 1.6)
                     xa, xb = max(8.0, min(192.0, min(xa, xb))), max(8.0, min(192.0, max(xa, xb)))
                     if xb > xa:
-                        out.append(boite(xa, y0 + .8, xb - xa, y1 - y0 - 1.6, ENCRE, None))
+                        paire += f"M{n(xa)} {n(y0 + .8)}H{n(xb)}V{n(y1 - .8)}H{n(xa)}Z"
+                if paire:
+                    out.append(f'<path d="{paire}" fill="{ENCRE}"/>')
             x += l
         out.append(boite(xc - 1.6, y0 + .8, 3.2, y1 - y0 - 1.6, ACC, None))
         failles.append(y1)
@@ -2537,16 +2555,17 @@ def penrose(r, d):
                 Q, Rr = B + (A - B) / phi, B + (C - B) / phi
                 nouv += [(1, Rr, C, A), (1, Q, Rr, B), (0, Rr, Q, A)]
         tri = nouv
-    pleins, accents, bords = [], [], []
+    losanges, bords = defaultdict(list), []
     for col, A, B, C in tri:
         if not all(7 < p.real < 193 and 7 < p.imag < 193 for p in (A, B, C)):
             continue
         poly = f"M{n(A.real)} {n(A.imag)}L{n(B.real)} {n(B.imag)}L{n(C.real)} {n(C.imag)}Z"
         if col == 0:
-            (accents if r.random() < .06 else pleins).append(poly)
+            m = (B + C) / 2
+            losanges[(round(m.real, 1), round(m.imag, 1))].append(poly)
         bords.append(f"M{n(C.real)} {n(C.imag)}L{n(A.real)} {n(A.imag)}L{n(B.real)} {n(B.imag)}")
-    return [f'<path d="{"".join(pleins)}" fill="{ENCRE}"/>', f'<path d="{"".join(accents)}" fill="{ACC}"/>',
-            f'<path d="{"".join(bords)}" stroke="{DOUX}" stroke-width="0.8"/>']
+    out = [f'<path d="{"".join(v)}" fill="{ACC if r.random() < .06 else ENCRE}"/>' for _, v in sorted(losanges.items())]
+    return out + [f'<path d="{"".join(bords)}" stroke="{DOUX}" stroke-width="0.8"/>']
 
 
 def apollonius(r, d):
