@@ -1,0 +1,5 @@
+*.avant-theme
+__pycache__/
+.DS_Store
+# consignes personnelles de publication (voir SKILL.md, « Version à partager »)
+publier.md

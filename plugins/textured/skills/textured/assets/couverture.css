@@ -1,0 +1,63 @@
+/* TeXtured HTML — couverture de document (couverture.py). Mêmes règles que textured.css, dont elle prolonge la
+   liste de blocs « @ nom | motif » : textured.py lit les deux fichiers à la suite, --exporter les réunit. */
+
+/*@ couverture | class="couverture\b */
+/* couverture (« couverture: » dans l'en-tête, voir couverture.py) : un objet posé sur la page, à ses propres couleurs
+   (--cf fond, --ce texte, --ca accent, --cd trait doux, tirées de l'encre) qui ne suivent pas le thème. Tailles en
+   cqi : la même couverture en vignette, en page de garde A4 et dans l'image de partage. --ep : tranche des pages, une
+   ombre d'un pixel par épaisseur, proportionnelle au nombre de mots. À l'écran, à droite du titre (dans la marge sur
+   grand écran, dans la colonne libre à côté du plan) ; sur un téléphone, au-dessus ; sur papier, en première page. */
+.couverture {
+  --tr1: light-dark(#f3f0ea, #8e8a82); --tr2: light-dark(#d8d3c9, #67635c); --tr3: light-dark(#aaa498, #45423d);
+  container-type: inline-size; float: right; width: min(13.5em, 42%); margin: 2.3em 0 1.4em 2em;
+  border-radius: .15em .4em .4em .15em;
+  box-shadow: var(--ep), .3em .8em 1.4em -.5em light-dark(rgb(0 0 0 / .32), rgb(0 0 0 / .7));
+  print-color-adjust: exact; -webkit-print-color-adjust: exact;
+}
+.couv {
+  display: flex; flex-direction: column; gap: 3.4cqi; aspect-ratio: 2 / 3; padding: 7.5cqi 7.5cqi 6cqi; overflow: hidden;
+  background: var(--cf); color: var(--ce); border-radius: inherit;
+  font: 400 3.2cqi/1.25 var(--sans); text-align: left; hyphens: manual;
+}
+/* dans main, les paragraphes sont justifiés et coupés : pas sur une couverture */
+.couv :is(p, dd) { margin: 0; text-align: left; hyphens: manual; -webkit-hyphens: manual; }
+.couv-tete { display: flex; flex-direction: column; gap: 2.2cqi; }
+.couv-sur { font-size: 2.8cqi; letter-spacing: .16em; text-transform: uppercase; }
+.couv-titre { font-weight: 700; line-height: .98; letter-spacing: .01em; text-transform: uppercase; text-wrap: balance; overflow-wrap: normal; }
+.couv-sous { font: italic 400 5.4cqi/1.16 var(--texte); text-wrap: balance; }
+.couv-image { flex: 1 1 0; min-height: 0; display: grid; }
+.couv-image > svg { width: 100%; height: 100%; min-height: 0; max-width: none; overflow: visible; }
+.couv-cadre { border: max(1px, .32cqi) solid; padding: 3.6cqi; }
+.couv-filet { flex: none; border-top: max(1px, .32cqi) solid; }
+.couverture svg text { font-family: var(--sans); font-weight: 700; }
+.couv-fiche { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6cqi; margin: -1cqi 0 0; }
+.couv-fiche div { display: flex; justify-content: space-between; align-items: baseline; gap: 2cqi; padding: 1.3cqi 0 .8cqi; border-bottom: max(1px, .22cqi) solid var(--cd); }
+.couv-fiche div:only-child { grid-column: 1 / -1; }
+.couv-fiche dt { font-size: 2.4cqi; letter-spacing: .14em; text-transform: uppercase; }
+.couv-fiche dd { margin: 0; font-size: 3.3cqi; font-variant-numeric: tabular-nums; }
+.couv-pied { display: flex; justify-content: space-between; gap: 3cqi; font-size: 2.5cqi; letter-spacing: .16em; text-transform: uppercase; }
+@media (max-width: 40em) { .couverture { float: none; width: min(12.5em, 62%); margin: 1.6em auto .4em; } }
+@media (min-width: 72rem) { .page:not(.a-plan) > .couverture, .sans-plan .couverture { margin: 2.3em -16.5em 1em 0; } }
+@media (min-width: 78rem) {
+  :root:not(.sans-plan) .a-plan > .couverture {
+    grid-column: 3; grid-row: 2 / span 2; align-self: start; justify-self: start; float: none; width: min(13.5em, 100%); margin: 2.3em 0 0;
+  }
+}
+/* planche (--planche) : toutes les couvertures en rayon, chacune sous la ligne d'en-tête qui la donne */
+.etagere { display: grid; grid-template-columns: repeat(auto-fill, minmax(11.5em, 1fr)); gap: 2.4em 1.8em; margin: 1.5em 0; }
+.etagere .couverture { float: none; width: 100%; margin: 0 0 .8em; }
+.couv-case > p { margin: 0; font: 400 .8em/1.3 var(--sans); color: var(--doux); text-align: left; }
+/* image de partage (--apercu) : la couverture en grand à droite, le titre à gauche */
+.tx-apercu .page { max-width: none; margin: 0; padding: 0 calc(15.6rem + 6rem) 0 4.5rem; }
+.tx-apercu .couverture { position: absolute; z-index: 40; top: 1.45rem; right: 3.6rem; width: 15.6rem; margin: 0; float: none; }
+/* papier : page de garde A4 à fond perdu (page nommée sans marges ni numéro) ; le document reprend sur la suivante,
+   numérotée 1 comme après \begin{titlepage} */
+@page couverture { margin: 0; counter-increment: page 0; @bottom-center { content: none; } }
+@media print {
+  .couverture { page: couverture; float: none; width: 210mm; height: 297mm; margin: -2.6em calc((100% - 210mm) / 2) 0; border-radius: 0; box-shadow: none; break-after: page; }
+  .couv { height: 100%; aspect-ratio: auto; border-radius: 0; padding: 9cqi 9cqi 7.5cqi; }
+  .couverture + .titre { padding-top: 2.6em; }
+  .etagere .couverture { page: auto; width: 100%; height: auto; margin: 0 0 .6em; break-after: auto; }
+  .etagere .couv { aspect-ratio: 2 / 3; height: auto; padding: 7.5cqi 7.5cqi 6cqi; }
+  .couv-case { break-inside: avoid; }
+}

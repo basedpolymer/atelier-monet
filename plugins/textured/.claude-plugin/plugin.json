@@ -1,0 +1,7 @@
+{
+  "name": "textured",
+  "description": "Documents, rapports et cours complets en HTML au style LaTeX (gabarit TeXtured) : formules KaTeX, jouets interactifs, priorités de révision, thème clair et sombre, PDF A4, image de partage, couvertures.",
+  "author": { "name": "basedpolymer" },
+  "license": "MIT",
+  "keywords": ["latex", "html", "pdf", "cours", "rapport", "katex"]
+}

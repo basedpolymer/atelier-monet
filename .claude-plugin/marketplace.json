@@ -1,0 +1,21 @@
+{
+  "name": "atelier-monet",
+  "owner": {
+    "name": "basedpolymer"
+  },
+  "metadata": {
+    "description": "Les skills et outils que j'utilise avec mes agents IA."
+  },
+  "plugins": [
+    {
+      "name": "textured",
+      "source": "./plugins/textured",
+      "description": "Documents, rapports et cours complets en HTML au style LaTeX (gabarit TeXtured) : formules, jouets interactifs, thème clair et sombre, PDF A4, couvertures."
+    },
+    {
+      "name": "atelier-vitrail",
+      "source": "./plugins/atelier-vitrail",
+      "description": "Thème de Claude Code : plâtre d'atelier le jour, nuit de vitrail le soir, fond animé en caractères ASCII."
+    }
+  ]
+}
