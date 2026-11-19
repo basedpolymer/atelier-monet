@@ -49,6 +49,20 @@ plat puis en pente.
 **Risques** : `braises` triangles chauffés · `eventails` deux éventails convergents · `panache` nuage qui s'élargit ·
 `carreaux` carrés croissants.
 
+**Polymères, chaînes** : `gel` liens qui percolent · `copolymeres` perles de deux sortes · `peignes` chaînes latérales ·
+`coupures` chaînes coupées.
+
+**Polymères, mise en œuvre** : `extrudats` rubans rugueux · `striction` fils amincis · `agregats` amas ramifiés ·
+`fibrilles` fentes tendues de fils.
+
+**Réaction, transferts** : `selectivite` traits en trois parts · `thiele` grains qui pâlissent au cœur · `barbotage`
+colonnes de cercles · `poiseuille` paraboles de points.
+
+**Optimisation, digitalisation** : `simplexe` triangles qui basculent · `compromis` front en escalier · `boole` damier
+cerclé · `mli` impulsions en vagues · `jumeau` relief en miroir · `ecarts` carrés des écarts.
+
+**Prévention** : `tranches` tranches percées · `zonage` enveloppes emboîtées.
+
 Détail (dessins et mots du sujet) : `textured.py --motifs` sans sujet.
 
 ## Dessin sur mesure

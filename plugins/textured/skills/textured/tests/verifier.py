@@ -94,6 +94,49 @@ def motifs_et_glyphes():
           f"{'erreur' if any(x.startswith(('motif', 'glyphe')) for x in echecs) else 'ok'}")
 
 
+# Le sujet d'un document (en français et en anglais) doit désigner son motif, seul en tête de --motifs ; un bloc par
+# domaine.
+CHOIX = {}
+# cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+CHOIX.update({
+    "Réticulation et point de gel": "gel", "Gelation and thermoset networks": "gel",
+    "Copolymères à blocs et statistiques": "copolymeres", "Block copolymers": "copolymeres",
+    "Polymères ramifiés et greffés": "peignes", "Branched and grafted polymers": "peignes",
+    "Vieillissement et dégradation des polymères": "coupures", "Polymer aging and degradation": "coupures",
+    "Extrusion : peau de requin et gonflement en filière": "extrudats", "Extrusion instabilities and die swell": "extrudats",
+    "Étirage et striction des thermoplastiques": "striction", "Cold drawing and necking": "striction",
+    "Charges renforçantes : noir de carbone et silice": "agregats", "Carbon black and silica fillers": "agregats",
+    "Craquelures et cavitation": "fibrilles", "Crazing and adhesion": "fibrilles",
+    "Réactions consécutives et sélectivité": "selectivite", "Selectivity in multiple reactions": "selectivite",
+    "Catalyse hétérogène et module de Thiele": "thiele", "Catalyst pellets and effectiveness factor": "thiele",
+    "Réacteurs gaz-liquide et transfert de matière": "barbotage", "Bubble columns and gas-liquid mass transfer": "barbotage",
+    "Écoulement laminaire et dispersion de Taylor": "poiseuille", "Laminar flow and velocity profile": "poiseuille",
+    "La méthode du simplexe de Nelder-Mead": "simplexe", "Nelder-Mead simplex search": "simplexe",
+    "Optimisation multi-objectif et front de Pareto": "compromis", "Multi-objective optimization": "compromis",
+    "Logique booléenne et tables de vérité": "boole", "Boolean logic and truth tables": "boole",
+    "Modulation de largeur d'impulsion sur Arduino": "mli", "PWM and duty cycle": "mli",
+    "Le jumeau numérique d'un procédé": "jumeau", "Digital twin of a process": "jumeau",
+    "Régression par les moindres carrés": "ecarts", "Least squares regression": "ecarts",
+    "Couches de protection et LOPA": "tranches", "Layers of protection analysis": "tranches",
+    "Zones ATEX et atmosphères explosives": "zonage", "Hazardous area classification": "zonage",
+})
+
+
+def choix_par_sujet():
+    """Chaque sujet de CHOIX désigne son motif, seul en tête ; chaque motif a sa marque de favicon."""
+    faux = []
+    for sujet, attendu in CHOIX.items():
+        p = couverture.proposer(sujet, 4)
+        tete = [m for m, sc in p if p and sc == p[0][1]]
+        if tete != [attendu]:
+            faux.append(f"« {sujet} » → {', '.join(tete) or 'rien'} (attendu : {attendu})")
+    echecs.extend("choix du motif : " + f for f in faux)
+    sans_marque = [m for m in motifs.MOTIFS if m not in icone.MARQUE_DE]
+    if sans_marque:
+        echecs.append("motifs sans marque de favicon : " + ", ".join(sans_marque))
+    print(f"  {len(CHOIX)} sujets → motif : {'erreur' if faux or sans_marque else 'ok'}")
+
+
 def favicons(tmp):
     """Le même favicon sur tout le cours, titres d'onglet, clés icone: et onglet:, dessins sur mesure."""
     pages = {f.name: f.read_text(encoding="utf-8") for f in (tmp / "cours").glob("*.html")}
@@ -165,6 +208,7 @@ def main():
             echecs.append("exemple.pdf absent")
         lancer([str(RACINE / "exemples" / "cours"), "-o", str(tmp / "cours")])
         motifs_et_glyphes()
+        choix_par_sujet()
         favicons(tmp)
         # couverture sur un chapitre (encre et densité héritées de l'accueil) et planche de tous les motifs
         chap = RACINE / "exemples" / "cours" / "01-flory-huggins.md"

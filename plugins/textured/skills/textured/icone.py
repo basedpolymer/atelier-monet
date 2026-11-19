@@ -102,6 +102,26 @@ def _marques():
     G["tirets"] = [T([(6, 13), (13, 6)], 3.2), T([(8, 24), (24, 8)], 3.2, "a"), T([(19, 26), (26, 19)], 3.2)]
     G["croix"] = [T([(16, 5), (16, 27)], 3.6), T([(5, 16), (27, 16)], 3.6, "a")]
     G["lune"] = [D(16, 16, 11), D(20.5, 11.5, 8, "f"), D(23, 23, 3, "a")]
+    # cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+    G["traversee"] = [T([(6.5, 7), (25.5, 7), (25.5, 25), (6.5, 25), (6.5, 7)], 2.6), T([(12, 3.5), (12, 11.5), (19.5, 15.5), (13.5, 21), (20, 28.5)], 3, "a")]
+    G["perles"] = [D(6.8, 16, 4.3), D(16, 16, 4.3, "a"), D(25.2, 16, 4.3)]
+    G["greffons"] = [T([(4.5, 16), (27.5, 16)], 3.2), T([(9.5, 16), (9.5, 6)], 2.8), T([(16, 16), (16, 26)], 2.8), T([(22.5, 16), (22.5, 6)], 2.8, "a")]
+    G["brisure"] = [T([(5, 27), (13, 19)], 3.6), T([(19, 13), (27, 5)], 3.6), D(16, 16, 2.9, "a")]
+    G["rugosite"] = [rect(4.5, 6, 23, 6.5), F([(4.5 + 23 * k / 16, 18.5 - (2.6 * k / 16 if k % 2 else 0)) for k in range(17)]
+                                          + [(4.5 + 23 * k / 16, 25 + (0 if k % 2 else 2.6 * k / 16)) for k in range(16, -1, -1)], "a")]
+    G["amas"] = [D(8.6, 21.5, 4.9), D(18, 21.5, 4.9), D(23.2, 12.6, 4.9, "a")]
+    G["fente"] = [T(ellipse(16, 16, 12.5, 6.4, 0, 40), 2.8), T([(12, 12), (12, 20)], 2.6, "a"), T([(20, 12), (20, 20)], 2.6, "a")]
+    G["chapelet"] = [T([(4.5, 6), (27.5, 6)], 3), C(19.5, 15.5, 4.8, 2.6, "a"), C(12, 24.5, 3.4, 2.6)]
+    G["parabole"] = [T([(5 + 9 * (1 - (i / 12 - 1) ** 2), 16 + 11.5 * (i / 12 - 1)) for i in range(25)], 2.8),
+                     T([(5 + 22 * (1 - (i / 12 - 1) ** 2), 16 + 11.5 * (i / 12 - 1)) for i in range(25)], 3, "a")]
+    G["simplexe"] = [F([(5.46, 28.8), (18.79, 28.8), (12.12, 17.25)]), F([(19.88, 28.17), (13.21, 16.63), (26.54, 16.63)]), F([(14.14, 14.84), (25.61, 14.84), (19.88, 4.9)], "a")]
+    G["karnaugh"] = [D(8.2, 9.5, 3.3), D(8.2, 22.5, 3.3), D(21.6, 9.5, 3.3), D(21.6, 22.5, 3.3),
+                 T([(15.4, 9.5)] + arc(21.6, 9.5, 6.2, 180, 360, 10) + arc(21.6, 22.5, 6.2, 0, 180, 10) + [(15.4, 9.5)], 2.4, "a")]
+    G["creneaux"] = [T([(4, 23), (8, 23), (8, 9), (12, 9), (12, 23), (15, 23)], 2.8), T([(15, 23), (15, 9), (24, 9), (24, 23), (28, 23)], 2.8, "a")]
+    G["jumelage"] = [F(arc(14.5, 16, 10.5, 90, 270, 18)), rect(17.5, 6, 4.6, 4.6, "a"), rect(23, 11.2, 4.6, 4.6, "a"), rect(17.5, 16.4, 4.6, 4.6, "a"), rect(23, 21.6, 4.6, 4.6, "a")]
+    G["front"] = [T(arc(29, 29, 21, 180, 270), 3), D(14.2, 14.2, 3.6, "a"), D(6.5, 6.5, 2.8)]
+    G["tranches"] = [rect(6, 5, 4.4, 22), rect(13.8, 5, 4.4, 22), rect(21.6, 5, 4.4, 22), T([(3.5, 16), (28.5, 16)], 3, "a")]
+    G["ecarts"] = [T([(3.5, 15.5), (28.5, 15.5)], 2.8), T([(7, 15.5), (7, 6), (16.5, 6), (16.5, 15.5)], 2.6), rect(19.5, 15.5, 7.5, 7.5, "a")]
     return G
 
 
@@ -117,6 +137,14 @@ MARQUE_DE = {
     "maillage": "triangle", "tangentes": "quarts", "cube": "hexagone", "isoreponses": "anneaux", "pareto": "barres",
     "braises": "triangle", "eventails": "sablier", "panache": "disques", "carreaux": "grille",
 }
+# cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+MARQUE_DE.update({
+    "gel": "traversee", "copolymeres": "perles", "peignes": "greffons", "coupures": "brisure",
+    "extrudats": "rugosite", "striction": "sablier", "agregats": "amas", "fibrilles": "fente",
+    "selectivite": "barres", "thiele": "anneau", "barbotage": "chapelet", "poiseuille": "parabole",
+    "simplexe": "simplexe", "compromis": "front", "boole": "karnaugh", "mli": "creneaux", "jumeau": "jumelage", "ecarts": "ecarts",
+    "tranches": "tranches", "zonage": "anneaux",
+})
 FORMES = {"carre": "carre", "carree": "carre", "square": "carre", "rond": "rond", "ronde": "rond", "round": "rond", "disque": "rond",
           "nu": "nu", "nue": "nu", "seul": "nu", "bare": "nu"}
 POLICE_LETTRE = "system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif"

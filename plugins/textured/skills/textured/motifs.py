@@ -1204,6 +1204,700 @@ def carreaux(r, d):
     return out
 
 
+# ---------- cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques ----------
+# Notions des cours de physico-chimie macromoléculaire, de polymères industriels, de génie de la réaction, d'optimisation et
+# de digitalisation des procédés, de prévention des risques ; toujours en abstraction.
+
+def ronds_pleins(cercles, couleur=ENCRE):
+    """Disques (x, y, rayon) en un seul <path> plein : tout le groupe prend la même encre."""
+    if not cercles:
+        return ""
+    d = "".join(f"M{n(x - c)} {n(y)}a{n(c)} {n(c)} 0 1 0 {n(2 * c)} 0a{n(c)} {n(c)} 0 1 0 {n(-2 * c)} 0" for x, y, c in cercles)
+    return f'<path d="{d}" fill="{couleur}"/>'
+
+
+def troncons(test, x0, y0, x1, y1, pas=1.0):
+    """Morceaux du segment (x0, y0) → (x1, y1) où test(x, y) est vrai, en sous-chemins « M…L… »."""
+    long_ = math.hypot(x1 - x0, y1 - y0)
+    k = max(1, int(long_ / pas))
+    d, debut, prec = [], None, None
+    for i in range(k + 1):
+        t = i / k
+        p = (x0 + (x1 - x0) * t, y0 + (y1 - y0) * t)
+        if test(*p):
+            if debut is None:
+                debut = p
+            prec = p
+        elif debut is not None:
+            if math.dist(debut, prec) > .5:
+                d.append(f"M{n(debut[0])} {n(debut[1])}L{n(prec[0])} {n(prec[1])}")
+            debut = None
+    if debut is not None and math.dist(debut, prec) > .5:
+        d.append(f"M{n(debut[0])} {n(debut[1])}L{n(prec[0])} {n(prec[1])}")
+    return "".join(d)
+
+
+# polymères : chaînes et réseaux
+
+def gel(r, d):
+    """Réseau triangulaire de nœuds dont les liens se nouent de plus en plus souvent vers le bas ; l'amas qui finit par
+    tout traverser, à l'accent : réticulation, point de gel, percolation, thermodurcissables."""
+    pas = r.choice((10.5, 11.5, 12.5))
+    h = pas * math.sqrt(3) / 2
+    noeuds, j, y = {}, 0, 12.0
+    while y <= 189:
+        x, i = 12 + (pas / 2 if j % 2 else 0), 0
+        while x <= 189:
+            noeuds[i, j] = (x + r.uniform(-.7, .7), y + r.uniform(-.7, .7))
+            x, i = x + pas, i + 1
+        y, j = y + h, j + 1
+    p0, p1, expo = r.uniform(.1, .18), r.uniform(.56, .68), r.uniform(.9, 1.4)
+    parent = {k: k for k in noeuds}
+
+    def racine(k):
+        while parent[k] != k:
+            parent[k] = parent[parent[k]]
+            k = parent[k]
+        return k
+    liens = []
+    for (i, j), a in noeuds.items():
+        voisins = [(i + 1, j)] + ([(i - 1, j + 1), (i, j + 1)] if j % 2 == 0 else [(i, j + 1), (i + 1, j + 1)])
+        for v in voisins:
+            if v in noeuds:
+                b = noeuds[v]
+                p = p0 + (p1 - p0) * max(0.0, ((a[1] + b[1]) / 2 - 12) / 177) ** expo
+                if r.random() < p:
+                    liens.append(((i, j), v))
+                    parent[racine((i, j))] = racine(v)
+    tailles = Counter(racine(k) for k in noeuds)
+    grand = max(tailles, key=tailles.get)
+    lies = {k for l in liens for k in l}
+    traits = {ENCRE: [], ACC: []}
+    for a, b in liens:
+        (xa, ya), (xb, yb) = noeuds[a], noeuds[b]
+        traits[ACC if racine(a) == grand else ENCRE].append(f"M{n(xa)} {n(ya)}L{n(xb)} {n(yb)}")
+    seuls = [p for k, p in noeuds.items() if k not in lies]
+    petits = [p for k, p in noeuds.items() if k in lies and racine(k) != grand]
+    amas = [p for k, p in noeuds.items() if racine(k) == grand and k in lies]
+    return ([points(seuls, 1.8, DOUX)]
+            + [f'<path d="{"".join(v)}" stroke="{c}" stroke-width="{1.9 if c == ACC else 1.2}"/>' for c, v in traits.items() if v]
+            + [points(petits, 3, ENCRE), points(amas, 3.8, ACC)])
+
+
+def copolymeres(r, d):
+    """Rangées de perles de deux sortes, alternées, au hasard, en blocs ou en gradient d'une rangée à l'autre, la
+    seconde sorte à l'accent, le long d'un fil doux : copolymères, séquences, blocs, statistiques."""
+    k = r.randint(9, 12)
+    pas_y = 184 / k
+    rayon = min(pas_y * .33, 4.8)
+    pas_x = rayon * 2.45
+    fils, rangs, acc = [], [], []
+    for i in range(k):
+        y = 8 + pas_y * (i + .5)
+        m = max(6, int((184 - 2 * rayon - r.choice((0, 0, r.uniform(10, 90)))) / pas_x) + 1)
+        sorte = r.choice(("alterne", "hasard", "blocs", "blocs", "gradient", "hasard"))
+        if sorte == "alterne":
+            seq = [j % 2 == 1 for j in range(m)]
+        elif sorte == "hasard":
+            p = r.uniform(.25, .6)
+            seq = [r.random() < p for _ in range(m)]
+        elif sorte == "gradient":
+            seq = [r.random() < j / (m - 1) for j in range(m)]
+        else:
+            seq, b = [], r.random() < .5
+            while len(seq) < m:
+                seq += [b] * r.randint(3, 10)
+                b = not b
+            seq = seq[:m]
+        x0 = 8 + rayon
+        pts = [(x0 + j * pas_x, y) for j in range(m)]
+        fils.append(trait([pts[0], pts[-1]], DOUX, 1.4))
+        rangs.append(ronds_pleins([(x, y_, rayon) for (x, y_), b in zip(pts, seq) if not b]))
+        acc += [(x, y_, rayon) for (x, y_), b in zip(pts, seq) if b]
+    return fils + rangs + [ronds_pleins(acc, ACC)]
+
+
+def peignes(r, d):
+    """Longs traits à peine ondulés, hérissés de chaînes latérales finies par un point, d'une rangée à l'autre plus
+    courtes et plus serrées ; une rangée à l'accent : polymères ramifiés, greffés, en peigne, en brosse."""
+    k = r.randint(5, 7)
+    pas = 184 / k
+    ka, sens = r.randrange(k), r.random() < .5
+    out, bouts = [], {ENCRE: [], ACC: []}
+    for i in range(k):
+        s = (i if sens else k - 1 - i) / (k - 1)
+        y0 = 8 + pas * (i + .5)
+        amp, per, ph = r.uniform(1.2, 3.4), r.uniform(70, 140), r.uniform(0, 6.3)
+        f = lambda x, y0=y0, amp=amp, per=per, ph=ph: y0 + amp * math.sin(2 * math.pi * x / per + ph)
+        fp = lambda x, amp=amp, per=per, ph=ph: amp * 2 * math.pi / per * math.cos(2 * math.pi * x / per + ph)
+        ecart = 11 - 7 * s
+        longueur = pas * (.4 - .22 * s)
+        x, haut, cotes = 12 + r.uniform(0, ecart), r.random() < .5, []
+        c = ACC if i == ka else ENCRE
+        while x < 188:
+            u = math.hypot(1, fp(x))
+            nx, ny = -fp(x) / u, 1 / u
+            L = longueur * r.uniform(.75, 1.1) * (-1 if haut else 1)
+            cotes.append(f"M{n(x)} {n(f(x))}L{n(x + nx * L)} {n(f(x) + ny * L)}")
+            bouts[c].append((x + nx * L, f(x) + ny * L))
+            haut = not haut
+            x += ecart * r.uniform(.85, 1.15)
+        out += [f'<path d="{"".join(cotes)}" stroke="{c}" stroke-width="{1.3 if i == ka else 1.1}"/>',
+                trait([(x_, f(x_)) for x_ in range(8, 193, 4)], c, 2.6)]
+    return out + [points(bouts[ENCRE], 3, ENCRE), points(bouts[ACC], 3.6, ACC)]
+
+
+def coupures(r, d):
+    """Chaînes verticales ondulées, coupées d'autant plus souvent qu'elles sont près du bord du haut, jusqu'à n'y être
+    plus que des grains ; les coupures jalonnées de points d'accent : vieillissement, dégradation, photo-oxydation,
+    recyclage."""
+    pas = r.choice((6.4, 7, 7.6))
+    prof, fond_ = r.uniform(40, 70), r.uniform(.002, .006)
+    chaines, grains, coupures = [], [], []
+    x = 8 + pas / 2
+    while x < 192:
+        amp, per, ph = r.uniform(.7, 2), r.uniform(22, 44), r.uniform(0, 6.3)
+        X = lambda y, x=x, amp=amp, per=per, ph=ph: x + amp * math.sin(2 * math.pi * y / per + ph)
+        bouts, y = [8.0], 8.0
+        while y < 191:
+            y += .5
+            if r.random() < .5 * (fond_ + .2 * math.exp(-(y - 8) / prof)):
+                bouts.append(y)
+        bouts.append(192.0)
+        for a, b in zip(bouts, bouts[1:]):
+            a2, b2 = a + (1.3 if a > 8 else 0), b - (1.3 if b < 192 else 0)
+            if b2 - a2 < 2.6:
+                if b2 - a2 > 0:
+                    grains.append((X((a2 + b2) / 2), (a2 + b2) / 2))
+                continue
+            m = max(2, int((b2 - a2) / 2))
+            chaines.append(trace([(X(a2 + (b2 - a2) * t / m), a2 + (b2 - a2) * t / m) for t in range(m + 1)]))
+        coupures += [(X(c), c) for c in bouts[1:-1] if r.random() < .3]
+        x += pas
+    return [f'<path d="{"".join(chaines)}" stroke="{ENCRE}" stroke-width="1.5"/>', points(grains, 2, ENCRE),
+            points(coupures, 2.6, ACC)]
+
+
+# polymères : mise en œuvre et propriétés
+
+def extrudats(r, d):
+    """Rubans pleins qui gonflent à leur naissance, lisses en haut puis de plus en plus rugueux : fines dents,
+    ondulations, enfin bords déchirés ; un ruban à l'accent : extrusion, instabilités, peau de requin, gonflement."""
+    k = r.randint(9, 12)
+    pas = 184 / k
+    e0, ka = pas * r.uniform(.28, .33), r.randrange(k)
+    lisse_ = lambda s, a, b: 0 if s <= a else 1 if s >= b else (3 - 2 * ((s - a) / (b - a))) * ((s - a) / (b - a)) ** 2
+    out = []
+    for i in range(k):
+        s = i / (k - 1)
+        yc = 8 + pas * (i + .5)
+        dent, per_d, ph = e0 * .5 * lisse_(s, .1, .45), r.uniform(4.5, 6.5), r.uniform(0, 1)
+        onde, per_o = e0 * .42 * lisse_(s, .4, .75), r.uniform(28, 44)
+        brut = e0 * .55 * lisse_(s, .7, 1)
+        harm = [(r.uniform(.03, .2), r.uniform(0, 6.3), r.gauss(0, 1)) for _ in range(6)]
+        bruit = lambda x: sum(a * math.sin(w * x + p) for w, p, a in harm) / 2.4
+        haut, bas = [], []
+        for x in [8 + t for t in range(185)]:
+            demi = e0 * (.62 + .38 * (1 - math.exp(-(x - 8) / 12)))
+            centre = yc + onde * math.sin(2 * math.pi * x / per_o + ph * 6) + brut * bruit(x)
+            t = (x / per_d + ph) % 1
+            dh, db = dent * (1 - t) ** 2, dent * ((x / per_d + ph + .5) % 1) ** 2
+            epais = demi * (1 + .5 * brut / e0 * bruit(x * 1.7 + 3))
+            haut.append((x, centre - epais - dh))
+            bas.append((x, centre + epais + db))
+        out.append(plein(haut + bas[::-1], ACC if i == ka else ENCRE))
+    return out
+
+
+def striction(r, d):
+    """Fils verticaux en tirets qu'un étirage amincit en leur milieu : là, ils se resserrent et chaque tiret s'allonge
+    et s'affine, entre deux épaules à l'accent : étirage, striction, orientation, plasticité."""
+    lam = r.uniform(2.6, 3.8)
+    ya, yb = r.uniform(.3, .4), r.uniform(.58, .7)
+    larg = r.uniform(.03, .05)
+    sig = lambda u: 1 / (1 + math.exp(-u / larg))
+    etire = lambda Y: 1 + (lam - 1) * sig(Y - ya) * sig(yb - Y)
+    N = 600
+    cumul = [0.0]
+    for q in range(N):
+        cumul.append(cumul[-1] + etire((q + .5) / N) / N)
+    vers_y = lambda Y: 8 + 184 * cumul[min(N, int(Y * N))] / cumul[-1]
+    m = r.choice((11, 13, 15))
+    rangs = r.randint(34, 46)
+    traits, acc = defaultdict(list), []
+    for c in range(m):
+        x0 = 14 + 172 * c / (m - 1)
+        dec = r.uniform(0, 1)
+        for q in range(-1, rangs + 1):
+            Y0, Y1 = (q + dec) / rangs, (q + dec + .55) / rangs
+            Y0, Y1 = max(0.0, Y0), min(1.0, Y1)
+            if Y1 - Y0 < .1 / rangs:
+                continue
+            Ym = (Y0 + Y1) / 2
+            L = etire(Ym)
+            x = 100 + (x0 - 100) / math.sqrt(L)
+            seg = f"M{n(x)} {n(vers_y(Y0))}V{n(vers_y(Y1))}"
+            s = (L - 1) / (lam - 1)
+            if .12 < s < .88:
+                acc.append(seg)
+            else:
+                traits[round(2.6 / math.sqrt(L), 1)].append(seg)
+    return ([f'<path d="{"".join(v)}" stroke="{ENCRE}" stroke-width="{w}" stroke-linecap="butt"/>' for w, v in sorted(traits.items())]
+            + [f'<path d="{"".join(acc)}" stroke="{ACC}" stroke-width="2" stroke-linecap="butt"/>'])
+
+
+def agregats(r, d):
+    """Amas ramifiés de petits disques, nés chacun d'un grain et poussés par leurs pointes, quelques grains épars entre
+    eux ; un amas à l'accent : charges renforçantes, noir de carbone, silice, agrégats, mélangeage."""
+    k = r.randint(8, 12)
+    rayon = r.uniform(1.9, 2.5)
+    germes = []
+    for _ in range(500):
+        if len(germes) >= k:
+            break
+        p = (r.uniform(26, 174), r.uniform(26, 174))
+        if all(math.dist(p, q) > 34 for q in germes):
+            germes.append(p)
+    tous, amas = [], []
+    for gx, gy in germes:
+        parts = [(gx, gy)]
+        cible = r.randint(28, 70)
+        for _ in range(cible * 12):
+            if len(parts) >= cible:
+                break
+            poids = [math.dist(p, (gx, gy)) ** 2.5 + 1 for p in parts]
+            px, py = r.choices(parts, poids)[0]
+            dehors = math.atan2(py - gy, px - gx) if (px, py) != (gx, gy) else r.uniform(0, 2 * math.pi)
+            a = dehors + r.uniform(-1.2, 1.2)
+            q = (px + 2 * rayon * math.cos(a), py + 2 * rayon * math.sin(a))
+            if not (8 + rayon < q[0] < 192 - rayon and 8 + rayon < q[1] < 192 - rayon):
+                continue
+            if all(math.dist(q, o) > 2 * rayon * .96 for o in parts if o != (px, py)) and all(math.dist(q, o) > 2 * rayon + 3 for o in tous):
+                parts.append(q)
+        tous += parts
+        amas.append(parts)
+    epars = []
+    for _ in range(400):
+        if len(epars) >= r.randint(16, 30):
+            break
+        q = (r.uniform(10, 190), r.uniform(10, 190))
+        if all(math.dist(q, o) > 2 * rayon + 4 for o in tous + epars):
+            epars.append(q)
+    ka = r.randrange(len(amas))
+    return ([ronds_pleins([(x, y, rayon) for x, y in p], ACC if i == ka else ENCRE) for i, p in enumerate(amas)]
+            + [points(epars, 2 * rayon, DOUX)])
+
+
+def fibrilles(r, d):
+    """Fentes en amande couchées, chacune tendue de fils verticaux très fins ; la plus grande, à l'accent, a perdu ses
+    fils du milieu : craquelures, fibrillation, renforcement au choc, adhésion, rupture."""
+    fentes = []
+    for _ in range(3000):
+        if len(fentes) >= 12:
+            break
+        a = r.uniform(20, 72) if fentes else r.uniform(60, 76)
+        b = a * r.uniform(.1, .16)
+        x, y = r.uniform(8 + a, 192 - a), r.uniform(10 + b, 190 - b)
+        if all(abs(y - y2) > b + b2 + 7 or abs(x - x2) > a + a2 + 6 for x2, y2, a2, b2 in fentes):
+            fentes.append((x, y, a, b))
+    ka = max(range(len(fentes)), key=lambda i: fentes[i][2])
+    bords, fils, acc = [], [], []
+    for i, (x, y, a, b) in enumerate(fentes):
+        e = lambda u, b=b: b * (1 - u * u) ** .75
+        bord = [(x + a * u, y - e(u)) for u in (-1 + t / 20 for t in range(41))] + \
+               [(x + a * u, y + e(u)) for u in (1 - t / 20 for t in range(41))]
+        (acc if i == ka else bords).append(trace(bord) + "Z")
+        pas = r.uniform(2, 2.6)
+        u = -1 + pas / a
+        while u < 1 - pas / a:
+            if not (i == ka and abs(u) < .32):
+                fils.append(f"M{n(x + a * u)} {n(y - e(u) + .6)}V{n(y + e(u) - .6)}")
+            u += pas / a
+    matrice = semis_dans(lambda px, py: all(abs(py - y) > b + 4 or abs(px - x) > a + 4 for x, y, a, b in fentes), 7.4, 10, 10, 190, 190, False)
+    return [points(matrice, 1.4, DOUX), f'<path d="{"".join(fils)}" stroke="{ENCRE}" stroke-width=".7"/>',
+            f'<path d="{"".join(bords)}" stroke="{ENCRE}" stroke-width="1.5"/>', f'<path d="{"".join(acc)}" stroke="{ACC}" stroke-width="2.2"/>']
+
+
+# génie de la réaction : sélectivité, catalyse, transfert, écoulement
+
+def selectivite(r, d):
+    """Traits verticaux serrés, chacun coupé en trois : la première part fond, la deuxième, à l'accent, enfle puis
+    s'efface, la troisième grandit ; le trait où l'accent culmine plus épais : réactions consécutives, sélectivité,
+    rendement, intermédiaire."""
+    k2 = r.uniform(.3, .6) if r.random() < .7 else r.uniform(1.5, 2.2)
+    fin = r.uniform(4, 6.5) / min(1, k2) ** .5
+    pas = r.choice((3.2, 3.6, 4))
+    xs = [10 + pas * i for i in range(int(180 / pas) + 1)]
+    conc = []
+    for x in xs:
+        t = fin * (x - 10) / 180
+        a = math.exp(-t)
+        b = (math.exp(-t) - math.exp(-k2 * t)) / (k2 - 1)
+        conc.append((a, b))
+    im = max(range(len(xs)), key=lambda i: conc[i][1])
+    H, g, h0 = 178, 1.8, 11
+    ta, tb, tc = [], [], []
+    for i, (x, (a, b)) in enumerate(zip(xs, conc)):
+        y1, y2 = h0 + a * H, h0 + (a + b) * H
+        if y1 - h0 > g:
+            ta.append(f"M{n(x)} {h0}V{n(y1 - g / 2)}")
+        if y2 - y1 > g and i != im:
+            tb.append(f"M{n(x)} {n(y1 + g / 2)}V{n(y2 - g / 2)}")
+        if h0 + H - y2 > g:
+            tc.append(f"M{n(x)} {n(y2 + g / 2)}V{h0 + H}")
+    a, b = conc[im]
+    return [f'<path d="{"".join(tc)}" stroke="{DOUX}" stroke-width="1.3"/>', f'<path d="{"".join(ta)}" stroke="{ENCRE}" stroke-width="1.5"/>',
+            f'<path d="{"".join(tb)}" stroke="{ACC}" stroke-width="1.9"/>',
+            trait([(xs[im], h0 + a * H + g / 2), (xs[im], h0 + (a + b) * H - g / 2)], ACC, 3.2)]
+
+
+def thiele(r, d):
+    """Grains ronds en grille, chacun empli d'anneaux de points qui pâlissent vers le cœur, d'un grain à l'autre de
+    plus en plus tôt ; un grain à l'accent : catalyse hétérogène, diffusion interne, module de Thiele, facteur
+    d'efficacité."""
+    m = r.choice((3, 3, 4))
+    cel = 184 / m
+    R = cel * .43
+    nb = m * m
+    phis = [.4 * (30 / .4) ** (q / (nb - 1)) for q in range(nb)]
+    ka = r.randrange(nb)
+    classes = defaultdict(list)
+    contours = []
+    for q in range(nb):
+        i, j = q % m, q // m
+        cx, cy = 8 + cel * (i + .5), 8 + cel * (j + .5)
+        phi = phis[q]
+        conc = lambda rho, phi=phi: math.sinh(phi * rho) / (rho * math.sinh(phi)) if rho > 1e-6 else phi / math.sinh(phi)
+        anneaux_ = int(R / 5.2)
+        for a in range(anneaux_ + 1):
+            rho = a / anneaux_
+            nbp = max(1, round(2 * math.pi * rho * R / 5.2))
+            dec = r.uniform(0, 2 * math.pi)
+            diam = round(.6 + 3.4 * conc(rho) ** .8, 1)
+            if diam < .9:
+                continue
+            for p in range(nbp):
+                t = dec + 2 * math.pi * p / nbp
+                classes[(ACC if q == ka else ENCRE, diam)].append((cx + rho * R * .92 * math.cos(t), cy + rho * R * .92 * math.sin(t)))
+        contours.append(cercle(cx, cy, R + 2.6, ACC if q == ka else DOUX, 1.2))
+    return contours + [points(p, t, c) for (c, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
+
+
+def barbotage(r, d):
+    """Colonnes de cercles qui montent en zigzag en grossissant, nées de points au bas, jusqu'à une couche serrée de
+    cercles en haut ; quelques bulles à l'accent : réacteurs gaz-liquide, transfert de matière, colonne à bulles,
+    mousses."""
+    yf = r.uniform(44, 64)
+    mousse = []
+    for _ in range(6000):
+        rr = r.uniform(2.5, 9.5)
+        x, y = r.uniform(8 + rr, 192 - rr), r.uniform(8 + rr, yf - rr * .3)
+        if all(math.dist((x, y), (a, b)) > rr + c + 1.2 for a, b, c in mousse):
+            mousse.append((x, y, rr))
+    k = r.randint(7, 10)
+    sources = sorted(16 + 168 * (q + r.uniform(.15, .85)) / k for q in range(k))
+    montee, pieds = [], []
+    for xs in sources:
+        r0, A, lam, ph = r.uniform(1.4, 2.2), r.uniform(2, 6), r.uniform(18, 34), r.uniform(0, 6.3)
+        y = 188.0
+        pieds.append((xs, 191))
+        while y > yf:
+            rr = r0 * (1 + (190 - y) / 70)
+            x = xs + A * math.sin(y / lam + ph) * (1 + (190 - y) / 140)
+            if all(math.dist((x, y), (a, b)) > rr + c + 1 for a, b, c in mousse + montee) and 8 + rr < x < 192 - rr:
+                montee.append((x, y, rr))
+            y -= rr * 2 + r.uniform(1.5, 5)
+    tout = mousse + montee
+    acc = set(r.sample(range(len(tout)), max(2, len(tout) // 14)))
+    out = [cercle(x, y, c, ENCRE, 1.2 if c > 3 else 1) for q, (x, y, c) in enumerate(tout) if q not in acc]
+    return out + [disque(x, y, c, ACC) for q, (x, y, c) in enumerate(tout) if q in acc] + [points(pieds, 3.2, ENCRE)]
+
+
+def poiseuille(r, d):
+    """Fils de points d'abord droits, que l'écoulement creuse en paraboles de plus en plus profondes, épinglés en haut
+    et en bas, et qui s'effilochent avec le temps ; un fil à l'accent : écoulement laminaire, profil de vitesse,
+    Poiseuille, dispersion de Taylor."""
+    x0, y0, y1 = r.uniform(10, 18), 12, 188
+    k = r.randint(8, 12)
+    fin = 192 - x0
+    ka = r.randrange(1, k - 1)
+    classes = defaultdict(list)
+    for i in range(k):
+        t = (i / (k - 1)) ** 1.25
+        flou = .2 + 3.2 * t ** 2
+        m = int(60 + 60 * t)
+        for q in range(m + 1):
+            eta = -1 + 2 * q / m
+            x = x0 + fin * t * (1 - eta * eta) + r.gauss(0, flou)
+            y = (y0 + y1) / 2 + eta * (y1 - y0) / 2 + r.gauss(0, flou * .5)
+            if 8 <= x <= 192 and 8 <= y <= 192:
+                classes[(ACC if i == ka else ENCRE, 2.8 if i == ka else 2)].append((x, y))
+    return [points(p, t, c) for (c, t), p in classes.items()]
+
+
+# optimisation et digitalisation des procédés
+
+def simplexe(r, d):
+    """Chapelets de triangles partis des bords, qui basculent l'un après l'autre par-dessus une arête puis se
+    resserrent en tournant autour d'un même point ; les derniers à l'accent : méthode du simplexe, Nelder-Mead,
+    optimisation séquentielle."""
+    ox, oy = r.uniform(70, 130), r.uniform(70, 130)
+    a, b, c = r.uniform(.5, 1.5), r.uniform(.5, 1.5), r.uniform(-.9, .9)
+    f = lambda p: (a * (p[0] - ox) ** 2 + b * (p[1] - oy) ** 2 + c * (p[0] - ox) * (p[1] - oy)
+                   + (1e9 if not (9 < p[0] < 191 and 9 < p[1] < 191) else 0))
+    cote = r.uniform(19, 25)
+    out, fins, centres = [], [], []
+    depart = r.uniform(0, 2 * math.pi)
+    k = r.randint(3, 4)
+    for q in range(k):
+        t = depart + 2 * math.pi * (q + r.uniform(-.15, .15)) / k
+        sx, sy = 100 + 76 * math.cos(t), 100 + 76 * math.sin(t)
+        sx, sy = max(24, min(176, sx)), max(24, min(176, sy))
+        ang = r.uniform(0, 2 * math.pi)
+        S = [(sx + cote / math.sqrt(3) * math.cos(ang + 2 * math.pi * v / 3), sy + cote / math.sqrt(3) * math.sin(ang + 2 * math.pi * v / 3)) for v in range(3)]
+        tris = [list(S)]
+        for _ in range(60):
+            S.sort(key=f)
+            g = ((S[0][0] + S[1][0]) / 2, (S[0][1] + S[1][1]) / 2)
+            refl = (2 * g[0] - S[2][0], 2 * g[1] - S[2][1])
+            if f(refl) < f(S[1]):
+                S[2] = refl
+            else:
+                S = [S[0]] + [(S[0][0] + (p[0] - S[0][0]) * .78, S[0][1] + (p[1] - S[0][1]) * .78) for p in S[1:]]
+            tris.append(list(S))
+            if max(math.dist(S[0], S[1]), math.dist(S[1], S[2]), math.dist(S[0], S[2])) < 4.5:
+                break
+        for i, tr in enumerate(tris):
+            gx, gy = sum(p[0] for p in tr) / 3, sum(p[1] for p in tr) / 3
+            t2 = [(gx + (p[0] - gx) * .8, gy + (p[1] - gy) * .8) for p in tr]
+            (fins if i >= len(tris) - 2 else out).append(plein(t2, ACC if i >= len(tris) - 2 else ENCRE))
+        centres.append(trait([(sum(p[0] for p in tr) / 3, sum(p[1] for p in tr) / 3) for tr in tris], DOUX, 1.1, ' stroke-dasharray="0 3"'))
+    return centres + out + fins
+
+
+def boole(r, d):
+    """Damier de disques pleins et d'anneaux rangé en code de Gray ; des cadres arrondis à l'accent regroupent les
+    disques par blocs : logique booléenne, tables de vérité, tableaux de Karnaugh, automatismes."""
+    m = r.choice((6, 8, 8))
+    cel = 184 / m
+    groupes, vrai = [], set()
+    for _ in range(r.randint(3, 5)):
+        lx, ly = r.choice((1, 2, 2, 4)), r.choice((1, 2, 2, 4))
+        if lx * ly == 1:
+            lx = 2
+        i0, j0 = r.randrange(0, m - lx + 1), r.randrange(0, m - ly + 1)
+        groupes.append((i0, j0, lx, ly))
+        vrai |= {(i0 + a, j0 + b) for a in range(lx) for b in range(ly)}
+    for _ in range(r.randint(1, 3)):
+        vrai.add((r.randrange(m), r.randrange(m)))
+    out, anneaux_ = [], []
+    for j in range(m):
+        for i in range(m):
+            x, y = 8 + cel * (i + .5), 8 + cel * (j + .5)
+            if (i, j) in vrai:
+                out.append(disque(x, y, cel * .3, ENCRE))
+            else:
+                anneaux_.append(cercle(x, y, cel * .22, DOUX, 1.4))
+    cadres = []
+    for q, (i0, j0, lx, ly) in enumerate(groupes):
+        marge = cel * (.08 + .05 * (q % 3))
+        x, y = 8 + cel * i0 + marge, 8 + cel * j0 + marge
+        cadres.append(f'<rect x="{n(x)}" y="{n(y)}" width="{n(cel * lx - 2 * marge)}" height="{n(cel * ly - 2 * marge)}" '
+                      f'rx="{n(cel * .45)}" stroke="{ACC}" stroke-width="2"/>')
+    return anneaux_ + out + cadres
+
+
+def mli(r, d):
+    """Rangées d'impulsions centrées dont la largeur suit une onde, décalée d'une rangée à l'autre : des vagues obliques
+    naissent de simples créneaux ; une rangée à l'accent : modulation de largeur d'impulsion, MLI, PWM, microcontrôleurs."""
+    k = r.randint(12, 16)
+    pas = 184 / k
+    h = pas * r.uniform(.55, .7)
+    P, L, dphi = r.choice((6.4, 7.2, 8)), r.uniform(58, 96), r.uniform(.2, .36) * r.choice((-1, 1))
+    ka = r.randrange(k)
+    out = []
+    for i in range(k):
+        y = 8 + pas * i + (pas - h) / 2
+        rects = []
+        x = 8.0
+        while x + .5 < 192:
+            duty = .5 + .45 * math.sin(2 * math.pi * (x + P / 2) / L + i * dphi)
+            w = min(P * duty, 192 - x)
+            if w > .7:
+                rects.append(f"M{n(x + (P - w) / 2)} {n(y)}h{n(w)}v{n(h)}h{n(-w)}z")
+            x += P
+        out.append(f'<path d="{"".join(rects)}" fill="{ACC if i == ka else ENCRE}"/>')
+    return out
+
+
+def jumeau(r, d):
+    """Un même relief tracé deux fois, en miroir : à gauche en lignes de crête continues, à droite les mêmes lignes
+    échantillonnées en carrés sur une grille ; les sommets à l'accent : jumeau numérique, modèle et mesure, capteurs,
+    industrie 4.0."""
+    bosses = [(r.uniform(22, 86), r.uniform(30, 170), r.uniform(12, 26), r.uniform(.5, 1)) for _ in range(r.randint(2, 4))]
+    F = lambda x, y: sum(h * math.exp(-((x - bx) ** 2 + (y - by) ** 2) / (2 * s * s)) for bx, by, s, h in bosses)
+    fmax = max(F(x, y) for x in range(8, 100, 3) for y in range(8, 193, 3)) or 1
+    A, pas = r.uniform(16, 22), r.choice((7.2, 8, 8.8))
+    cel = r.choice((4.4, 5.5))
+    lignes, rangs, acc = [], [], []
+    y = 12 + A
+    while y < 190:
+        lignes.append(trait([(x, y - A * F(x, y) / fmax) for x in (8 + t for t in range(0, 89))], ENCRE, 1.4))
+        ligne = []
+        x = 192 - cel / 2
+        while x > 104:
+            v = F(200 - x, y) / fmax
+            yq = round((y - A * v) / cel) * cel
+            c = cel * (.5 + .38 * v)
+            (acc if v > .78 else ligne).append(f"M{n(x - c / 2)} {n(yq - c / 2)}h{n(c)}v{n(c)}h{n(-c)}z")
+            x -= cel
+        rangs.append(f'<path d="{"".join(ligne)}" fill="{ENCRE}"/>')
+        y += pas
+    return lignes + rangs + ([f'<path d="{"".join(acc)}" fill="{ACC}"/>'] if acc else [])
+
+
+def compromis(r, d):
+    """Semis de points qui se serrent et grossissent contre un bord courbe, et sur ce bord les points que nul autre ne
+    bat, reliés en escalier à l'accent : optimisation multi-objectif, front de Pareto, compromis."""
+    expo = r.uniform(1.6, 3)
+    g = lambda u: (1 - u ** (1 / expo)) ** expo
+    X, Y = (lambda u: 14 + 172 * u), (lambda v: 186 - 172 * v)
+    if r.random() < .5:
+        X, Y = (lambda u: 186 - 172 * u), (lambda v: 14 + 172 * v)
+    pts = []
+    for _ in range(4000):
+        u, v = r.random(), r.random()
+        ecart = v - g(u)
+        if ecart < 0:
+            continue
+        if r.random() < math.exp(-ecart / .2) * .55 + .03:
+            pts.append((u, v, ecart))
+    pts = pts[:900]
+    front, meilleur = [], 9.0
+    for u, v, _ in sorted(pts):
+        if v < meilleur:
+            front.append((u, v))
+            meilleur = v
+    classes = defaultdict(list)
+    for u, v, e in pts:
+        if (u, v) in front:
+            continue
+        diam = 1.3 if e > .3 else 2.2 if e > .12 else 3.2
+        classes[(DOUX if e > .3 else ENCRE, diam)].append((X(u), Y(v)))
+    marches = []
+    for (u0, v0), (u1, v1) in zip(front, front[1:]):
+        marches += [(X(u0), Y(v0)), (X(u1), Y(v0))]
+    marches.append((X(front[-1][0]), Y(front[-1][1])))
+    return ([points(p, t, c) for (c, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
+            + [trait(marches, ACC, 1.6), points([(X(u), Y(v)) for u, v in front], 5, ACC)])
+
+
+def ecarts(r, d):
+    """Une droite à peine courbée et, de part et d'autre, des carrés posés sur elle comme des cartes empilées, chacun
+    de côté l'écart d'un point à la droite ; l'un, plein d'accent, sur le dessus : moindres carrés, régression,
+    résidus, sommes de carrés."""
+    pente, courbe = r.uniform(-.45, .45), r.uniform(-.002, .002)
+    g = lambda x: 100 - pente * (x - 100) + courbe * (x - 100) ** 2
+    m, sig = r.randint(22, 30), r.uniform(28, 38)
+    carres_ = []
+    for x in sorted(r.uniform(12, 188) for _ in range(m)):
+        y0 = g(x)
+        e = max(9 - y0, min(191 - y0, r.gauss(0, sig)))
+        cote = abs(e)
+        sens = r.choice((-1, 1))
+        if not 9 <= x + sens * cote <= 191:
+            sens = -sens
+        if not 9 <= x + sens * cote <= 191 or cote < 3:
+            continue
+        carres_.append((x, y0, e, sens))
+    carres_.sort(key=lambda c: -abs(c[2]))
+    ka = len(carres_) // 4
+    out, acc = [], ""
+    for i, (x, y0, e, sens) in enumerate(carres_):
+        pts = [(x, y0), (x, y0 + e), (x + sens * abs(e), y0 + e), (x + sens * abs(e), y0)]
+        if i == ka:
+            acc = plein(pts, ACC)
+        else:
+            out.append(f'<path d="{trace(pts)}Z" fill="{FOND}" stroke="{ENCRE}" stroke-width="1.3"/>')
+    return out + [acc, trait([(x, g(x)) for x in range(8, 193, 4)], ENCRE, 2.6), points([(x, y0 + e) for x, y0, e, _ in carres_], 3.6, ENCRE)]
+
+
+# prévention des risques
+
+def tranches(r, d):
+    """Tranches pleines percées de trous ; des fils partis de la gauche s'arrêtent sur la première tranche sans trou à
+    leur hauteur, un seul, à l'accent, passe par des trous alignés : couches de protection, LOPA, barrières, défense
+    en profondeur."""
+    k = r.choice((6, 7, 8, 9))
+    w = r.uniform(9, 12) if k > 7 else r.uniform(11, 15)
+    xs = [24 + (176 - 24 - w) * q / (k - 1) for q in range(k)]
+    yc = r.uniform(62, 138)
+    trous = []
+    for x in xs:
+        t = [(x + w / 2, yc + r.uniform(-1.2, 1.2), r.uniform(4.4, 5.6))]
+        for _ in range(200):
+            if len(t) >= r.randint(3, 7):
+                break
+            rr = r.uniform(2.2, min(6, w * .42))
+            y = r.uniform(14, 186)
+            if all(abs(y - b) > rr + c + 3 for _, b, c in t):
+                t.append((x + w / 2 + r.uniform(-1, 1) * (w / 2 - rr - 1.2), y, rr))
+        trous.append(t)
+    out = [boite(x, 10, w, 180, ENCRE, None, rx=1.5) for x in xs]
+    out += [disque(x, y, c, FOND) for t in trous for x, y, c in t]
+    fils = []
+    hauteurs = sorted(r.uniform(16, 184) for _ in range(r.randint(5, 9)))
+    for y in hauteurs:
+        if abs(y - yc) < 9:
+            continue
+        bout = 8.0
+        for x, t in zip(xs, trous):
+            if any(abs(y - b) < c - 1 for _, b, c in t):
+                bout = x + w
+                continue
+            bout = x
+            break
+        fils.append(((8, y), (bout, y)))
+    return (out + [trait(list(f), ENCRE, 1.1) for f in fils] + [points([f[1] for f in fils], 3.4, ENCRE)]
+            + [trait([(8, yc), (192, yc)], ACC, 2.2), points([(8, yc), (192, yc)], 5, ACC)])
+
+
+def zonage(r, d):
+    """Autour de deux ou trois points, des enveloppes emboîtées et étirées par le vent : un cœur plein à l'accent, une
+    couronne hachurée, une couronne de points, puis rien : zones ATEX, atmosphères explosives, zonage, rejets."""
+    sources = []
+    vent = r.uniform(0, 2 * math.pi)
+    for _ in range(200):
+        if len(sources) >= r.randint(2, 3):
+            break
+        p = (r.uniform(40, 160), r.uniform(40, 160))
+        if all(math.dist(p, q[:2]) > 60 for q in sources):
+            sources.append((p[0], p[1], r.uniform(34, 50), r.uniform(1.25, 1.7), vent + r.uniform(-.5, .5)))
+
+    def D(x, y):
+        best = 9.0
+        for sx, sy, R, e, th in sources:
+            u = (x - sx) * math.cos(th) + (y - sy) * math.sin(th) - R * (e - 1) * .5
+            v = -(x - sx) * math.sin(th) + (y - sy) * math.cos(th)
+            best = min(best, math.hypot(u / e, v) / R)
+        return best
+    z0, z1, z2 = r.uniform(.3, .38), r.uniform(.62, .72), r.uniform(1, 1.15)
+    coeurs = []
+    for sx, sy, R, e, th in sources:
+        cx, cy = sx + R * (e - 1) * .5 * math.cos(th), sy + R * (e - 1) * .5 * math.sin(th)
+        coeurs.append(plein([(cx + z0 * R * (e * math.cos(t) * math.cos(th) - math.sin(t) * math.sin(th)),
+                              cy + z0 * R * (e * math.cos(t) * math.sin(th) + math.sin(t) * math.cos(th))) for t in (2 * math.pi * q / 48 for q in range(48))], ACC))
+    pas_h = r.uniform(3.2, 3.8)
+    hach = []
+    c = 16.0
+    test1 = lambda x, y: z0 + .04 < D(x, y) < z1 and 8 <= x <= 192 and 8 <= y <= 192
+    while c < 384:
+        hach.append(troncons(test1, max(8, c - 192), c - max(8, c - 192), min(192, c - 8), c - min(192, c - 8), .8))
+        c += pas_h
+    semis_ = semis_dans(lambda x, y: z1 + .05 < D(x, y) < z2, r.uniform(5.2, 6.2), 8, 8, 192, 192)
+    return [f'<path d="{"".join(hach)}" stroke="{ENCRE}" stroke-width="1.1"/>', points(semis_, 2, ENCRE)] + coeurs
+
+
 # ---------- catalogue ----------
 # Par domaine : motif → (dessin, mots du sujet qui l'appellent). Un mot finissant par « * » vaut pour tous les mots
 # qui commencent ainsi (« régul* » : régulation, réguler…) ; sinon le mot entier, au singulier ou au pluriel. Accents et
@@ -1266,6 +1960,37 @@ CATALOGUE = {
         "panache": ("nuage de points qui naît d'un coin et s'élargit", "panache*, dispersion atmosphérique, rejet*, toxique*, pollution, cheminée*, nuage*, gaussien*, émission*, plume"),
         "carreaux": ("grille de carrés qui grandissent vers un coin", "criticit*, matrice de risque*, fréquence-gravité, gravité, apr, amdec, fmea, farmer, maîtrise des risques, prévention, risque*, sécurité, risk*"),
     },
+    # cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+    "Polymères : chaînes et réseaux": {
+        "gel": ("réseau de nœuds dont les liens se nouent vers le bas, l'amas qui traverse à l'accent", "réticul*, point de gel, gélification, gel, percolation, thermodurciss*, vulcanis*, élasticité caoutchoutique, réseau tridimensionnel, réseaux tridimensionnels, crosslink*, gelation, thermoset*, vulcaniz*, rubber elasticity"),
+        "copolymeres": ("rangées de perles de deux sortes, alternées, au hasard, en blocs", "copolym*, comonomère*, terpolym*, séquencé*, alterné*, à blocs, copolymères statistiques, copolymère statistique, block copolymer*, random copolymer*, comonomer*, monomer sequence*"),
+        "peignes": ("traits hérissés de chaînes latérales, de plus en plus serrées", "ramifi*, branché*, branchement*, greff*, peigne*, brosse*, dendrim*, polymères en étoile, polyéthylène basse densité, pebd, ldpe, branched, branching, graft*, comb polymer*, bottlebrush*, polymer brush*, dendrimer*, star polymer*"),
+        "coupures": ("chaînes verticales de plus en plus coupées vers le haut", "vieilliss*, dégradation*, scission*, coupure de chaîne, coupures de chaînes, photo-oxydation, photodégradation, oxydation, hydrolyse, durabilité, durée de vie, recyclage mécanique, aging, ageing, degradation, chain scission, weathering, hydrolysis, durability"),
+    },
+    "Polymères : mise en œuvre et propriétés": {
+        "extrudats": ("rubans pleins de plus en plus rugueux", "extru*, filière*, gonflement, peau de requin, rupture d'extrudat, défauts d'extrusion, instabilité*, plasturgie, sharkskin, melt fracture, die swell, polymer processing, extruder*, extrudate*"),
+        "striction": ("fils en tirets amincis en leur milieu, où les tirets s'étirent", "striction, étirage*, étiré*, biorientation, bi-orientation, orientation moléculaire, durcissement structural, étirage-soufflage, soufflage, thermoformage, taux d'étirage, necking, cold drawing, stretch*, blow molding, draw ratio"),
+        "agregats": ("amas ramifiés de petits disques, des grains épars entre eux", "charges renforçantes, charge renforçante, noir de carbone, silice, agrégat*, agglomérat*, nanocharge*, charges, mélangeage, dispersion des charges, effet payne, pneumatique*, pneu*, filler*, carbon black, silica, aggregate*, payne effect, tyre*, tire*"),
+        "fibrilles": ("fentes en amande tendues de fils verticaux", "craquelure*, craze*, crazing, fibrill*, cavitation, adhési*, pégosité, probe tack, tack, décollement, choc, ténacité, toughness, adhesion, adhesive*, peel*"),
+    },
+    "Génie de la réaction : sélectivité et transferts": {
+        "selectivite": ("traits verticaux en trois parts, celle du milieu enfle puis s'efface", "sélectivit*, réactions multiples, réactions consécutives, réactions parallèles, réactions en série, intermédiaire*, produit désiré, sous-produit*, selectivity, multiple reactions, consecutive reactions, parallel reactions, series reactions, intermediate*, by-product*"),
+        "thiele": ("grains en grille, anneaux de points qui pâlissent vers le cœur", "catalyse hétérogène, catalyseur*, grain de catalyseur, grains de catalyseur, module de thiele, thiele, facteur d'efficacité, diffusion interne, diffusion intragranulaire, pastille*, heterogeneous catalysis, catalyst*, effectiveness factor, thiele modulus, internal diffusion, pellet*"),
+        "barbotage": ("colonnes de cercles qui montent et grossissent sous une couche serrée", "bulle*, gaz-liquide, gaz liquide, biphasique*, diphasique*, double film, whitman, transfert de matière, transfert interfacial, colonne à bulles, aération, mousse*, moussage, expansé*, bubble*, gas-liquid, two-phase, mass transfer, two-film, foam*"),
+        "poiseuille": ("fils de points creusés en paraboles épinglées", "poiseuille, hagen, écoulement laminaire, profil de vitesse, profil parabolique, dispersion de taylor, réacteur tubulaire, réacteurs tubulaires, écoulement dans un tube, laminar flow, velocity profile, taylor dispersion, tubular reactor*, pipe flow"),
+    },
+    "Optimisation et digitalisation": {
+        "simplexe": ("triangles qui basculent puis se resserrent autour d'un point", "simplexe*, simplex*, nelder-mead, nelder, optimisation séquentielle, recherche directe, descente de gradient, minimisation, sequential optimization, direct search, gradient descent, minimization"),
+        "compromis": ("semis serré contre un bord courbe, escalier d'accent sur le bord", "multi-objectif*, multiobjectif*, multicritère*, front de pareto, optimum de pareto, pareto-optimal, compromis, non dominé*, non-dominé*, dominance, objectifs contradictoires, multi-objective, multicriteria, pareto front, trade-off*, non-dominated"),
+        "boole": ("damier de disques et d'anneaux, blocs cerclés d'accent", "booléen*, boole, logique booléenne, logique combinatoire, table de vérité, tables de vérité, karnaugh, porte logique, portes logiques, algèbre de boole, binaire*, boolean, truth table*, logic gate*, combinational logic"),
+        "mli": ("rangées d'impulsions dont la largeur suit une onde", "mli, pwm, modulation de largeur, largeur d'impulsion, impulsion*, créneau*, rapport cyclique, arduino, microcontrôleur*, mcu, signal numérique, signaux numériques, pulse*, duty cycle, microcontroller*"),
+        "ecarts": ("droite et carrés posés sur elle, de côté l'écart de chaque point", "moindres carrés, régression*, résidu*, ajustement*, écarts au modèle, somme des carrés, sommes des carrés, sommes de carrés, lissage, modèle empirique, least squares, regression*, residual*, curve fitting, fitting, sum of squares"),
+        "jumeau": ("un même relief en lignes de crête et en carrés, en miroir", "jumeau numérique, jumeaux numériques, jumeau*, usine 4.0, capteur*, supervision, scada, iot, internet des objets, objets connectés, digitalisation, numérisation, digital twin*, sensor*, internet of things, smart factory, digitalization"),
+    },
+    "Prévention des risques : barrières et zones": {
+        "tranches": ("tranches percées, un seul fil passe par des trous alignés", "lopa, couches de protection, couche de protection, niveaux de protection, défense en profondeur, mesures de maîtrise des risques, mmr, sil, niveau d'intégrité, fromage suisse, modèle de reason, layers of protection, defence in depth, defense in depth, swiss cheese, safety integrity"),
+        "zonage": ("enveloppes emboîtées autour de points : cœur plein, hachures, points", "zone atex, zones atex, zonage, zone 0, zone 1, zone 2, atmosphère explosive, atmosphères explosives, classement de zones, zones à risque, hazardous area*, area classification, explosive atmosphere*, zoning"),
+    },
 }
 DOMAINE = {m: dom for dom, motifs in CATALOGUE.items() for m in motifs}
 MOTIFS = {m: globals()[m] for m in DOMAINE}
@@ -1279,6 +2004,13 @@ ALIAS = {"helix": "helice", "points": "semis", "onde": "semis", "spheres": "tram
          "elements": "maillage", "newton": "tangentes", "factoriel": "cube", "plans": "cube", "surface": "isoreponses",
          "feu": "braises", "incendie": "braises", "papillon": "eventails", "bowtie": "eventails", "noeud": "eventails",
          "rejet": "panache", "levenspiel": "mccabe", "escaliers": "mccabe", "criticite": "carreaux", "matrice": "carreaux", "carres": "carreaux", "triple": "phases"}
+# cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+ALIAS.update({"reticulation": "gel", "percolation": "gel", "copolymere": "copolymeres", "ramification": "peignes", "peigne": "peignes",
+              "brosse": "peignes", "vieillissement": "coupures", "degradation": "coupures", "extrusion": "extrudats", "extrudat": "extrudats",
+              "etirage": "striction", "noir": "agregats", "charges": "agregats", "craquelure": "fibrilles", "craquelures": "fibrilles", "craze": "fibrilles",
+              "consecutives": "selectivite", "catalyseur": "thiele", "bulle": "barbotage", "bulles": "barbotage", "mousse": "barbotage", "laminaire": "poiseuille",
+              "simplex": "simplexe", "nelder": "simplexe", "multiobjectif": "compromis", "front": "compromis", "moindres": "ecarts", "regression": "ecarts", "residus": "ecarts", "karnaugh": "boole", "pwm": "mli", "twin": "jumeau",
+              "lopa": "tranches", "atex": "zonage"})
 
 
 def _motif_mot(mot):
