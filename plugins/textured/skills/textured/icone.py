@@ -176,6 +176,82 @@ def _marques():
                     rect(18.4, 17, 2.8, 11, "a"), rect(23.2, 19, 2.8, 9)]
     G["osmose"] = [T([(16, 4), (16, 9)], 2.4), T([(16, 13.5), (16, 18.5)], 2.4), T([(16, 23), (16, 28)], 2.4), D(8.5, 10, 2), D(6.5, 19, 2), D(10.5, 24.5, 2),
                    D(23.5, 16, 4.4, "a")]
+    # sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+    G["bifurcation"] = [T([(16, 28), (16, 18.5)], 3.2), T([(6.5, 9), (16, 18.5), (25.5, 9)], 3.2), D(6.5, 8, 3.4), D(25.5, 8, 3.4, "a")]
+    G["scission"] = [F(arc(14.5, 16, 11, 90, 270, 18)),
+                     F([(17.5, 14.6)] + arc(17.5, 14.6, 11, -90, 0, 9)), F([(17.5, 17.4)] + arc(17.5, 17.4, 11, 0, 90, 9), "a")]
+    orbites = []
+    for x0 in (2.5, 1.55):
+        lv, u, v, tour = [], math.log(x0), 0.0, 0.0
+        while tour < 2 * math.pi:
+            lv.append((math.exp(u), math.exp(v)))
+            a0 = math.atan2(v, u)
+            u += .02 * (1 - math.exp(v))
+            v += .02 * (math.exp(u) - 1)
+            tour += abs(math.remainder(math.atan2(v, u) - a0, 2 * math.pi))
+        orbites.append(lv[::5] + lv[:1])
+    xs, ys = [p[0] for p in orbites[0]], [p[1] for p in orbites[0]]
+    cadre = lambda p: (5 + 22 * (p[0] - min(xs)) / (max(xs) - min(xs)), 27 - 22 * (p[1] - min(ys)) / (max(ys) - min(ys)))
+    G["cycles"] = [T([cadre(p) for p in orbites[0]], 3), T([cadre(p) for p in orbites[1]], 3, "a")]
+    G["impulsions"] = [T([(x, 5), (x, 12.5)], 3) for x in (7, 14, 25)] + [T([(10.5, 19.5), (10.5, 27)], 3), T([(19.5, 19.5), (19.5, 27)], 3, "a"),
+                                                                           T([(25.5, 19.5), (25.5, 27)], 3)]
+    G["entaille"] = [T(arc(13.5, 16, 9.5, 40, 320), 3.4), D(25.5, 16, 3.6, "a")]
+    G["foyer"] = [D(16 + 11 * math.cos(math.radians(60 * k + 30)), 16 + 11 * math.sin(math.radians(60 * k + 30)), 2.7) for k in range(6)] + [D(16, 16, 4.6, "a")]
+    G["seuil"] = [D(8, 16, 4.6), T([(16, 5), (16, 27)], 2.8), C(24, 16, 4, 2.8, "a")]
+    G["tresse"] = [T(courbe(lambda x: 16 + 8 * math.sin((x - 5) / 22 * 2 * math.pi), 5, 27), 3),
+                   T(courbe(lambda x: 16 - 8 * math.sin((x - 5) / 22 * 2 * math.pi), 5, 27), 3, "a")]
+    G["liens"] = [T([(7, 9), (25, 9)], 2.8), T([(7, 9), (25, 23)], 2.8), T([(7, 23), (25, 9)], 2.8), T([(7, 23), (25, 23)], 2.8),
+                  D(7, 9, 3.4), D(7, 23, 3.4), D(25, 9, 3.4), D(25, 23, 3.8, "a")]
+    G["noyau"] = [T([(6.5, 8), (16, 16), (26, 10)], 2.8), T([(8, 25.5), (16, 16), (25, 25)], 2.8)] + [D(x, y, 2.8) for x, y in ((6.5, 8), (26, 10), (8, 25.5), (25, 25))] + [D(16, 16, 4.8, "a")]
+    G["secteurs"] = [T(arc(16, 16, 11.5, a0, a1, 10), 3.2) for a0, a1 in ((-160, -70), (-40, 50), (80, 170))] + [T(arc(16, 16, 5, -110, 50, 12), 3.2, "a")]
+    G["rangs"] = [T([(7, 5), (7, 27)], 2.8), T([(14.5, 5), (14.5, 27)], 4.2), T([(23.5, 5), (23.5, 27)], 6.4, "a")]
+    G["coude"] = [T([(4, 9), (14, 9), (23, 18), (23, 23)], 3), T([(4, 15.5), (11.3, 15.5), (16.5, 20.7), (16.5, 23)], 3),
+                  D(23, 25.5, 3.2, "a"), D(16.5, 25.5, 3.2)]
+    G["delta"] = [T([(4, 9), (28, 9)], 3, "a"), T([(4, 15.5), (12, 15.5)] + arc(12, 24.5, 9, -90, 0, 12) + [(21, 28)], 3)]
+    G["articule"] = [T([(6, 26.5), (10.5, 14), (21, 8), (27, 17)], 3), D(6, 26.5, 3.6), D(10.5, 14, 2.4), D(21, 8, 2.4), D(27, 17, 3.4, "a")]
+    G["pions"] = [D(9.5, 9.5, 5), C(22.5, 9.5, 4.2, 2.8), C(9.5, 22.5, 4.2, 2.8), D(22.5, 22.5, 5, "a")]
+    G["etages"] = [rect(4.5, 21.5, 23, 5), rect(7.5, 13.5, 17, 5, "a"), rect(11, 5.5, 10, 5)]
+    G["periodes"] = [T([(4.5, 7.5), (19, 7.5)], 2.8), T([(11, 16), (27.5, 16)], 5.4, "a"), T([(6, 24.5), (15, 24.5)], 3.8)]
+    lien = lambda a, b: [(a[0] + (b[0] - a[0]) * (3 * t * t - 2 * t ** 3), a[1] + (b[1] - a[1]) * t) for t in (q / 12 for q in range(13))]
+    G["lignees"] = [T(lien((6, 26), (16, 6)), 2.8), T(lien((16, 26), (16, 6)), 2.8), T(lien((26, 26), (26, 6)), 2.8), D(16, 6, 3.8, "a"),
+                    D(26, 6, 3), D(6, 6, 2), D(6, 26, 3), D(16, 26, 3), D(26, 26, 3)]
+    G["diagonales"] = [T([(5, 5), (27, 27)], 3.2), T([(15, 5), (27, 17)], 3.2), T([(6, 26), (12, 20)], 3.4, "a")]
+    G["macules"] = [D(9, 9, 4.2), D(22.5, 10, 3), D(6.5, 23, 2.6), D(25, 24, 3.2), D(15.5, 18.5, 5, "a")]
+    G["decalage"] = [rect(4 + 4 * k, 4.5 + 7 * k, 13, 3.6, "a" if k == 3 else "g") for k in range(4)]
+    G["repli"] = [T([(6, 26), (6, 16), (16, 16), (16, 26), (26, 26), (26, 6), (11, 6)], 3), D(6, 26, 3.4), D(11, 6, 3.4, "a")]
+    G["allele"] = [D(9.5, 9.5, 5.6), C(22.5, 9.5, 4.4, 2.8), F(arc(22.5, 9.5, 5.6, 90, 270, 10)), C(9.5, 22.5, 4.4, 2.8),
+                   F(arc(9.5, 22.5, 5.6, -90, 90, 10)), C(22.5, 22.5, 4.4, 2.8, "a")]
+    G["segments"] = [rect(4, 6, 12, 5.5), rect(18, 6, 10, 5.5, "a"), rect(4, 14.5, 7, 5.5), rect(13, 14.5, 15, 5.5), rect(4, 23, 16, 5.5), rect(22, 23, 6, 5.5, "a")]
+    G["parts"] = [C(9, 16, 5.2, 2.8), F([(9, 16)] + arc(9, 16, 6.6, -90, 0, 6)), C(23, 16, 6.2, 2.8, "a"), F([(23, 16)] + arc(23, 16, 7.6, -90, 160, 14), "a")]
+    G["paliers"] = [T([(4, 7), (9, 7), (9, 19), (14, 19), (14, 26), (19, 26), (19, 13), (28, 13)], 2.8), T([(21, 13), (27, 13)], 5, "a")]
+    G["bandes"] = [rect(4, 6, 6.5, 3.4), rect(4, 15, 6.5, 3.4), rect(4, 24, 6.5, 3.4), rect(13, 9, 6.5, 3.4), rect(13, 19, 6.5, 3.4, "a"),
+                   rect(22, 13, 6.5, 3.4), rect(22, 19, 6.5, 3.4, "a")]
+    G["consigne"] = [T(courbe(lambda x: 16 - 11 * math.exp(-(x - 4) / 5), 4, 22), 2.8), T(courbe(lambda x: 16 + 11 * math.exp(-(x - 4) / 6) * math.cos((x - 4) / 2.6), 4, 22), 2.8),
+                     T([(19, 16), (28, 16)], 3.6, "a")]
+    G["masque"] = [rect(4 + 9 * j, 4 + 9 * i, 6.8, 6.8, "a" if (i, j) == (2, 2) else "g") for i in range(3) for j in range(i + 1)]
+    G["partition"] = [rect(4, 4, 10, 24), rect(16.5, 4, 11.5, 10.5), rect(16.5, 17, 11.5, 11, "a")]
+    G["couloir"] = [T([(5, 27), (5, 5), (27, 5), (27, 27), (12, 27), (12, 12), (20, 12), (20, 19)], 3), D(20, 20, 3, "a")]
+    G["subdivision"] = [rect(4, 4, 11, 11), rect(4, 17, 11, 11), rect(17, 17, 11, 11), rect(17, 4, 4.6, 4.6), rect(23.4, 4, 4.6, 4.6, "a"),
+                        rect(17, 10.4, 4.6, 4.6), rect(23.4, 10.4, 4.6, 4.6)]
+    G["bits"] = [T([(x, 6), (x, 26)], 3, "a" if x == 22 else "g") for x in (5, 16.5, 22)] + [D(x, 16, 2.6) for x in (10.75, 27)]
+    vague = lambda y0, a, ph: (lambda x: y0 + a * math.sin((x - 4) / 24 * 2 * math.pi + ph))
+    G["flots"] = [F(courbe(vague(6, 1.6, 0), 4, 28) + courbe(vague(12, 1.6, .6), 4, 28)[::-1]),
+                  F(courbe(vague(14.5, 1.6, .6), 4, 28) + courbe(vague(19.5, 2, 1.2), 4, 28)[::-1], "a"),
+                  F(courbe(vague(21.5, 2, 1.2), 4, 28) + courbe(vague(27, 1.2, 1.8), 4, 28)[::-1])]
+    G["glissando"] = [rect(4, 21, 6.5, 6.5), rect(12.75, 13.5, 6.5, 6.5), rect(21.5, 6, 6.5, 6.5, "a"), rect(5.5, 12, 3.6, 3.6), rect(14.2, 4.5, 3.6, 3.6)]
+    G["remplissage"] = [T(arc(10, 10, 6, 180, 270, 6) + arc(22, 10, 6, 270, 360, 6) + arc(22, 22, 6, 0, 90, 6) + arc(10, 22, 6, 90, 180, 6) + [(4, 10)], 2.8),
+                        T([(10, 10.5), (22, 10.5), (22, 16), (10, 16), (10, 21.5), (22, 21.5)], 2.8, "a")]
+    G["arches"] = [T(arc(16, 23, 11, 180, 360, 20), 2.8), T(arc(15.5, 23, 3.5, 180, 360, 10), 2.8), D(5, 23, 2.6), D(12, 23, 2.6), D(19, 23, 2.6),
+                   D(27, 23, 3.4, "a")]
+    G["trajets"] = [T([(6 + 11 * t + 6 * t * (1 - t), 25 - 18 * t - 10 * t * (1 - t)) for t in (q / 12 for q in range(13))], 2.8),
+                    T([(17 + 8 * t + 8 * t * (1 - t), 7 + 15 * t - 4 * t * (1 - t)) for t in (q / 12 for q in range(13))], 2.8),
+                    D(6, 25, 3.6), D(25, 22, 2.8), D(17, 7, 4.2, "a")]
+    G["ecus"] = [D(12, 13, 8.6, "a"), D(24.5, 21.5, 5.2), D(25.5, 8.5, 3), D(9, 26.5, 3)]
+    G["gradins"] = [D(16 + 11 * math.cos(math.radians(a)), 23 - 11 * math.sin(math.radians(a)), 2.3, "a" if a < 50 else "g") for a in (0, 36, 72, 108, 144, 180)] \
+        + [D(16 + 5 * math.cos(math.radians(a)), 23 - 5 * math.sin(math.radians(a)), 2.3) for a in (20, 90, 160)]
+    G["aieux"] = [F(arc(16, 24, 6, 180, 360, 12)), F(arc(16, 24, 13, 181, 268, 10) + arc(16, 24, 8.4, 268, 181, 8)),
+                  F(arc(16, 24, 13, 272, 359, 10) + arc(16, 24, 8.4, 359, 272, 8), "a")]
+    G["duel"] = [F([(4, 15), (4, 5), (14, 15)]), F([(28, 4), (19, 4), (28, 13)]), F([(4, 28), (4, 19), (13, 28)], "a"), F([(28, 17), (18, 17), (28, 27)], "a")]
     return G
 
 
@@ -208,6 +284,19 @@ MARQUE_DE.update({
     "young": "escalier", "complexe": "etoile", "spirographe": "rosace", "tesseract": "hypercube", "laue": "laue", "mendeleiev": "tableau",
     "belousov": "spirale", "liesegang": "cernes", "maxwell": "gaz", "solvatation": "couronne", "miroir": "sablier", "nucleation": "disques",
     "multiplets": "multiplet", "agregat": "constellation", "osmose": "osmose", "zeolithe": "hexagone",
+})
+# sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+MARQUE_DE.update({
+    "phylogenie": "bifurcation", "division": "scission", "proies": "cycles", "influx": "impulsions", "clones": "entaille",
+    "contagion": "foyer", "depistage": "seuil", "sinogramme": "tresse", "perceptron": "liens", "grappes": "noyau", "brassage": "secteurs",
+    "tri": "rangs", "pistes": "coude", "harmoniques": "ondes", "rubans": "delta", "poses": "articule", "volatilite": "eventail",
+    "schelling": "pions", "pyramide": "etages", "frise": "periodes",
+    "derive": "lignees", "alignement": "diagonales", "morphogenese": "macules", "circadien": "decalage", "repliement": "repli",
+    "mendel": "allele", "recombinaison": "segments", "dose": "parts", "survie": "escalier", "sommeil": "paliers",
+    "electrophorese": "bandes", "homeostasie": "consigne", "attention": "masque", "decision": "partition", "dedale": "couloir",
+    "quadrants": "subdivision", "debruitage": "points", "binaire": "bits", "symboles": "grille", "isostatiques": "anneau",
+    "mix": "flots", "lidar": "eventail", "spectrogramme": "glissando", "parcours": "remplissage", "syntaxe": "arches",
+    "migrations": "trajets", "fortunes": "ecus", "hemicycle": "gradins", "ascendance": "aieux", "nash": "duel",
 })
 FORMES = {"carre": "carre", "carree": "carre", "square": "carre", "rond": "rond", "ronde": "rond", "round": "rond", "disque": "rond",
           "nu": "nu", "nue": "nu", "seul": "nu", "bare": "nu"}

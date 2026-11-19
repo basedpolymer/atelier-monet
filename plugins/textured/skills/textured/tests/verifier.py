@@ -63,6 +63,92 @@ Encore du texte.
 """
 
 
+# Sujets, en français et en anglais : chacun doit désigner son motif (premier ex aequo admis) ; à droite de « ≠ »,
+# un sujet d'un autre domaine qui ne doit pas tomber sur ce motif.
+SUJETS = {
+    # sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+    "Phylogénie des primates": "phylogenie", "Natural selection and speciation": "phylogenie",
+    "Mitose et cycle cellulaire": "division", "Stem cells and cancer": "division",
+    "Proies et prédateurs": "proies", "Ecosystems and food webs": "proies",
+    "Neurosciences cognitives": "influx", "Synaptic plasticity": "influx",
+    "Immunologie des vaccins": "clones", "Antibodies and antigens": "clones",
+    "Épidémiologie des maladies infectieuses": "contagion", "Epidemic modelling": "contagion",
+    "Dépistage et biomarqueurs": "depistage", "Clinical medicine": "depistage",
+    "Imagerie médicale": "sinogramme", "Medical imaging: MRI and CT": "sinogramme",
+    "Réseaux de neurones": "perceptron", "Artificial intelligence": "perceptron",
+    "Apprentissage automatique": "grappes", "Machine learning": "grappes",
+    "Cryptographie": "brassage", "Hash functions and encryption": "brassage",
+    "Algorithmes de tri": "tri", "Data structures": "tri",
+    "Électronique numérique": "pistes", "Printed circuit boards": "pistes",
+    "Traitement du signal": "harmoniques", "Signal processing and filtering": "harmoniques",
+    "Transition énergétique": "rubans", "Renewable energy": "rubans",
+    "Robotique": "poses", "Robot kinematics": "poses",
+    "Macroéconomie": "volatilite", "Economics of financial markets": "volatilite",
+    "Sociologie urbaine": "schelling", "Residential segregation": "schelling",
+    "Démographie": "pyramide", "Population ageing": "pyramide",
+    "Histoire contemporaine": "frise", "Medieval history": "frise",
+    "Dérive génétique et coalescence": "derive", "Population genetics": "derive",
+    "Génomique comparée": "alignement", "Sequence alignment": "alignement",
+    "Morphogenèse et motifs de Turing": "morphogenese", "Developmental biology": "morphogenese",
+    "Rythmes circadiens": "circadien", "Biological clocks and jet lag": "circadien",
+    "Repliement des protéines": "repliement", "Protein folding": "repliement",
+    "Lois de Mendel": "mendel", "Mendelian inheritance": "mendel",
+    "Recombinaison et crossing-over": "recombinaison", "Chromosome recombination": "recombinaison",
+    "Pharmacologie": "dose", "Dose-response curves": "dose",
+    "Analyse de survie": "survie", "Clinical trials": "survie",
+    "Troubles du sommeil": "sommeil", "Sleep medicine": "sommeil",
+    "Électrophorèse et PCR": "electrophorese", "Gel electrophoresis and PCR": "electrophorese",
+    "Physiologie et homéostasie": "homeostasie", "Endocrinology": "homeostasie",
+    "Les grands modèles de langage": "attention", "Large language models": "attention",
+    "Arbres de décision": "decision", "Random forests": "decision",
+    "Plus courts chemins": "dedale", "Shortest path algorithms": "dedale",
+    "Traitement d'images": "quadrants", "Image compression": "quadrants",
+    "IA générative": "debruitage", "Diffusion models": "debruitage",
+    "Numération binaire": "binaire", "Computer architecture": "binaire",
+    "Télécommunications numériques": "symboles", "Wireless communications": "symboles",
+    "Génie civil": "isostatiques", "Structural engineering": "isostatiques",
+    "Mix énergétique": "mix", "Electricity consumption": "mix",
+    "Robotique mobile et SLAM": "lidar", "Autonomous vehicles": "lidar",
+    "Reconnaissance vocale": "spectrogramme", "Speech processing": "spectrogramme",
+    "Fabrication additive": "parcours", "3D printing": "parcours",
+    "Analyse syntaxique": "syntaxe", "Dependency parsing": "syntaxe",
+    "Migrations internationales": "migrations", "International trade": "migrations",
+    "Inégalités de revenu": "fortunes", "Wealth inequality": "fortunes",
+    "Élections législatives": "hemicycle", "Political science": "hemicycle",
+    "Généalogie": "ascendance", "Family history": "ascendance",
+    "Théorie des jeux": "nash", "Game theory": "nash",
+}
+HORS_SUJET = {
+    # sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+    "Microscopie électronique à balayage": "pistes", "Vieillissement des polymères": "pyramide", "Volatilité relative": "volatilite",
+    "Inégalités de Cauchy-Schwarz": "schelling", "Période d'un pendule": "frise", "Énergie libre de mélange": "rubans",
+    "Électricité et magnétisme": "rubans", "Cinématique du point": "poses", "Loi de Fourier et conduction thermique": "harmoniques",
+    "Harmonic oscillator": "harmoniques", "Diffraction des rayons X": "sinogramme", "Espèces endémiques": "contagion",
+    "Essai de compression": "quadrants", "Diagrammes binaires liquide-vapeur": "binaire", "Ponts hydrogène": "isostatiques",
+    "Mobilité des porteurs de charge": "migrations", "Attracteur de Lorenz": "fortunes", "Nuage de points et régression": "lidar",
+    "Dosage acido-basique": "dose", "Laser beam focusing": "isostatiques", "Diffusion de la chaleur": "debruitage",
+    "Classification périodique": "decision", "Inflation cosmique": "volatilite", "Énergie libre de mélange": "mix",
+}
+
+
+def sujets():
+    """Les mots du sujet désignent le bon motif, en français et en anglais, sans prendre ceux d'un autre domaine ;
+    chaque motif a sa marque de favicon."""
+    avant = len(echecs)
+    for sujet, attendu in SUJETS.items():
+        sc = couverture.proposer(sujet)
+        if attendu not in [m for m, s in sc if s == sc[0][1]]:
+            echecs.append(f"sujet « {sujet} » : {attendu} attendu, {', '.join(m for m, _ in sc[:3]) or 'aucun motif'}")
+    for sujet, exclu in HORS_SUJET.items():
+        sc = couverture.proposer(sujet)
+        if exclu in [m for m, s in sc if s == sc[0][1]]:
+            echecs.append(f"sujet « {sujet} » : {exclu} ne devrait pas venir")
+    sans_marque = [m for m in motifs.MOTIFS if not icone.marque(m)]
+    if sans_marque:
+        echecs.append("motifs sans marque de favicon : " + ", ".join(sans_marque))
+    print(f"  {len(SUJETS)} sujets, {len(HORS_SUJET)} hors sujet, marques des motifs : {'erreur' if len(echecs) > avant else 'ok'}")
+
+
 def balise(page, motif):
     m = re.search(motif, page)
     return m.group(0) if m else ""
@@ -262,6 +348,7 @@ def main():
         lancer([str(RACINE / "exemples" / "cours"), "-o", str(tmp / "cours")])
         motifs_et_glyphes()
         choix_par_sujet()
+        sujets()
         favicons(tmp)
         # couverture sur un chapitre (encre et densité héritées de l'accueil) et planche de tous les motifs
         chap = RACINE / "exemples" / "cours" / "01-flory-huggins.md"
