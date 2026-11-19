@@ -138,9 +138,10 @@ def _marques():
     G["pions"] = [D(9.5, 9.5, 5), C(22.5, 9.5, 4.2, 2.8), C(9.5, 22.5, 4.2, 2.8), D(22.5, 22.5, 5, "a")]
     G["etages"] = [rect(4.5, 21.5, 23, 5), rect(7.5, 13.5, 17, 5, "a"), rect(11, 5.5, 10, 5)]
     G["periodes"] = [T([(4.5, 7.5), (19, 7.5)], 2.8), T([(11, 16), (27.5, 16)], 5.4, "a"), T([(6, 24.5), (15, 24.5)], 3.8)]
-    G["lignees"] = [T([(6, 26), (11, 16), (16, 26)], 2.8), T([(11, 16), (18, 6), (26, 26)], 2.8), D(6, 26, 2.8), D(16, 26, 2.8), D(26, 26, 2.8),
-                    D(18, 6, 3.6, "a")]
-    G["diagonales"] = [T([(5, 5), (18, 18)], 3.2), T([(14, 5), (27, 18)], 3.2), T([(9, 27), (20, 16)], 3.2, "a")]
+    lien = lambda a, b: [(a[0] + (b[0] - a[0]) * (3 * t * t - 2 * t ** 3), a[1] + (b[1] - a[1]) * t) for t in (q / 12 for q in range(13))]
+    G["lignees"] = [T(lien((6, 26), (16, 6)), 2.8), T(lien((16, 26), (16, 6)), 2.8), T(lien((26, 26), (26, 6)), 2.8), D(16, 6, 3.8, "a"),
+                    D(26, 6, 3), D(6, 6, 2), D(6, 26, 3), D(16, 26, 3), D(26, 26, 3)]
+    G["diagonales"] = [T([(5, 5), (27, 27)], 3.2), T([(15, 5), (27, 17)], 3.2), T([(6, 26), (12, 20)], 3.4, "a")]
     G["macules"] = [D(9, 9, 4.2), D(22.5, 10, 3), D(6.5, 23, 2.6), D(25, 24, 3.2), D(15.5, 18.5, 5, "a")]
     G["decalage"] = [rect(4 + 4 * k, 4.5 + 7 * k, 13, 3.6, "a" if k == 3 else "g") for k in range(4)]
     G["repli"] = [T([(6, 26), (6, 16), (16, 16), (16, 26), (26, 26), (26, 6), (11, 6)], 3), D(6, 26, 3.4), D(11, 6, 3.4, "a")]
@@ -158,16 +159,14 @@ def _marques():
     G["couloir"] = [T([(5, 27), (5, 5), (27, 5), (27, 27), (12, 27), (12, 12), (20, 12), (20, 19)], 3), D(20, 20, 3, "a")]
     G["subdivision"] = [rect(4, 4, 11, 11), rect(4, 17, 11, 11), rect(17, 17, 11, 11), rect(17, 4, 4.6, 4.6), rect(23.4, 4, 4.6, 4.6, "a"),
                         rect(17, 10.4, 4.6, 4.6), rect(23.4, 10.4, 4.6, 4.6)]
-    G["peigne"] = [T([(x, 16 - h), (x, 16 + h)], 2.8, "a" if h == 11 else "g") for x, h in ((5, 3), (10.5, 6), (16, 11), (21.5, 6), (27, 3))]
-    G["contour"] = [C(16, 16, 5.4, 2.8, "a"), T(courbe(lambda x: 7 - 3.4 * math.exp(-((x - 16) / 5) ** 2), 3, 29), 2.8),
-                    T(courbe(lambda x: 25 + 3.4 * math.exp(-((x - 16) / 5) ** 2), 3, 29), 2.8)]
+    G["bits"] = [T([(x, 6), (x, 26)], 3, "a" if x == 22 else "g") for x in (5, 16.5, 22)] + [D(x, 16, 2.6) for x in (10.75, 27)]
     vague = lambda y0, a, ph: (lambda x: y0 + a * math.sin((x - 4) / 24 * 2 * math.pi + ph))
     G["flots"] = [F(courbe(vague(6, 1.6, 0), 4, 28) + courbe(vague(12, 1.6, .6), 4, 28)[::-1]),
                   F(courbe(vague(14.5, 1.6, .6), 4, 28) + courbe(vague(19.5, 2, 1.2), 4, 28)[::-1], "a"),
                   F(courbe(vague(21.5, 2, 1.2), 4, 28) + courbe(vague(27, 1.2, 1.8), 4, 28)[::-1])]
     G["glissando"] = [rect(4, 21, 6.5, 6.5), rect(12.75, 13.5, 6.5, 6.5), rect(21.5, 6, 6.5, 6.5, "a"), rect(5.5, 12, 3.6, 3.6), rect(14.2, 4.5, 3.6, 3.6)]
     G["remplissage"] = [T(arc(10, 10, 6, 180, 270, 6) + arc(22, 10, 6, 270, 360, 6) + arc(22, 22, 6, 0, 90, 6) + arc(10, 22, 6, 90, 180, 6) + [(4, 10)], 2.8),
-                        T([(9.5, 21.5), (12.5, 10.5), (16, 21.5), (19.5, 10.5), (22.5, 21.5)], 2.8, "a")]
+                        T([(10, 10.5), (22, 10.5), (22, 16), (10, 16), (10, 21.5), (22, 21.5)], 2.8, "a")]
     G["arches"] = [T(arc(16, 23, 11, 180, 360, 20), 2.8), T(arc(15.5, 23, 3.5, 180, 360, 10), 2.8), D(5, 23, 2.6), D(12, 23, 2.6), D(19, 23, 2.6),
                    D(27, 23, 3.4, "a")]
     G["trajets"] = [T([(6 + 11 * t + 6 * t * (1 - t), 25 - 18 * t - 10 * t * (1 - t)) for t in (q / 12 for q in range(13))], 2.8),
@@ -203,7 +202,7 @@ MARQUE_DE.update({
     "derive": "lignees", "alignement": "diagonales", "morphogenese": "macules", "circadien": "decalage", "repliement": "repli",
     "mendel": "allele", "recombinaison": "segments", "dose": "parts", "survie": "escalier", "sommeil": "paliers",
     "electrophorese": "bandes", "homeostasie": "consigne", "attention": "masque", "decision": "partition", "dedale": "couloir",
-    "quadrants": "subdivision", "debruitage": "points", "binaire": "peigne", "symboles": "grille", "isostatiques": "contour",
+    "quadrants": "subdivision", "debruitage": "points", "binaire": "bits", "symboles": "grille", "isostatiques": "anneau",
     "mix": "flots", "lidar": "eventail", "spectrogramme": "glissando", "parcours": "remplissage", "syntaxe": "arches",
     "migrations": "trajets", "fortunes": "bulles", "hemicycle": "gradins", "ascendance": "aieux", "nash": "duel",
 })
