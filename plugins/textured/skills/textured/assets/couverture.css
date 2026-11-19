@@ -89,15 +89,3 @@
 .ico-barre.ico-nuit { background: #202124; border-radius: 0 0 .5em .5em; }
 .ico-barre img { display: block; flex: none; }
 .ico-case > p { margin: .4em 0 0; font: 400 .8em/1.3 var(--sans); text-align: left; }
-
-/*@ etagere | class="chapitres etagere\b */
-/* accueil d'un cours à couverture : la liste des chapitres devient une étagère, une mini-couverture au-dessus du
-   numéro, du titre et de la priorité ; sur un téléphone et sur papier, la liste ordinaire */
-ol.chapitres.etagere { columns: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(8.6em, 1fr)); gap: 1.8em 1.4em; }
-ol.etagere > li { display: grid; grid-template-columns: auto 1fr; align-content: start; gap: .15em .45em; hyphens: manual; -webkit-hyphens: manual; }
-main ol.etagere .vignette { grid-column: 1 / -1; display: block; margin: 0 0 .7em; padding: 0; background: none; box-shadow: none; }
-ol.etagere .couverture { float: none; width: 100%; margin: 0; font-size: 1rem; transition: translate .2s ease; }
-ol.etagere .vignette:hover .couverture { translate: 0 -.25em; }
-ol.etagere .prio { grid-column: 2; }
-@media (max-width: 40em) { ol.chapitres.etagere { display: block; } ol.etagere > li { display: flex; } main ol.etagere .vignette { display: none; } }
-@media print { ol.chapitres.etagere { display: block; } ol.etagere > li { display: flex; } main ol.etagere .vignette { display: none; } }

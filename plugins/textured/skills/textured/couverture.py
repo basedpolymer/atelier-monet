@@ -422,48 +422,6 @@ def choisis(choix):
     return [("Choix", [m for m in noms if m in MOTIFS])]
 
 
-# étagère : les chapitres d'un cours dont l'accueil a une couverture, chacun en mini-couverture
-DOCUMENT = {"colonnes", "plan", "lettres"}   # motifs qui lisent le document : pas de corps pour une vignette
-LEGERE = 12_000                               # octets au plus par vignette, sinon le motif suivant
-_NOMBRE = re.compile(r"-?\d+\.\d+")
-
-
-def allege(h):
-    """Coordonnées des tracés à l'unité : invisible à la taille d'une vignette, un quart à un tiers plus léger."""
-    entier = lambda m: str(round(float(m.group(0))))
-    h = re.sub(r'\b(d|points)="([^"]*)"', lambda m: f'{m.group(1)}="' + _NOMBRE.sub(entier, m.group(2)) + '"', h)
-    return re.sub(r'\b(cx|cy|x|y|x1|y1|x2|y2)="(-?\d+\.\d+)"', lambda m: f'{m.group(1)}="{round(float(m.group(2)))}"', h)
-
-
-def etagere(metas, lang, tirage, teinte, deja=()):
-    """Une mini-couverture par chapitre (en-têtes des chapitres, dans l'ordre) : le motif le mieux classé d'après
-    l'en-tête du chapitre, sans doublon tant qu'il en reste, assez léger ; titre court seul, à l'encre et à la teinte de
-    l'accueil. Rend la liste des HTML."""
-    lang = "en" if lang == "en" else "fr"
-    vide = {"mots": 0, "sections": [], "paragraphes": [], "figures": 0, "formules": 0, "exercices": 0, "frequents": [],
-            "lettres": Counter()}
-    pris, sorties = set(deja), []
-    for m in metas:
-        titre = (m.get("court") or m.get("titre") or "").strip() or "·"
-        graine, total = graine_de(m), classement(m)
-        ordre = sorted((x for x in MOTIFS if x not in DOCUMENT),
-                       key=lambda x: (-total.get(x, 0), random.Random(graine + sum(map(ord, x))).random()))
-        retenu = None
-        for motif in [x for x in ordre if x not in pris] + [x for x in ordre if x in pris]:
-            try:
-                h = composer({"court": titre}, {**vide, "titre": titre}, lang, motif, teinte, "bas", tirage, graine)
-            except Exception:
-                continue
-            h = allege(re.sub(r'<p class="couv-pied">.*?</p>', "", h, flags=re.S))
-            if retenu is None or len(h.encode()) <= LEGERE:
-                retenu = (motif, h)
-            if len(h.encode()) <= LEGERE:
-                break
-        pris.add(retenu[0])
-        sorties.append(retenu[1])
-    return sorties
-
-
 def planche(meta, corps, plan_, lang, avis, brut=None, choix=None):
     """La couverture du document dans chaque motif (teintes et places en alternance), rangée par domaine, chacune sous
     la ligne d'en-tête qui la donne : pour choisir. Rend le corps HTML d'une page."""
