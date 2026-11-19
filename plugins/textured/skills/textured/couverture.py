@@ -96,10 +96,19 @@ def teinte_de(c, L, chroma):
     return depuis_oklab(L, a / h * chroma, b / h * chroma)
 
 
-def palette(encre, teinte):
-    """Fond, texte, accent et trait doux de la couverture, tirés de l'encre. claire : pastel de l'encre, texte noir,
-    accent à l'encre ; encre : aplat de l'encre, texte noir ou crème, accent en réserve (le papier) ; sombre : nuit
-    teintée de l'encre, texte crème, accent à l'encre éclaircie."""
+def tourne(c, degres, L, chroma):
+    """La teinte de c tournée de « degres » sur le cercle (OKLCH), à la clarté L et à la saturation chroma."""
+    _, a, b = oklab(c)
+    h = math.atan2(b, a) + math.radians(degres)
+    return depuis_oklab(L, chroma * math.cos(h), chroma * math.sin(h))
+
+
+def palette(encre, teinte, mono=False):
+    """Fond, texte, accent et trait doux de la couverture, tirés de l'encre. claire : pastel de l'encre, texte noir ;
+    encre : aplat de l'encre, texte noir ou crème, accent en réserve (le papier) ; sombre : nuit teintée de l'encre,
+    texte crème. Sur claire et sombre, l'accent prend la teinte opposée à l'encre, g1 et g2 bornent le dégradé des motifs
+    en traits (de l'encre à l'opposée), m1 à m4 sont quatre encres à un quart de tour l'une de l'autre pour les motifs en
+    formes pleines. mono : l'accent à l'encre, rien de plus (palette d'avant)."""
     e = rgb(encre)
     c = math.hypot(*oklab(e)[1:])
     if teinte == "encre":
@@ -112,14 +121,23 @@ def palette(encre, teinte):
             ecart = lambda x: abs(math.remainder(math.atan2(*reversed(oklab(rgb(x))[1:])) - h, 2 * math.pi))
             accent = rgb(max((x for x in ENCRES if contraste(rgb(x), fond) >= 2), key=lambda x: contraste(rgb(x), fond) * (1 + ecart(x))))
     elif teinte == "sombre":
-        fond, texte, accent = teinte_de(e, .25, min(c * .3, .035)), CREME, e
+        fond, texte = teinte_de(e, .25, min(c * .3, .035)), CREME
+        accent = e if mono else tourne(e, 180, .8, .12)
         while contraste(accent, fond) < 3.4:
             accent = melange(accent, CREME, .12)
     else:
-        fond, texte, accent = teinte_de(e, .915, min(c * .45, .065)), melange(NOIR, e, .08), e
+        fond, texte = teinte_de(e, .915, min(c * .45, .065)), melange(NOIR, e, .08)
+        accent = e if mono else tourne(e, 180, .56, .15)
         while contraste(accent, fond) < 2.4:
             accent = melange(accent, NOIR, .12)
-    return {"cf": hexa(fond), "ce": hexa(texte), "ca": hexa(accent), "cd": hexa(melange(fond, texte, .42))}
+    pal = {"cf": hexa(fond), "ce": hexa(texte), "ca": hexa(accent), "cd": hexa(melange(fond, texte, .42))}
+    if teinte in ("claire", "sombre") and not mono:
+        clair = teinte == "sombre"
+        pal["g1"] = hexa(tourne(e, 0, .72 if clair else .46, .13))
+        pal["g2"] = hexa(tourne(e, 165 if clair else 180, .86 if clair else .63, .1 if clair else .14))
+        for k, (dh, L) in enumerate(((0, .55), (90, .62), (180, .66), (270, .6)), 1):
+            pal[f"m{k}"] = hexa(tourne(e, dh, L + (.2 if clair else 0), .11 if clair else .15))
+    return pal
 
 
 # ---------- mesures du document ----------
@@ -255,7 +273,7 @@ def lire_valeur(valeur, avis):
     motif = teinte = place = None
     variante = 0
     for mot in re.split(r"[\s,;]+", sans_accents(valeur.lower())):
-        if mot in ("", "oui", "yes", "auto", "true"):
+        if mot in ("", "oui", "yes", "auto", "true", "mono"):
             continue
         if mot in MOTIFS or mot in ALIAS:
             motif = ALIAS.get(mot, mot)
@@ -326,9 +344,45 @@ def nettoyer_svg(perso, attributs):
     return re.sub(r"<svg\b", "<svg " + attributs, svg, count=1)
 
 
+# couleurs du motif (claire et sombre, hors « mono ») : les formes pleines nombreuses alternent quatre encres ; un motif
+# en traits passe en dégradé de l'encre à sa teinte opposée, en rayons depuis le centre pour un motif rayonnant
+RAYONNANTS = {"anneaux", "spherolites", "reseau", "flocon", "trame", "rayures", "arcs"}
+FORMES = re.compile(r'<(path|circle|rect|ellipse|polygon|polyline|line)\b[^>]*>')
+_degrades = [0]
+
+
+def colorier(svg, couleurs, motif, graine):
+    """Le dessin d'un motif, recoloré ; rend (svg, classe à ajouter à la couverture)."""
+    pleines = [m for m in FORMES.finditer(svg) if 'fill="currentColor"' in m.group(0)]
+    if len(pleines) >= 8:
+        rang = [0]
+
+        def encre(m):
+            if 'fill="currentColor"' not in m.group(0):
+                return m.group(0)
+            rang[0] += 1
+            return m.group(0).replace('fill="currentColor"', f'fill="var(--m{(rang[0] - 1) % 4 + 1})"')
+        return FORMES.sub(encre, svg), " couv-multi"
+    if not any('stroke="currentColor"' in m.group(0) for m in FORMES.finditer(svg)):
+        return svg, ""
+    _degrades[0] += 1
+    ident = f"cdg{_degrades[0]}"
+    g1, g2 = couleurs["g1"], couleurs["g2"]
+    stops = f'<stop offset="0" stop-color="{g1}"/><stop offset="1" stop-color="{g2}"/>'
+    if motif in RAYONNANTS:
+        defs = f'<defs><radialGradient id="{ident}" gradientUnits="userSpaceOnUse" cx="100" cy="100" r="110">{stops}</radialGradient></defs>'
+    else:
+        x1, y1, x2, y2 = ((10, 100, 190, 100), (10, 190, 190, 10), (100, 10, 100, 190))[graine % 3]
+        defs = (f'<defs><linearGradient id="{ident}" gradientUnits="userSpaceOnUse" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">'
+                f'{stops}</linearGradient></defs>')
+    svg = FORMES.sub(lambda m: m.group(0).replace('stroke="currentColor"', f'stroke="url(#{ident})"'), svg)
+    return defs + svg, " couv-degrade"
+
+
 def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
     """HTML de la couverture."""
-    L, e, couleurs = TEXTES[lang], html.escape, palette(tirage, teinte)
+    mono = "mono" in re.split(r"[\s,;]+", sans_accents((meta.get("couverture") or "").lower()))
+    L, e, couleurs = TEXTES[lang], html.escape, palette(tirage, teinte, mono)
     titre, r = d["titre"], random.Random(graine + 7)
     d = {**d, "inverse": luminance(rgb(couleurs["ce"])) > luminance(rgb(couleurs["cf"]))}
     sur, sous = meta.get("surtitre", "").strip(), meta.get("soustitre", "").strip()
@@ -351,7 +405,7 @@ def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
         return (f'<div class="couverture couv-entiere couv-perso couv-{teinte}" aria-hidden="true" style="{style}">'
                 f'<div class="couv">{svg}</div></div>\n')
     # à fond perdu ou en fond, une texture est coupée par les bords ; un schéma garde toute sa largeur
-    tranche_vue = ""
+    tranche_vue, classe_couleur = "", ""
     if place in ("plein", "fond"):
         tranche_vue = ' preserveAspectRatio="xMidYMid slice"' if motif in TEXTURES or place == "plein" else ' preserveAspectRatio="xMidYMid meet"' 
     if perso is not None:
@@ -359,8 +413,11 @@ def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
     else:
         rm = random.Random(graine + sum(map(ord, motif)))
         vue = "8 8 184 184" if place == "plein" or (place == "fond" and motif in TEXTURES) else "0 0 200 200"
+        corps_svg = "".join(x for x in MOTIFS[motif](rm, d) if x)
+        if "g1" in couleurs:
+            corps_svg, classe_couleur = colorier(corps_svg, couleurs, motif, graine)
         dessin = (f'<svg viewBox="{vue}"{tranche_vue} aria-hidden="true" focusable="false"><g fill="none" stroke-linecap="round" '
-                  'stroke-linejoin="round">' + "".join(x for x in MOTIFS[motif](rm, d) if x) + "</g></svg>")
+                  'stroke-linejoin="round">' + corps_svg + "</g></svg>")
     # fiche de laboratoire : jusqu'à trois mesures non nulles, puis le temps de lecture, en nombre pair de cases
     fiche = [(L[cle], chiffre(v, lang)) for cle, v in (("sections", len(d["sections"])), ("figures", d["figures"]),
                                                      ("formules", d["formules"]), ("exercices", d["exercices"])) if v][:3]
@@ -389,7 +446,7 @@ def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
         parties = [f'<div class="couv-image">{dessin}</div>', f'<div class="couv-tete">{p_sur}{p_titre}{p_sous}</div>', pied]
     else:
         parties = [f'<div class="couv-motif">{dessin}</div>', f'<div class="couv-tete">{p_sur}{p_titre}{p_sous}</div>', pied]
-    return (f'<div class="couverture couv-{place}{" couv-perso" if perso is not None else ""} couv-{teinte}" aria-hidden="true" style="{style}">'
+    return (f'<div class="couverture couv-{place}{" couv-perso" if perso is not None else ""} couv-{teinte}{classe_couleur}" aria-hidden="true" style="{style}">'
             f'<div class="couv">{"".join(x for x in parties if x)}</div></div>\n')
 
 
