@@ -76,7 +76,8 @@ translation…). Git ignores it: write your own.
 
 ## Change the template
 
-`textured.py` assembles and checks, `couverture.py` draws covers; `assets/*.css` and `assets/textured.js` are split
+`textured.py` assembles and checks, `couverture.py` lays out covers, `motifs.py` holds the patterns and their
+catalogue, `icone.py` the favicon marks; `assets/*.css` and `assets/textured.js` are split
 into `/*@ name | pattern */` blocks, each embedded only when its pattern appears in the page. After a change:
 `python3 tests/verifier.py --pdf` (also runs on GitHub). `SKILL.md` is read by Claude every time: keep it short and put
 details in the files read on demand (`cours.md`, `exercices.md`, `jouets.md`, `couverture.md`).

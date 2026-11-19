@@ -75,7 +75,8 @@ les composants), `exemples/cours/` (un cours de deux chapitres et deux jouets).
 
 ## Modifier le gabarit
 
-- `textured.py` : assemblage et contrôle ; `couverture.py` : couvertures.
+- `textured.py` : assemblage et contrôle ; `couverture.py` : couvertures (palette, mise en page, planche) ;
+  `motifs.py` : motifs et catalogue par domaine ; `icone.py` : marques des favicons.
 - `assets/textured.css`, `assets/couverture.css`, `assets/textured.js` : découpés en blocs `/*@ nom | motif */` ; un bloc
   n'est embarqué que si son motif apparaît dans la page.
 - Après un changement : `python3 tests/verifier.py --pdf` (construit l'exemple, le cours d'exemple et une couverture,

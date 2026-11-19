@@ -29,7 +29,23 @@
 .couv-image > svg { width: 100%; height: 100%; min-height: 0; max-width: none; overflow: visible; }
 .couv-cadre { border: max(1px, .32cqi) solid; padding: 3.6cqi; }
 .couv-filet { flex: none; border-top: max(1px, .32cqi) solid; }
-.couverture svg text { font-family: var(--sans); font-weight: 700; }
+.couverture svg { font-family: var(--sans); font-weight: 700; }
+/* plein : l'illustration mange les marges du haut et des côtés, coupée par les bords (preserveAspectRatio slice) */
+.couv-plein .couv-image { margin: -7.5cqi -7.5cqi 0; }
+.couv-plein .couv-tete { margin-top: .6cqi; }
+/* fond : le motif couvre toute la couverture ; titre dans un cartouche, pied sur un bandeau, tous deux à fond plein */
+.couv-fond .couv { position: relative; }
+.couv-motif { position: absolute; inset: 0; display: grid; }
+.couv-motif > svg { width: 100%; height: 100%; max-width: none; }
+.couv-fond .couv-tete, .couv-fond .couv-pied { position: relative; background: var(--cf); border: max(1px, .32cqi) solid; }
+.couv-fond .couv-tete { padding: 4.6cqi 5cqi 5.2cqi; }
+.couv-fond .couv-pied { margin-top: auto; padding: 1.7cqi 2.6cqi 1.5cqi; }
+/* couverture entière dessinée (bloc « ::: couverture » en 200 × 300) : le dessin est tout */
+.couv-entiere .couv { display: block; padding: 0; }
+.couv-entiere .couv > svg { display: block; width: 100%; height: 100%; max-width: none; }
+/* dessin à soi (bloc « ::: couverture ») : sans remplissage par défaut, bouts ronds, texte à la couleur du texte */
+.couv-perso svg { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.couv-perso svg text { fill: currentColor; stroke: none; }
 .couv-fiche { display: grid; grid-template-columns: 1fr 1fr; column-gap: 6cqi; margin: -1cqi 0 0; }
 .couv-fiche div { display: flex; justify-content: space-between; align-items: baseline; gap: 2cqi; padding: 1.3cqi 0 .8cqi; border-bottom: max(1px, .22cqi) solid var(--cd); }
 .couv-fiche div:only-child { grid-column: 1 / -1; }
@@ -44,9 +60,12 @@
   }
 }
 /* planche (--planche) : toutes les couvertures en rayon, chacune sous la ligne d'en-tête qui la donne */
-.etagere { display: grid; grid-template-columns: repeat(auto-fill, minmax(11.5em, 1fr)); gap: 2.4em 1.8em; margin: 1.5em 0; }
+.etagere { display: grid; grid-template-columns: repeat(auto-fill, minmax(10em, 1fr)); gap: 2.2em 1.6em; margin: 1.2em 0 2.4em; }
 .etagere .couverture { float: none; width: 100%; margin: 0 0 .8em; }
-.couv-case > p { margin: 0; font: 400 .8em/1.3 var(--sans); color: var(--doux); text-align: left; }
+.couv-case > p { margin: 0 0 .25em; font: 400 .78em/1.3 var(--sans); color: var(--doux); text-align: left; hyphens: auto; }
+.couv-case > p b { color: var(--encre); font-size: 1.12em; }
+.couv-case code { font-size: .92em; overflow-wrap: anywhere; }
+@media (max-width: 40em) { .etagere { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.6em 1em; } }
 /* image de partage (--apercu) : la couverture en grand à droite, le titre à gauche */
 .tx-apercu .page { max-width: none; margin: 0; padding: 0 calc(15.6rem + 6rem) 0 4.5rem; }
 .tx-apercu .couverture { position: absolute; z-index: 40; top: 1.45rem; right: 3.6rem; width: 15.6rem; margin: 0; float: none; }
@@ -59,5 +78,14 @@
   .couverture + .titre { padding-top: 2.6em; }
   .etagere .couverture { page: auto; width: 100%; height: auto; margin: 0 0 .6em; break-after: auto; }
   .etagere .couv { aspect-ratio: 2 / 3; height: auto; padding: 7.5cqi 7.5cqi 6cqi; }
+  .etagere .couv-entiere .couv { padding: 0; }
   .couv-case { break-inside: avoid; }
 }
+
+/*@ icones | class="ico-planche */
+/* planche des favicons (--icones) : chaque glyphe à 16, 32 et 64 px, sur un onglet clair puis sombre */
+.ico-planche { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5em, 1fr)); gap: 1.4em 1.2em; margin: 1em 0 2.2em; }
+.ico-barre { display: flex; align-items: center; gap: .7em; padding: .55em .7em; background: #dfe1e5; border-radius: .5em .5em 0 0; }
+.ico-barre.ico-nuit { background: #202124; border-radius: 0 0 .5em .5em; }
+.ico-barre img { display: block; flex: none; }
+.ico-case > p { margin: .4em 0 0; font: 400 .8em/1.3 var(--sans); text-align: left; }

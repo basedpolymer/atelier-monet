@@ -37,9 +37,13 @@ La page en tire ses pastels (lettrine, numéros, surlignages, losanges, jouets).
 `tirage: non` : page grise.
 
 Facultatif : `lang: en` · `plan: non` (sommaire affiché par défaut dès deux titres) · `numeros: non` ·
-`densite: compacte` · `lettrine: 3|non` · `court:` (titre courant) · `pied:` · `prive: oui` (noindex) ·
-`avertissement: **Gras.** Texte` (bandeau en haut jusqu'à « J'ai compris ») · `icone:` (adresse de la favicon) ·
-`langues: fr=URL, en=URL` · `url:`, `image:` (page publiée) · `csp: non` · `couverture:` (voir `couverture.md`).
+`densite: compacte` · `lettrine: 3|non` · `court:` (titre courant et onglet) · `pied:` · `prive: oui` (noindex) ·
+`avertissement: **Gras.** Texte` (bandeau en haut jusqu'à « J'ai compris ») · `langues: fr=URL, en=URL` ·
+`url:`, `image:` (page publiée) · `csp: non`.
+
+**Favicon et titre d'onglet** : posés d'office (marque géométrique à l'encre de la page) ; ne les changer que sur
+demande (`icone:`, `onglet:`, voir la fin de `couverture.md`). **Couverture** : seulement sur demande ; choisir le
+motif par `python3 <skill>/textured.py --motifs "sujet"`, puis `couverture: motif` dans l'en-tête (`couverture.md`).
 
 ## Écrire le corps
 

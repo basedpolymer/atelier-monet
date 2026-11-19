@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """TeXtured HTML : assemble une page complète à partir d'une source courte (Markdown ou fragment HTML).
 
-    textured.py doc.md [-o doc.html] [--ouvrir] [--pdf] [--apercu] [--couverture [MOTIF]] [--planche] [--polices embarquees|locales] [--assets URL] [--images liees]
+    textured.py doc.md [-o doc.html] [--ouvrir] [--pdf] [--apercu] [--couverture [MOTIF]] [--planche [CHOIX]] [--icones] [--polices embarquees|locales] [--assets URL] [--images liees]
+    textured.py --motifs ["sujet"]       # motifs de couverture par domaine, ou ceux qui conviennent au sujet
     textured.py --exporter DOSSIER      # feuille de style, moteur, KaTeX et polices, pour un site (mode --assets)
 
 La source commence par un en-tête « clé: valeur » entre deux lignes « --- » (voir SKILL.md). Le script numérote
@@ -29,6 +30,7 @@ from pathlib import Path
 from urllib.parse import urljoin
 
 import couverture
+import icone
 
 ICI = Path(__file__).resolve().parent
 ASSETS = ICI / "assets"
@@ -71,8 +73,6 @@ LOCALES = {
 TOUJOURS = {"lmroman10-regular", "lmroman10-bold", "lmromanslant10-regular", "lmsans10-regular", "lmsans10-bold"}
 PROTEGE = re.compile(r"<(script|style|pre|textarea)\b[^>]*>.*?</\1\s*>", re.S | re.I)
 PROTEGE_MATH = re.compile(r"<(script|style|pre|textarea|code)\b[^>]*>.*?</\1\s*>", re.S | re.I)
-ICONE = ("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 4l12 12-12 12L4 16z' "
-         "fill='%23fff' stroke='%23777' stroke-width='3'/%3E%3C/svg%3E")
 LISTE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h1M6 4h7.5M2.5 8h1M6 8h7.5M2.5 12h1M6 12h7.5"/></svg>'
 AUTO = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><path d="M8 2.4a5.6 5.6 0 0 1 0 11.2z" fill="currentColor"/></svg>'
 LUNE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.6A6 6 0 0 1 6.4 2.5a6 6 0 1 0 7.1 7.1z"/></svg>'
@@ -661,7 +661,8 @@ def cours_de(src):
     idx = next((dossier / n for n in ("index.md", "index.tx.html") if (dossier / n).is_file()), None)
     if idx is None:
         return None
-    mi = entete(idx.read_text(encoding="utf-8"))[0]
+    texte_index = idx.read_text(encoding="utf-8")
+    mi = entete(texte_index)[0]
     if not mi.get("cours"):
         return None
     chapitres = []
@@ -673,7 +674,7 @@ def cours_de(src):
             chapitres.append({"f": nom_sortie(f).name, "n": m["chapitre"], "titre": m.get("titre") or f.stem,
                               "prio": niveau_priorite(m.get("priorite", ""))[0]})
     return {"nom": mi["cours"], "cle": mi.get("cle") or f"tx:{slug(mi['cours'])}:", "index": mi,
-            "fichier_index": nom_sortie(idx).name, "chapitres": chapitres}
+            "fichier_index": nom_sortie(idx).name, "chapitres": chapitres, "source_index": texte_index}
 
 
 def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
@@ -694,6 +695,7 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
         titre_html = "Sans titre"
         avis.append("pas de titre : ajouter « titre: … » dans l'en-tête de la source")
     titre_nu = nu(titre_html)
+    corps, bloc_icone = couverture.extraire_bloc(corps, "icone")
     brut = corps
     # encre : celle de l'en-tête, sinon une encre tirée du titre (du nom du cours) ; « tirage: non » : page grise
     tirage, encre_auto = meta.get("tirage", "").strip(), False
@@ -838,7 +840,7 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     assets = (options.assets or meta.get("assets") or "").rstrip("/")
     mode = options.polices or meta.get("polices") or "embarquees"
     utiles = (set(TOUJOURS) | controle.polices | ({"texgyrechorus-mediumitalic"} if lettrine else set())
-              | ({"lmroman10-italic"} if 'class="couv-sous"' in page else set()))
+              | ({"lmroman10-italic"} if 'class="couv-sous"' in page or "couv-entiere" in page else set()))
     motifs = sans_code(page)
     js = scripts(motifs)
     amorce = ('try{var t=localStorage.getItem("tx-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;'
@@ -888,13 +890,50 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
                       + ("connect-src 'self'; " if assets else "") + "base-uri 'none'; form-action 'none'")
             csp = f'<meta http-equiv="Content-Security-Policy" content="{regles}">\n'
 
+    # titre d'onglet : « onglet: » s'il est dit ; un chapitre : « Chapitre 2 · Titre court — Cours » ; l'accueil d'un
+    # cours : son titre, suivi du nom du cours s'il en diffère ; une page : son titre court s'il existe. og:title dit la
+    # même chose avec le titre entier (ou « onglet: » s'il est dit).
+    court_nu = (meta.get("court") or "").strip() or titre_nu
+    if meta.get("onglet", "").strip():
+        onglet = og_titre = meta["onglet"].strip()
+    elif cours and chapitre:
+        onglet = f'{T["chapitre"]} {chapitre} · {court_nu} — {cours["nom"]}'
+        og_titre = f'{T["chapitre"]} {chapitre} · {titre_nu} — {cours["nom"]}'
+    elif cours and page_nom == cours["fichier_index"]:
+        onglet = og_titre = cours["nom"]
+        if titre_nu != cours["nom"]:
+            onglet, og_titre = f'{court_nu} — {cours["nom"]}', f'{titre_nu} — {cours["nom"]}'
+    else:
+        onglet, og_titre = court_nu, titre_nu
+    # favicon : celui de l'accueil pour tout un cours (sauf « icone: » propre au chapitre), sinon celui de la page
+    if cours and page_nom != cours["fichier_index"] and "icone" not in meta.get("_propres", ()):
+        mi = cours["index"]
+        encre_i = mi.get("tirage", "").strip()
+        encre_i = "" if encre_i.lower() in ("non", "no", "aucun", "none") else encre_i or encre_par_defaut(cours["nom"])
+        fav = icone.choisir(mi, encre_i, cours.get("source_index", ""), lang)
+    else:
+        source = meta.get("_source", "")
+        if bloc_icone and not icone.bloc(source):
+            source += '\n<div class="icone">' + bloc_icone + "</div>"
+        fav = icone.choisir(meta, tirage, source, lang)
+    avis.extend(fav.get("avis", []))
+    liens_icone = []
+    if fav.get("adresse"):
+        liens_icone.append(f'<link rel="icon" href="{e(fav["adresse"])}">')
+    elif fav.get("svg"):
+        if fav.get("png"):
+            liens_icone.append(f'<link rel="icon" type="image/png" sizes="32x32" href="{icone.uri_png(fav["png"](32))}">')
+        liens_icone.append(f'<link rel="icon" type="image/svg+xml" href="{icone.uri_svg(fav["svg"])}">')
+        if meta.get("url") and fav.get("png"):
+            liens_icone.append(f'<link rel="apple-touch-icon" href="{icone.uri_png(fav["png"](180, True))}">')
+
     description = meta.get("description", "")
     if not description:
         avis.append("pas de description : ajouter « description: … » (une phrase, pour les moteurs et les aperçus de lien)")
     tetiere = [
         '<meta charset="utf-8">',
         '<meta name="viewport" content="width=device-width, initial-scale=1">',
-        f"<title>{e(titre_nu)}</title>",
+        f"<title>{e(onglet)}</title>",
         csp.strip(),
         '<meta name="color-scheme" content="light dark">',
         '<meta name="text-scale" content="scale">',
@@ -907,7 +946,10 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     ]
     if meta.get("url"):
         tetiere += [f'<link rel="canonical" href="{e(meta["url"])}">', '<meta property="og:type" content="article">',
-                    f'<meta property="og:title" content="{e(titre_nu)}">', f'<meta property="og:url" content="{e(meta["url"])}">']
+                    f'<meta property="og:title" content="{e(og_titre)}">', f'<meta property="og:url" content="{e(meta["url"])}">']
+        if cours:
+            tetiere.append(f'<meta property="og:site_name" content="{e(cours["nom"])}">')
+        tetiere.append(f'<meta name="apple-mobile-web-app-title" content="{e(court_nu if not cours else cours["nom"])}">')
         if description:
             tetiere.append(f'<meta property="og:description" content="{e(description)}">')
         if meta.get("image"):
@@ -921,7 +963,7 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
         versions.append(("x-default", versions[0][1]))
     for code, adresse in versions:
         tetiere.append(f'<link rel="alternate" hreflang="{e(code)}" href="{e(adresse)}">')
-    tetiere.append(f'<link rel="icon" href="{e(meta.get("icone") or ICONE)}">')
+    tetiere += liens_icone
     densite = ' data-densite="compacte"' if meta.get("densite", "").startswith("compact") else ""
     if tirage and re.fullmatch(r"#[0-9a-fA-F]{3,8}", tirage):
         densite += f' data-tirage style="--tirage:{tirage}"'
@@ -937,7 +979,8 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     )
     bilan = {"sections": sum(1 for p in plan if p[0] == 2), "formules": n_formules, "plan": bool(nav),
              "polices": "liées" if assets else mode, "encre": (tirage or "aucune") + (" (auto)" if encre_auto else ""),
-             "jouets": len(re.findall(r'class="jouet\b', motifs)), "cours": cours, "couverture": couv["resume"] if couv else ""}
+             "jouets": len(re.findall(r'class="jouet\b', motifs)), "cours": cours, "couverture": couv["resume"] if couv else "",
+             "icone": fav.get("resume", ""), "onglet": onglet}
     return sortie, bilan
 
 
@@ -1038,6 +1081,8 @@ def page(src, cible, o):
     meta, brut = lire_source(src if src else "-")
     if o.couverture:
         meta["couverture"] = o.couverture
+    # pour le favicon : le texte de la source (blocs ::: icone et ::: couverture), les clés de la page elle-même
+    meta["_source"], meta["_propres"] = brut, set(meta)
     est_html = src is not None and src.suffix.lower() in (".html", ".htm")
     corps = brut if est_html else markdown(brut)
     # cours : un chapitre reprend de l'accueil ce qu'il ne dit pas (encre, densité, auteur, langue…)
@@ -1060,14 +1105,26 @@ def page(src, cible, o):
     if o.planche:
         lang = meta.get("lang", "fr")[:2].lower()
         encre = meta.get("tirage") or encre_par_defaut(cours["nom"] if cours else nu(html.escape(meta.get("titre", ""))))
-        meta_p = {"titre": "Couvertures", "soustitre": meta.get("titre", ""), "surtitre": "Planche", "plan": "non",
-                  "lettrine": "non", "prive": "oui", "lang": lang, "tirage": encre,
+        meta_p = {"titre": "Couvertures", "soustitre": meta.get("titre", ""), "surtitre": "Planche", "numeros": "non",
+                  "lettrine": "non", "prive": "oui", "lang": lang, "tirage": encre, "onglet": "Couvertures · " + (meta.get("court") or meta.get("titre", "")),
                   "description": "Chaque motif de couverture, pour choisir la ligne « couverture: » de l'en-tête."}
         corps_t, plan_t, _ = titres(blocs_titres(corps, TEXTES.get(lang, TEXTES["en"])), dict(meta))
-        planche = couverture.planche(dict(meta, tirage=encre), corps_t, plan_t, lang, avis, corps)
+        planche = couverture.planche(dict(meta, tirage=encre), corps_t, plan_t, lang, avis, corps, o.planche)
         ecrite, _ = construire(meta_p, planche, dossier, o)
         cible.parent.mkdir(parents=True, exist_ok=True)
         cible.with_name(cible.stem + ".couvertures.html").write_text(ecrite, encoding="utf-8")
+    if getattr(o, "icones", False):
+        lang = meta.get("lang", "fr")[:2].lower()
+        encre = meta.get("tirage") or encre_par_defaut(cours["nom"] if cours else nu(html.escape(meta.get("titre", ""))))
+        meta_i = {"titre": "Favicons", "soustitre": meta.get("titre", ""), "surtitre": "Planche", "numeros": "non", "lettrine": "non",
+                  "prive": "oui", "lang": lang, "tirage": encre, "icone": "grille", "onglet": "Favicons · " + (meta.get("court") or meta.get("titre", "")),
+                  "description": "Chaque favicon à l'encre de la page, à 16, 32 et 64 px, sur un onglet clair et un sombre."}
+        intro = ("<p>Le favicon de cette page, par défaut : <code>" + html.escape(icone.choisir(meta, encre, meta.get("_source", ""), lang)["resume"])
+                 + "</code>. Pour en choisir un autre : la ligne sous chaque marque, dans l'en-tête (sous elle, les motifs de couverture "
+                 "qui y renvoient) ; « claire », « sombre », « rond » ou « nu » à la suite pour la teinte et la forme.</p>")
+        ecrite, _ = construire(meta_i, intro + icone.planche(encre), dossier, o)
+        cible.parent.mkdir(parents=True, exist_ok=True)
+        cible.with_name(cible.stem + ".icones.html").write_text(ecrite, encoding="utf-8")
     sortie, bilan = construire(meta, corps, dossier, o, cours, page_nom)
     cible.parent.mkdir(parents=True, exist_ok=True)
     cible.write_text(sortie, encoding="utf-8")
@@ -1087,6 +1144,7 @@ def page(src, cible, o):
           f"plan {'oui' if bilan['plan'] else 'non'} · polices {bilan['polices']} · encre {bilan['encre']}{extra}")
     if bilan["couverture"]:
         print(f"  couverture : {bilan['couverture']}")
+    print(f"  onglet : « {bilan['onglet']} » · favicon : {bilan['icone']}")
     for nom, ecrit in produits:
         if ecrit:
             print(f"  {nom} : {ecrit}")
@@ -1116,9 +1174,24 @@ def main():
                    help="image de partage 1200 × 630 (haut de la page, thème clair) à côté de la page ; og:image si l'en-tête a url:")
     p.add_argument("--couverture", nargs="?", const="oui", metavar="MOTIF",
                    help="couverture du document (comme « couverture: » dans l'en-tête, qu'elle remplace) ; voir couverture.md")
-    p.add_argument("--planche", action="store_true", help="écrire aussi nom.couvertures.html : la couverture dans chaque motif, pour choisir")
+    p.add_argument("--planche", nargs="?", const="tout", metavar="CHOIX",
+                   help="écrire aussi nom.couvertures.html : la couverture dans chaque motif, rangée par domaine, pour choisir "
+                        "(CHOIX : un domaine, comme « risques », ou des motifs séparés par des virgules)")
+    p.add_argument("--icones", action="store_true", help="écrire aussi nom.icones.html : chaque favicon à l'encre de la page, pour choisir")
+    p.add_argument("--motifs", nargs="?", const="", metavar="SUJET",
+                   help="lister les motifs de couverture par domaine (avec SUJET : ceux qui lui conviennent), puis quitter")
     p.add_argument("--exporter", metavar="DOSSIER", help="écrire les fichiers partagés pour un site, puis quitter")
     o = p.parse_args()
+    if o.motifs is not None:
+        if o.motifs.strip():
+            trouves = couverture.proposer(o.motifs)
+            for m, sc in trouves:
+                print(f"couverture: {m:13} ({sc:g} ; {couverture.DOMAINE[m]})")
+            if not trouves:
+                print("aucun mot du sujet ne désigne un motif : en choisir un ci-dessous, ou « couverture: oui »\n")
+        if not o.motifs.strip() or not couverture.proposer(o.motifs):
+            print(couverture.catalogue_md())
+        return 0
     if o.exporter:
         exporter(o.exporter)
         return 0

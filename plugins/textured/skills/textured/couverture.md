@@ -1,78 +1,88 @@
-# Couverture
+# Couverture, favicon et titre d'onglet
 
-À lire avant de poser une couverture. **Seulement sur demande** (« avec une couverture », « fais-lui une
-couverture ») : sans demande, pas de clé `couverture:`.
+**Couverture : seulement sur demande** (« avec une couverture »). Favicon et titre d'onglet : posés d'office sur toute
+page, à ne changer que sur demande. **Des motifs, pas des illustrations** : champs de points, grilles, faisceaux,
+arcs, trames. Le sujet n'en donne que la structure, jamais un objet dessiné, un schéma, un pictogramme ni du texte.
 
-## Poser la couverture
+## Poser
 
-Une ligne dans l'en-tête de la source : `couverture: motif teinte place nombre`, chaque mot facultatif.
+Une ligne d'en-tête, chaque mot facultatif : `couverture: motif teinte place nombre`.
 
 ```
 court: Démixtion
-soustitre: ou pourquoi deux polymères se mélangent si mal
-tirage: #ff6c2f
-couverture: taches encre
+couverture: binodale encre bas
 ```
 
-- **motif** : un nom du tableau ci-dessous, choisi pour le sujet (c'est ton travail ; `oui` seul le tire des mots du
-  titre et de la description, sinon au hasard).
-- **teinte** : `claire` (pastel de l'encre, texte noir), `encre` (aplat de l'encre, texte noir ou crème), `sombre`
-  (nuit teintée de l'encre, texte crème). Sans teinte, tirée du titre.
-- **place** du titre : `haut` (titre, illustration cadrée, fiche) ou `bas` (illustration, filet, ligne en italique
-  puis titre au tiers bas).
-- **nombre** : un autre tirage aléatoire du même motif (`couverture: reseau 2`).
+- **motif** : choisir par `python3 <skill>/textured.py --motifs "sujet"` (classement en une ligne) ; `oui` le tire de
+  l'en-tête. `--planche [domaine]` écrit `nom.couvertures.html`, le document dans chaque motif, pour l'utilisateur.
+- **teinte** : `claire` (pastel), `encre` (aplat), `sombre` (nuit teintée).
+- **place** : `haut` (titre, illustration cadrée, fiche) · `bas` (illustration puis titre au tiers bas) · `plein`
+  (illustration à fond perdu) · `fond` (motif sur toute la couverture, titre en cartouche).
+- **nombre** : un autre tirage du même motif (`couverture: reseau 2`). Même titre, même couverture.
 
-Même document, même couverture : le hasard a pour graine le titre. `--couverture "motif …"` en ligne de commande vaut
-la clé (et la remplace). `--planche` écrit en plus `nom.couvertures.html` : la couverture du document dans les seize
-motifs, chacune sous la ligne d'en-tête qui la donne. Utile quand l'utilisateur veut choisir.
+Le titre de la couverture est `court:`, sinon `titre:`, en capitales : **un ou deux mots**. `soustitre:` court,
+`surtitre:`, `auteur:` et l'année y figurent ; l'encre est celle de la page.
 
-Ce que la couverture reprend : `court:` s'il existe, sinon `titre:`, en capitales grasses. **Un ou deux mots, c'est là
-qu'elle est la plus belle** : donne un `court:` (il sert aussi à l'en-tête courant). `soustitre:` en italique, court
-lui aussi (« vs. Control », « of Transport ») ; `surtitre:` en petites capitales ; `auteur:` et l'année de `date:` au
-pied, le nombre de mots à droite ; une fiche (sections, figures, formules, exercices, temps de lecture) quand la place
-le permet. L'encre est celle de la page (`tirage:`, ou celle que la page tire de son titre) ; avec `tirage: non`, la
-couverture garde une encre à elle.
+## Catalogue
 
-## Motifs
+**Formes** : `semis` points et onde · `arcs` cercles qui se ferment · `anneaux` concentriques · `reseau` radial ·
+`automate` cellulaire · `trame` sphère en trame · `rayures` sphère rayée · `helice` hélice de points · `pavage` Truchet
+· `flocon` six branches · `trajectoires` particules · `taches` organiques · `pixels` glyphes.
 
-| Motif | Dessin | Pour |
-|---|---|---|
-| `semis` | semis de points traversé d'une onde pointillée | signal, mesure, bruit, statistique |
-| `arcs` | cercles qui se referment case après case | progression, apprentissage, croissance |
-| `anneaux` | anneaux concentriques pleins, pointillés ou ouverts | ondes, diffusion, cycles |
-| `reseau` | réseau radial qui s'évase, un chemin à l'accent | graphes, relations, réseaux |
-| `automate` | automate cellulaire né d'une case | calcul, algorithmes, émergence |
-| `trame` | sphère en trame de points et son orbite | volume, lumière, astronomie, optique |
-| `rayures` | sphère de rayures et son ombre | forme, matière, matériaux |
-| `helice` | double hélice de points | biologie, ADN, chimie |
-| `pavage` | pavage de Truchet en méandres | géométrie, combinatoire, topologie |
-| `flocon` | flocon à six branches | symétrie, cristaux, fractales |
-| `trajectoires` | trajectoires de particules dans un champ | mouvement, dynamique, flux, conflits |
-| `taches` | grille de taches organiques | cellules, vivant, écologie, démixtion |
-| `pixels` | planche de glyphes de pixels | numérique, écran, jeu |
-| `colonnes` | **le document** : une colonne de texte par section, haute de ses mots ; la plus longue surlignée | rapport, bilan, comparaison |
-| `plan` | **le document** : organigramme des sections et sous-sections ; celles à exercices surlignées | cours, méthode, structure |
-| `lettres` | **le document** : grille de lettres où un mot du titre croise un mot fréquent du texte | langue, vocabulaire, écriture |
+**Le document** : `colonnes` une colonne par section · `plan` organigramme des sections · `lettres` grille de mots.
 
-## Dessin personnel
+**Matière, polymères** : `pelote` marche aléatoire · `blobs` chaîne de cercles · `binodale` points qui se séparent ·
+`ternaire` trame triangulaire · `phases` trois textures · `spherolites` rayons en croix · `masses` barres en cloche ·
+`nodules` disques à cœur · `fibres` tirets orientés.
 
-Quand aucun motif ne dit le sujet, dessine l'illustration : un bloc `::: couverture` n'importe où dans le corps
-(il en est retiré), contenant un seul SVG carré.
+**Mécanique, rhéologie** : `traction` faisceau depuis un coin · `module` marches en faisceau · `rheologie` courbes à
+plat puis en pente.
+
+**Procédés, régulation** : `cascade` cellules en file · `dts` crêtes superposées · `arrhenius` éventail de droites ·
+`semenov` courbes en S · `mccabe` escaliers · `amortie` ondes amorties.
+
+**Calcul, plans d'expériences** : `maillage` triangulation · `tangentes` fils tendus · `cube` points en perspective ·
+`isoreponses` lignes de niveau · `pareto` colonnes décroissantes.
+
+**Risques** : `braises` triangles chauffés · `eventails` deux éventails convergents · `panache` nuage qui s'élargit ·
+`carreaux` carrés croissants.
+
+Détail (dessins et mots du sujet) : `textured.py --motifs` sans sujet.
+
+## Dessin sur mesure
+
+Quand aucun motif ne dit le sujet : un bloc `::: couverture` (retiré du corps) avec **un seul SVG**, sans ligne vide.
+`viewBox="0 0 200 200"` remplace l'illustration ; `viewBox="0 0 200 300"` fait **la couverture entière**, ses textes
+reprenant `{TITRE}`, `{titre}`, `{soustitre}`, `{surtitre}`, `{auteur}`, `{annee}`, `{mots}`. Couleurs :
+`currentColor`, `var(--ca)` (accent, une ou deux touches), `var(--cd)` (trait doux), `var(--cf)` (fond) ; rien
+d'autre. Trouver la structure du sujet (partage, progression, convergence, répétition, amortissement), la traduire en
+points, grille, faisceau ou trame, à 8 unités du bord, traits de 1 à 3 unités.
 
 ```
 ::: couverture
-<svg viewBox="0 0 200 200"><path d="M100 20V140" stroke="currentColor" stroke-width="1.5"/><circle cx="100" cy="150" r="12" fill="var(--ca)"/></svg>
+<svg viewBox="0 0 200 200">
+<path d="M20 20h0M50 20h0M80 20h0M110 20h0M140 20h0M170 20h0M20 50h0M50 50h0M80 50h0M110 50h0" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+<path d="M140 50h0M170 50h0M50 80h0M80 80h0M110 80h0M140 80h0M80 110h0M110 110h0" stroke="currentColor" stroke-width="7" stroke-linecap="round"/>
+<path d="M170 80h0M110 140h0M140 140h0M140 170h0" stroke="currentColor" stroke-width="13" stroke-linecap="round"/>
+<circle cx="170" cy="170" r="12" fill="var(--ca)"/>
+</svg>
 :::
 ```
 
-Couleurs : `currentColor` (l'encre du texte), `var(--ca)` (accent, une ou deux touches), `var(--cd)` (trait doux),
-`var(--cf)` (le fond, pour évider). Rien d'autre : les couleurs suivent la teinte. Traits de 1 à 3 unités, formes
-simples et franches, pas de texte ; le dessin occupe le carré à 5 unités du bord. Un motif nommé dans `couverture:`
-est alors ignoré, la teinte et la place restent.
+Couverture entière : même bloc en `viewBox="0 0 200 300"`, avec un fond `<rect width="200" height="300"
+fill="var(--cf)"/>`, puis `<text x="16" y="250" font-size="24">{TITRE}</text>` (24 tient une dizaine de capitales ;
+`font-weight="400"` allège, `style="font-family: var(--texte)"` passe en romain).
 
-## Où elle apparaît
+## Favicon et titre d'onglet
 
-À l'écran, à droite du titre : dans la colonne libre à côté du plan ou dans la marge sur grand écran, au-dessus du
-titre sur un téléphone, avec une tranche de pages dont l'épaisseur suit le nombre de mots. Sur papier (`--pdf`),
-c'est la première page, A4 à fond perdu, sans numéro ; le texte reprend à la page 1. Dans `--apercu`, elle se pose à
-droite du titre. La couverture garde ses couleurs dans les deux thèmes : c'est un objet posé sur la page.
+Par défaut : la marque géométrique du motif de la couverture, sinon celle du sujet, à l'encre de la page ; un cours
+porte le favicon de son accueil. Sur demande :
+
+- `icone: nom` : une marque (`losange`, `anneau`, `anneaux`, `arc`, `onde`, `ondes`, `points`, `grille`, `damier`,
+  `barres`, `triangle`, `quarts`, `etoile`, `disques`, `demi`, `escalier`, `eventail`, `sablier`, `hexagone`, `carre`,
+  `chevrons`, `spirale`, `tirets`, `croix`, `lune`) ou un nom de motif ; `lettre` (ou `lettre Ω`) ; une adresse ;
+  `non`. À la suite, une teinte (`claire|encre|sombre`), une forme (`carre|rond|nu`) ou une encre :
+  `icone: anneau sombre rond`. `--icones` montre toutes les marques.
+- Bloc `::: icone` : un `<svg viewBox="0 0 32 32">`, deux ou trois formes, mêmes couleurs que la couverture.
+- `onglet: texte` remplace le titre d'onglet (par défaut : `court:` ou le titre ; « Chapitre 2 · Titre court — Cours »
+  pour un chapitre).

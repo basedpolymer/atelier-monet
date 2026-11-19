@@ -8,7 +8,7 @@ de fichier est celui du cours). Construire tout le dossier d'un coup, la navigat
 
 - **Accueil** : `cours: Nom court` dans l'en-tête, et en général `tirage:`, `densite: compacte`, `epreuve: l'écrit 1`,
   `avertissement:` ; les chapitres en héritent (comme `auteur`, `lang`, `pied`, `prive`, `icone`) s'ils ne disent pas
-  autre chose. Le bloc vide `::: chapitres` puis `:::` place la liste des chapitres et leur priorité (sinon : en fin
+  autre chose ; tout le cours porte le favicon de l'accueil. Le bloc vide `::: chapitres` puis `:::` place la liste des chapitres et leur priorité (sinon : en fin
   de page). `cle:` fixe la clé du stockage local du cours (filtre des priorités, bandeau lu).
 - **Chapitre** : `chapitre: 3` dans l'en-tête. Surtitre « Nom du cours · Chapitre 3 » relié à l'accueil, lettrine au
   numéro, bas de page vers le précédent et le suivant.
