@@ -172,7 +172,7 @@ def _marques():
     G["trajets"] = [T([(6 + 11 * t + 6 * t * (1 - t), 25 - 18 * t - 10 * t * (1 - t)) for t in (q / 12 for q in range(13))], 2.8),
                     T([(17 + 8 * t + 8 * t * (1 - t), 7 + 15 * t - 4 * t * (1 - t)) for t in (q / 12 for q in range(13))], 2.8),
                     D(6, 25, 3.6), D(25, 22, 2.8), D(17, 7, 4.2, "a")]
-    G["bulles"] = [D(12, 13, 8.6, "a"), D(24.5, 21.5, 5.2), D(25.5, 8.5, 3), D(9, 26.5, 3)]
+    G["ecus"] = [D(12, 13, 8.6, "a"), D(24.5, 21.5, 5.2), D(25.5, 8.5, 3), D(9, 26.5, 3)]
     G["gradins"] = [D(16 + 11 * math.cos(math.radians(a)), 23 - 11 * math.sin(math.radians(a)), 2.3, "a" if a < 50 else "g") for a in (0, 36, 72, 108, 144, 180)] \
         + [D(16 + 5 * math.cos(math.radians(a)), 23 - 5 * math.sin(math.radians(a)), 2.3) for a in (20, 90, 160)]
     G["aieux"] = [F(arc(16, 24, 6, 180, 360, 12)), F(arc(16, 24, 13, 181, 268, 10) + arc(16, 24, 8.4, 268, 181, 8)),
@@ -204,7 +204,7 @@ MARQUE_DE.update({
     "electrophorese": "bandes", "homeostasie": "consigne", "attention": "masque", "decision": "partition", "dedale": "couloir",
     "quadrants": "subdivision", "debruitage": "points", "binaire": "bits", "symboles": "grille", "isostatiques": "anneau",
     "mix": "flots", "lidar": "eventail", "spectrogramme": "glissando", "parcours": "remplissage", "syntaxe": "arches",
-    "migrations": "trajets", "fortunes": "bulles", "hemicycle": "gradins", "ascendance": "aieux", "nash": "duel",
+    "migrations": "trajets", "fortunes": "ecus", "hemicycle": "gradins", "ascendance": "aieux", "nash": "duel",
 })
 FORMES = {"carre": "carre", "carree": "carre", "square": "carre", "rond": "rond", "ronde": "rond", "round": "rond", "disque": "rond",
           "nu": "nu", "nue": "nu", "seul": "nu", "bare": "nu"}

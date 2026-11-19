@@ -1305,22 +1305,28 @@ def division(r, d):
                 coupe([(x + s * g * ux, y + s * g * uy) for x, y in moitie], prof + 1)
 
     coupe([(100 + 80 * math.cos(2 * math.pi * k / 120), 100 + 80 * math.sin(2 * math.pi * k / 120)) for k in range(120)], 0)
+    def arrondi(poly, rho):
+        """Chemin du polygone aux coins arrondis (coupés à rho de chaque sommet, raccord en courbe), sans trait."""
+        m, d_ = len(poly), ""
+        for k in range(m):
+            a, v, b = poly[k - 1], poly[k], poly[(k + 1) % m]
+            la, lb = math.dist(a, v) or 1, math.dist(v, b) or 1
+            ra, rb = min(rho, la / 2), min(rho, lb / 2)
+            p1 = (v[0] + (a[0] - v[0]) * ra / la, v[1] + (a[1] - v[1]) * ra / la)
+            p2 = (v[0] + (b[0] - v[0]) * rb / lb, v[1] + (b[1] - v[1]) * rb / lb)
+            d_ += f"{'L' if k else 'M'}{n(p1[0])} {n(p1[1])}Q{n(v[0])} {n(v[1])} {n(p2[0])} {n(p2[1])}"
+        return d_ + "Z"
+
     grands = sorted(range(len(pieces)), key=lambda i: -pieces[i][1])[:max(1, len(pieces) // 3)]
-    ia, classes = r.choice(grands), defaultdict(list)
+    ia, out, creux = r.choice(grands), [], []
     for i, (poly, aire) in enumerate(pieces):
-        rond_ = min(2.6, .3 + math.sqrt(aire) * .09)
-        p = retrait(poly, rond_)
-        if len(p) < 3:
-            continue
-        tirage = r.random()
+        rho, tirage = min(5.0, .6 + math.sqrt(aire) * .18), r.random()
         cle = "a" if i == ia else "p" if tirage < .72 or aire < 160 else "c" if tirage < .9 else "d"
-        classes[(cle, round(rond_ * 2, 1))].append(trace(p) + "Z")
-        creux = retrait(p, 1.5) if cle == "c" else []
-        if len(creux) >= 3:
-            classes[("f", round(rond_ * 2, 1))].append(trace(creux) + "Z")
-    couleurs = {"p": ENCRE, "c": ENCRE, "f": FOND, "d": DOUX, "a": ACC}
-    return [f'<path d="{"".join(v)}" fill="{couleurs[k]}" stroke="{couleurs[k]}" stroke-width="{n(w)}"/>'
-            for (k, w), v in sorted(classes.items(), key=lambda x: "pcdfa".index(x[0][0]))]
+        out.append(f'<path d="{arrondi(poly, rho)}" fill="{ {"a": ACC, "d": DOUX}.get(cle, ENCRE)}"/>')
+        trou = retrait(poly, 1.6) if cle == "c" else []
+        if len(trou) >= 3:
+            creux.append(arrondi(trou, rho * .7))
+    return out + [f'<path d="{"".join(creux)}" fill="{FOND}"/>']
 
 
 def proies(r, d):
@@ -2998,7 +3004,7 @@ CATALOGUE = {
         "dose": ("grille de disques, une part qui grandit en S", "pharmacolog*, dose-réponse, dose-response, relation dose-effet, médicament*, drug*, toxicolog*, posologie*, principe actif, active ingredient*, agoniste*, agonist*, antagoniste*, antagonist*, ec50, ic50, pharmacodynam*, pharmacocinét*, pharmacokinetic*, thérapeutique*, therapeutic*"),
         "survie": ("courbes en escalier qui descendent, une bande", "analyse de survie, survival analysis, kaplan, kaplan-meier, courbe de survie, survival curve*, essai clinique, essais cliniques, clinical trial*, étude de cohorte, cohort stud*, essai randomisé, essais randomisés, randomized controlled trial*, rct, pronostic*, prognos*, survie, survival, biostatisti*, médecine fondée sur les preuves, evidence-based medicine"),
         "sommeil": ("nuits empilées en paliers", "sommeil, sleep, hypnogram*, polysomnograph*, insomnie*, insomnia, apnée*, apnea, sommeil paradoxal, rem sleep, stades du sommeil, sleep stages, troubles du sommeil, sleep disorder*, narcolep*, somnolence"),
-        "electrophorese": ("colonnes de bandes, une bande commune à l'accent", "électrophores*, electrophores*, gel d'agarose, agarose, western blot, southern blot, pcr, biologie moléculaire, molecular biology, biologie médicale, analyses biologiques, laboratoire d'analyses, clinical laboratory, empreinte génétique, dna fingerprint*, génotypage, genotyping"),
+        "electrophorese": ("colonnes de bandes, une bande commune à l'accent", "électrophores*, electrophores*, électrophorèse sur gel, gel electrophoresis, gel d'agarose, agarose, western blot, southern blot, pcr, biologie moléculaire, molecular biology, biologie médicale, analyses biologiques, laboratoire d'analyses, clinical laboratory, empreinte génétique, dna fingerprint*, génotypage, genotyping"),
         "homeostasie": ("trajectoires qui se resserrent sur une consigne", "homéostas*, physiolog*, régulation hormonale, hormon*, endocrin*, glycémie, blood glucose, insuline, insulin*, thermorégulation, thermoregulation, rétrocontrôle, diabète, diabetes, métabolisme, metabolism"),
     },
     "Informatique et IA": {
@@ -3060,7 +3066,7 @@ ALIAS.update({"phylogenetique": "phylogenie", "mitose": "division", "lotka": "pr
               "demographie": "pyramide", "ages": "pyramide", "chronologie": "frise", "histoire": "frise",
               "genomique": "alignement", "chronobiologie": "circadien", "proteines": "repliement", "punnett": "mendel",
               "chromosomes": "recombinaison", "pharmacologie": "dose", "kaplan": "survie", "hypnogramme": "sommeil",
-              "gel": "electrophorese", "pcr": "electrophorese", "transformer": "attention", "llm": "attention",
+              "pcr": "electrophorese", "transformer": "attention", "llm": "attention",
               "labyrinthe": "dedale", "quadtree": "quadrants", "generatif": "debruitage", "qam": "symboles", "telecom": "symboles",
               "streamgraph": "mix", "slam": "lidar", "parole": "spectrogramme",
               "dependances": "syntaxe", "gini": "fortunes", "parlement": "hemicycle",

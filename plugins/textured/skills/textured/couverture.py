@@ -347,6 +347,7 @@ def nettoyer_svg(perso, attributs):
 # couleurs du motif (claire et sombre, hors « mono ») : les formes pleines nombreuses alternent quatre encres ; un motif
 # en traits passe en dégradé de l'encre à sa teinte opposée, en rayons depuis le centre pour un motif rayonnant
 RAYONNANTS = {"anneaux", "spherolites", "reseau", "flocon", "trame", "rayures", "arcs"}
+RAYONNANTS |= {"phylogenie", "brassage"}
 FORMES = re.compile(r'<(path|circle|rect|ellipse|polygon|polyline|line)\b[^>]*>')
 _degrades = [0]
 
