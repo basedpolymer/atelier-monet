@@ -122,6 +122,60 @@ def _marques():
     G["orbitale"] = [F(ellipse(16, 10, 5.2, 6.6, 0, 28)), F(ellipse(16, 22, 5.2, 6.6, 0, 28), "a")]
     G["chromato"] = [T(courbe(lambda x: 26 - 17 * math.exp(-((x - 10.5) / 1.9) ** 2) - 7 * math.exp(-((x - 23) / 1.7) ** 2), 3.5, 28.5, 50), 2.6),
                      F([(13.5, 26)] + courbe(lambda x: 26 - 12 * math.exp(-((x - 17) / 1.8) ** 2), 13.5, 20.5, 16) + [(20.5, 26)], "a")]
+    # sciences exactes, suite
+    quad = lambda p0, p1, p2, k=16: [((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0], (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1])
+                                     for t in (q / k for q in range(k + 1))]
+    G["dipole"] = [T(quad((7, 16), (16, 3), (25, 16)), 2.4), T(quad((7, 16), (16, 29), (25, 16)), 2.4), D(7, 16, 3.6, "a"), D(25, 16, 3.6)]
+    G["orbite"] = [T(ellipse(17, 16, 11.5, 7, -25, 36), 2.6), D(12.5, 18, 3.6, "a")]
+    G["lissajous"] = [T([(16 + 10.5 * math.sin(t + math.pi / 2), 16 + 10.5 * math.sin(2 * t)) for t in (2 * math.pi * q / 48 for q in range(49))], 2.6),
+                      D(26.5, 16, 3, "a")]
+    G["zones"] = [T([(16, 4), (28, 16), (16, 28), (4, 16), (16, 4)], 2.4), F([(16, 10), (22, 16), (16, 22), (10, 16)], "a")]
+    G["trainees"] = [T(arc(5, 27, 8, -90, 0, 10), 3, "a"), T(arc(5, 27, 14.5, -90, 0, 14), 2.8), T(arc(5, 27, 21, -90, 0, 18), 2.8)]
+    G["vortex"] = [C(10, 11, 4.6, 2.4), C(22, 11, 4.6, 2.4), C(16, 21.5, 4.6, 2.4, "a")]
+    G["eclats"] = [F([(5, 6), (15, 5), (13, 14), (6, 13)]), F([(18, 5), (27, 7), (26, 15), (17, 13)], "a"), F([(6, 17), (16, 18), (19, 27), (7, 27)]),
+                   F([(20, 18), (27, 19), (26, 27), (21, 26)])]
+    G["confluence"] = [T([(16, 17), (7, 5)], 2.6), T([(16, 17), (24, 9), (27, 4)], 2.4), T([(24, 9), (20, 4)], 2), T([(16, 28), (16, 17)], 3.6, "a")]
+    G["jet"] = [T([(16 + (9.5 + 2.6 * math.sin(5 * t)) * math.cos(t), 16 + (9.5 + 2.6 * math.sin(5 * t)) * math.sin(t)) for t in (2 * math.pi * q / 60 for q in range(61))], 2.6),
+                D(16, 16, 3, "a")]
+    G["pluie"] = [T([(10, 5), (7, 12)], 2.8), T([(20, 8), (17, 15)], 2.8, "a"), T([(13, 18), (10, 25)], 2.8), T([(25, 19), (22, 26)], 2.8)]
+    G["couches"] = [rect(5, 6, 22, 4.4), rect(5, 13, 22, 6, "a"), rect(5, 22, 22, 3.6)]
+    G["grains"] = [C(10, 11, 5.4, 2.4), C(21.5, 10, 4.4, 2.4), C(11.5, 22.5, 4.4, 2.4), C(22, 21.5, 5.2, 2.4), D(16.3, 16.2, 1.9, "a")]
+    G["mandelbrot"] = [F([(24 + 15.5 * (math.cos(t) / 2 - math.cos(2 * t) / 4), 16 + 15.5 * (math.sin(t) / 2 - math.sin(2 * t) / 4)) for t in (2 * math.pi * q / 48 for q in range(48))]),
+                       D(24 - 15.5 * 1.04, 16, 15.5 * .25, "a")]
+    pts_h = []
+    for dd in range(16):
+        x = y = 0
+        s_, t_ = 1, dd
+        while s_ < 4:
+            rx = 1 & (t_ // 2)
+            ry = 1 & (t_ ^ rx)
+            if ry == 0:
+                if rx == 1:
+                    x, y = s_ - 1 - x, s_ - 1 - y
+                x, y = y, x
+            x, y, t_, s_ = x + s_ * rx, y + s_ * ry, t_ // 4, s_ * 2
+        pts_h.append((6 + x * 6.7, 6 + y * 6.7))
+    G["hilbert"] = [T(pts_h[:10], 2.6), T(pts_h[9:], 2.6, "a")]
+    G["rhombes"] = [F([(4, 18), (11, 7), (24, 7), (17, 18)]), F([(8, 24), (17, 19), (28, 24), (17, 29)], "a")]
+    G["apollonius"] = [C(16, 16, 12, 2.2), D(11.3, 16, 6.6), D(23.2, 16, 4.6, "a"), D(19.5, 7.6, 2.6)]
+    G["vogel"] = [D(16 + 3.4 * math.sqrt(k) * math.cos(k * 2.39996), 16 + 3.4 * math.sqrt(k) * math.sin(k * 2.39996), 1.3 + .22 * k, "a" if k % 4 == 0 else "g")
+                  for k in range(1, 12)]
+    G["epicycle"] = [C(12.5, 17, 8, 2.4), C(20.5, 17, 4, 2.2, "a"), T([(12.5, 17), (20.5, 17), (24.5, 17)], 1.8), D(24.5, 17, 2.6, "a")]
+    G["poincare"] = [C(16, 16, 12, 2.4), T(arc(16, 33.5, 14, 215, 325, 14), 2.4), T(arc(33.5, 16, 14, 125, 235, 14), 2.4, "a")]
+    G["rosace"] = [T([(16 + (7.5 + 4 * math.cos(5 * t)) * math.cos(t), 16 + (7.5 + 4 * math.cos(5 * t)) * math.sin(t)) for t in (2 * math.pi * q / 90 for q in range(91))], 2.6),
+                   D(16, 16, 2.6, "a")]
+    G["hypercube"] = [T([(5, 5), (27, 5), (27, 27), (5, 27), (5, 5)], 2.4), T([(11, 11), (21, 11), (21, 21), (11, 21), (11, 11)], 2.4, "a"),
+                      T([(5, 5), (11, 11)], 1.8), T([(27, 5), (21, 11)], 1.8), T([(27, 27), (21, 21)], 1.8), T([(5, 27), (11, 21)], 1.8)]
+    G["laue"] = [D(16, 16, 3.8), D(16, 7, 2.6), D(25, 16, 2.6), D(16, 25, 2.6), D(7, 16, 2.6), D(9.5, 9.5, 1.9, "a"), D(22.5, 9.5, 1.9, "a"),
+                 D(22.5, 22.5, 1.9, "a"), D(9.5, 22.5, 1.9, "a")]
+    G["tableau"] = [rect(4, 5, 6, 17), rect(20, 9, 8, 13), rect(10, 14, 10, 8, "a"), rect(8, 24.5, 16, 3.2)]
+    G["cernes"] = [T(arc(5, 27, 6, -90, 0, 8), 3, "a"), T(arc(5, 27, 12.5, -90, 0, 12), 3), T(arc(5, 27, 20.5, -90, 0, 16), 2.6)]
+    G["gaz"] = [T([(5, 9), (13, 9)], 2), D(13, 9, 3.2), T([(15, 23), (24, 23)], 2), D(24, 23, 3.2), T([(6, 17), (19, 15)], 2.4, "a"), D(19.5, 15, 3.6, "a")]
+    G["couronne"] = [D(16, 16, 4.8, "a")] + [D(16 + 10 * math.cos(2 * math.pi * k / 7), 16 + 10 * math.sin(2 * math.pi * k / 7), 2.4) for k in range(7)]
+    G["fourche"] = [T([(16, 4), (16, 9), (9, 15)], 2.2), T([(16, 9), (23, 15)], 2.2), rect(6, 19, 2.8, 9), rect(10.8, 17, 2.8, 11, "a"),
+                    rect(18.4, 17, 2.8, 11, "a"), rect(23.2, 19, 2.8, 9)]
+    G["osmose"] = [T([(16, 4), (16, 9)], 2.4), T([(16, 13.5), (16, 18.5)], 2.4), T([(16, 23), (16, 28)], 2.4), D(8.5, 10, 2), D(6.5, 19, 2), D(10.5, 24.5, 2),
+                   D(23.5, 16, 4.4, "a")]
     return G
 
 
@@ -143,6 +197,17 @@ MARQUE_DE.update({
     "plissement": "ondes", "sismogramme": "secousse", "gyres": "gyres", "isobares": "anneaux", "rechauffement": "stries",
     "isoclines": "tirets", "attracteur": "huit", "modulo": "cordes", "galton": "quinconce", "entrelacs": "trefle", "ulam": "ulam",
     "raies": "raies", "electrode": "borne", "orbitales": "orbitale", "chromato": "chromato",
+})
+MARQUE_DE.update({
+    "dipole": "dipole", "limaille": "tirets", "kepler": "orbite", "lissajous": "lissajous", "chladni": "croix", "collision": "spirale",
+    "brillouin": "zones", "chirikov": "gyres", "hertzsprung": "points", "circumpolaire": "trainees", "lentille": "anneau", "paquets": "onde",
+    "abrikosov": "vortex", "hachures": "tirets", "orgues": "hexagone", "banquise": "eclats", "affluents": "confluence", "rossby": "jet",
+    "averse": "pluie", "carottes": "couches", "dorsale": "stries", "dunes": "ondes", "nebulosite": "disques", "poreux": "grains",
+    "epicentres": "anneaux", "mandelbrot": "mandelbrot", "hilbert": "hilbert", "penrose": "rhombes", "apollonius": "apollonius",
+    "angledor": "vogel", "collatz": "confluence", "quatrecouleurs": "grille", "epicycles": "epicycle", "hyperbolique": "poincare",
+    "young": "escalier", "complexe": "etoile", "spirographe": "rosace", "tesseract": "hypercube", "laue": "laue", "mendeleiev": "tableau",
+    "belousov": "spirale", "liesegang": "cernes", "maxwell": "gaz", "solvatation": "couronne", "miroir": "sablier", "nucleation": "disques",
+    "multiplets": "fourche", "agregat": "constellation", "osmose": "osmose", "zeolithe": "hexagone",
 })
 FORMES = {"carre": "carre", "carree": "carre", "square": "carre", "rond": "rond", "ronde": "rond", "round": "rond", "disque": "rond",
           "nu": "nu", "nue": "nu", "seul": "nu", "bare": "nu"}

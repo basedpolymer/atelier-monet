@@ -412,7 +412,7 @@ def preparer(meta, corps, plan_, lang, avis, brut=None):
 
 def choisis(choix):
     """« tout », ou des domaines (ou leur début) et des noms de motifs séparés par des virgules → [(domaine, [motifs])] :
-    chaque domaine nommé, puis les motifs nommés un à un sous « Choix »."""
+    chaque domaine nommé, puis les motifs nommés un à un, rangés sous leur domaine."""
     choix = sans_accents((choix or "tout").strip().lower())
     if choix in ("", "tout", "tous", "oui", "all"):
         return [(dom, list(ms)) for dom, ms in CATALOGUE.items()]
@@ -424,7 +424,9 @@ def choisis(choix):
         else:
             noms += [ALIAS.get(m, m) for m in mot.split()]
     noms = [m for m in noms if m in MOTIFS]
-    return groupes + ([("Choix", noms)] if noms else [])
+    # les motifs nommés un à un, rangés sous leur domaine, dans l'ordre du catalogue
+    groupes += [(dom, [m for m in ms if m in noms]) for dom, ms in CATALOGUE.items() if any(m in noms for m in ms)]
+    return groupes
 
 
 def planche(meta, corps, plan_, lang, avis, brut=None, choix=None):
