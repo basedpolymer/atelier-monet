@@ -75,13 +75,6 @@
   // titre courant dans l'en-tête et repère du plan
   const tete = document.querySelector(".tete");
   const courant = tete && tete.querySelector(".courant");
-  // marque du favicon devant le titre courant : la même image que l'onglet, prise à son <link> (rien de plus à charger)
-  const icone = document.querySelector('link[rel~="icon"]:not([rel*="apple"])');
-  if (icone && courant && !tete.querySelector(".marque")) {
-    const m = document.createElement("img");
-    m.className = "marque"; m.alt = ""; m.width = m.height = 16; m.decoding = "async"; m.src = icone.href;
-    courant.before(m);
-  }
   const titres = [...document.querySelectorAll("main :is(h2, h3)[id]")];
   const liens = new Map([...document.querySelectorAll("nav.plan a[href^='#']")].map(a => [a.getAttribute("href").slice(1), a]));
   const texte = h => { const c = h.cloneNode(true); c.querySelectorAll(".katex-mathml, .ancre, .prio, .prio-conf").forEach(e => e.remove()); c.querySelectorAll(".num").forEach(e => e.append("\u2002")); return c.textContent.trim(); };
