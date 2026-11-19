@@ -1186,11 +1186,11 @@ def main():
         if o.motifs.strip():
             trouves = couverture.proposer(o.motifs)
             for m, sc in trouves:
-                print(f"couverture: {m:13} ({sc:g} ; {couverture.DOMAINE[m]})")
+                print(f"couverture: {m:13} {couverture.dessin(m)} ({couverture.DOMAINE[m]})")
             if not trouves:
                 print("aucun mot du sujet ne désigne un motif : en choisir un ci-dessous, ou « couverture: oui »\n")
         if not o.motifs.strip() or not couverture.proposer(o.motifs):
-            print(couverture.catalogue_md())
+            print(couverture.catalogue_court())
         return 0
     if o.exporter:
         exporter(o.exporter)

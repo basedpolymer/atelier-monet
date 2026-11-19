@@ -259,6 +259,29 @@ CHOIX.update({
     "Osmose et pression osmotique": "osmose", "Osmosis": "osmose",
     "Zéolithes et catalyse hétérogène": "zeolithe", "Zeolites and porous materials": "zeolithe",
 })
+# cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+CHOIX.update({
+    "Réticulation et point de gel": "gel", "Gelation and thermoset networks": "gel",
+    "Copolymères à blocs et statistiques": "copolymeres", "Block copolymers": "copolymeres",
+    "Polymères ramifiés et greffés": "peignes", "Branched and grafted polymers": "peignes",
+    "Vieillissement et dégradation des polymères": "coupures", "Polymer aging and degradation": "coupures",
+    "Extrusion : peau de requin et gonflement en filière": "extrudats", "Extrusion instabilities and die swell": "extrudats",
+    "Étirage et striction des thermoplastiques": "striction", "Cold drawing and necking": "striction",
+    "Charges renforçantes : noir de carbone et silice": "agregats", "Carbon black and silica fillers": "agregats",
+    "Craquelures et cavitation": "fibrilles", "Crazing and adhesion": "fibrilles",
+    "Réactions consécutives et sélectivité": "selectivite", "Selectivity in multiple reactions": "selectivite",
+    "Catalyse hétérogène et module de Thiele": "thiele", "Catalyst pellets and effectiveness factor": "thiele",
+    "Réacteurs gaz-liquide et transfert de matière": "barbotage", "Bubble columns and gas-liquid mass transfer": "barbotage",
+    "Écoulement laminaire et dispersion de Taylor": "poiseuille", "Laminar flow and velocity profile": "poiseuille",
+    "La méthode du simplexe de Nelder-Mead": "simplexe", "Nelder-Mead simplex search": "simplexe",
+    "Optimisation multi-objectif et front de Pareto": "compromis", "Multi-objective optimization": "compromis",
+    "Logique booléenne et tables de vérité": "boole", "Boolean logic and truth tables": "boole",
+    "Modulation de largeur d'impulsion sur Arduino": "mli", "PWM and duty cycle": "mli",
+    "Le jumeau numérique d'un procédé": "jumeau", "Digital twin of a process": "jumeau",
+    "Régression par les moindres carrés": "ecarts", "Least squares regression": "ecarts",
+    "Couches de protection et LOPA": "tranches", "Layers of protection analysis": "tranches",
+    "Zones ATEX et atmosphères explosives": "zonage", "Hazardous area classification": "zonage",
+})
 
 
 def choix_par_sujet():

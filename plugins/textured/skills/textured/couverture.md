@@ -13,8 +13,8 @@ court: Démixtion
 couverture: binodale encre bas
 ```
 
-- **motif** : choisir par `python3 <skill>/textured.py --motifs "sujet"` (classement en une ligne) ; `oui` le tire de
-  l'en-tête. `--planche [domaine]` écrit `nom.couvertures.html`, le document dans chaque motif, pour l'utilisateur.
+- **motif** : choisir par `python3 <skill>/textured.py --motifs "sujet"` (classement, un motif par ligne) ; `oui` le
+  tire de l'en-tête. `--planche [domaine]` écrit `nom.couvertures.html`, le document dans chaque motif, pour l'utilisateur.
 - **teinte** : `claire` (pastel), `encre` (aplat), `sombre` (nuit teintée). En `claire` et `sombre`, l'accent prend
   une teinte presque opposée à l'encre ; un motif en traits passe en dégradé, un motif en formes pleines alterne
   quatre encres (traitement déclaré par motif dans `COULEUR`, `couverture.py`) ; `mono` : une encre. `encre` : une.
@@ -27,80 +27,10 @@ Le titre de la couverture est `court:`, sinon `titre:`, en capitales : **un ou d
 
 ## Catalogue
 
-**Formes** : `semis` points et onde · `arcs` cercles qui se ferment · `anneaux` concentriques · `reseau` radial ·
-`automate` cellulaire · `trame` sphère en trame · `rayures` sphère rayée · `helice` hélice de points · `pavage` Truchet
-· `flocon` six branches · `trajectoires` particules · `taches` organiques · `pixels` glyphes.
-
-**Le document** : `colonnes` une colonne par section · `plan` organigramme des sections · `lettres` grille de mots.
-
-**Matière, polymères** : `pelote` marche aléatoire · `blobs` chaîne de cercles · `binodale` points qui se séparent ·
-`ternaire` trame triangulaire · `phases` trois textures · `spherolites` rayons en croix · `masses` barres en cloche ·
-`nodules` disques à cœur · `fibres` tirets orientés.
-
-**Mécanique, rhéologie** : `traction` faisceau depuis un coin · `module` marches en faisceau · `rheologie` courbes à
-plat puis en pente.
-
-**Procédés, régulation** : `cascade` cellules en file · `dts` crêtes superposées · `arrhenius` éventail de droites ·
-`semenov` courbes en S · `mccabe` escaliers · `amortie` ondes amorties.
-
-**Calcul, plans d'expériences** : `maillage` triangulation · `tangentes` fils tendus · `cube` points en perspective ·
-`isoreponses` lignes de niveau · `pareto` colonnes décroissantes.
-
-**Risques** : `braises` triangles chauffés · `eventails` deux éventails convergents · `panache` nuage qui s'élargit ·
-`carreaux` carrés croissants.
-
-**Physique, astronomie** : `interference` franges de points · `geodesiques` quadrillage creusé · `ising` domaines de
-spins · `galaxie` spirale de points · `cosmique` toile de filaments · `dipole` lignes de champ · `limaille` tirets
-alignés · `kepler` ellipses confocales · `lissajous` table de figures · `chladni` sable nodal · `collision` traces en
-pointillés · `brillouin` zones alternées · `chirikov` îlots et chaos · `hertzsprung` nuage d'étoiles · `circumpolaire`
-arcs autour d'un pôle · `lentille` réseau ouvert en anneau · `paquets` ondes localisées · `abrikosov` réseau de
-tourbillons.
-
-**Terre, climat** : `plissement` couches plissées · `sismogramme` traces secouées · `gyres` cellules de courant ·
-`isobares` lignes de niveau serrées · `rechauffement` bandes froides puis chaudes · `hachures` relief · `orgues`
-prismes · `banquise` plaques sur l'eau · `affluents` réseau ramifié · `rossby` anneaux ondulants · `averse` tirets
-obliques · `carottes` colonnes de couches · `dorsale` bandes symétriques · `dunes` crêtes ombrées · `nebulosite` trame
-nuageuse · `poreux` grains et chemin · `epicentres` points inégaux.
-
-**Mathématiques** : `isoclines` champ de pentes · `attracteur` nuage chaotique · `modulo` cordes sur un cercle ·
-`galton` billes en cloche · `entrelacs` nœud en ruban · `ulam` spirale des premiers · `mandelbrot` ensemble en trame ·
-`hilbert` courbe remplissante · `penrose` losanges apériodiques · `apollonius` cercles tangents · `angledor` spirale
-de Vogel · `collatz` corail · `quatrecouleurs` carte en quatre tons · `epicycles` cercles en chaîne · `hyperbolique`
-disque de Poincaré · `young` cases en escalier · `complexe` module et argument · `spirographe` roulettes ·
-`tesseract` hypercube.
-
-**Chimie générale** : `raies` bandes de raies · `electrode` couche contre une paroi · `orbitales` lobes de points ·
-`chromato` pistes de pics · `laue` taches de diffraction · `mendeleiev` silhouette périodique · `belousov` ondes en
-spirale · `liesegang` anneaux espacés · `maxwell` molécules et vitesses · `solvatation` ions et couronnes · `miroir`
-paires symétriques · `nucleation` grains en anneaux · `multiplets` arbres de dédoublement · `agregat` amas branchu ·
-`osmose` paroi et mélange · `zeolithe` nid d'abeilles.
-
-**Vivant** : `phylogenie` arbre en éventail · `division` disque refendu en galets · `proies` orbites en pointillé ·
-`influx` tirets en salves · `clones` anneaux ouverts vers un point · `derive` générations et lignées · `alignement`
-matrice de points en diagonales · `morphogenese` taches qui s'étirent en rayures · `circadien` jours empilés de salves ·
-`repliement` chaîne repliée sur une grille · `mendel` disques à moitiés pleines · `recombinaison` barres à segments
-échangés.
-
-**Médecine** : `contagion` propagation de proche en proche · `depistage` points et anneaux de part et d'autre d'un
-seuil · `sinogramme` sinusoïdes tressées · `dose` disques qui se remplissent en S · `survie` escaliers descendants ·
-`sommeil` nuits en paliers · `electrophorese` colonnes de bandes · `homeostasie` trajectoires vers une consigne.
-
-**Informatique, IA** : `perceptron` colonnes reliées en faisceaux · `grappes` nuages tirés vers leurs centres ·
-`brassage` anneaux de bits brassés · `tri` fils croisés qui se rangent · `attention` triangle de carrés · `decision`
-carré découpé en rectangles · `dedale` couloirs d'un labyrinthe · `quadrants` carrés partagés en quatre · `debruitage`
-bruit qui se resserre en forme · `binaire` peigne du comptage binaire.
-
-**Ingénierie** : `pistes` pistes à 45 degrés · `harmoniques` ondes en hachures et leur somme · `rubans` ruban de fils
-qui se divise · `poses` chaîne articulée, pose après pose · `symboles` nuages en grille · `isostatiques` courbes
-autour d'un trou · `mix` couches empilées · `lidar` rayons et impacts · `spectrogramme` carrés d'un son · `parcours`
-contours et zigzag.
-
-**Sciences humaines** : `volatilite` faisceau de marches aléatoires · `schelling` points et anneaux en plaques ·
-`pyramide` pyramide des âges en points · `frise` traits en couloirs · `syntaxe` arcs emboîtés · `migrations` lieux
-reliés par des arcs · `fortunes` disques très inégaux · `hemicycle` sièges en demi-cercles · `ascendance` éventail
-généalogique · `nash` cases en deux triangles.
-
-Détail (dessins et mots du sujet) : `textured.py --motifs` sans sujet.
+183 motifs, rangés par domaine : formes générales, le document lui-même, polymères, mécanique, procédés et réacteurs,
+calcul et optimisation, risques, physique et astronomie, Terre et climat, mathématiques, chimie, vivant, médecine,
+informatique et IA, ingénierie, sciences humaines. `--motifs "sujet"` donne les mieux placés avec
+leur dessin ; `--motifs` seul, tout le catalogue en une ligne par domaine.
 
 ## Dessin sur mesure
 

@@ -219,6 +219,8 @@ TEXTURES = {"semis", "automate", "pavage", "trajectoires", "taches", "pixels", "
 TEXTURES |= {"influx", "clones", "contagion", "depistage", "sinogramme", "tri", "pistes", "harmoniques", "schelling", "frise",
              "derive", "morphogenese", "circadien", "recombinaison", "decision", "dedale", "quadrants", "spectrogramme", "symboles",
              "isostatiques", "fortunes", "nash"}
+# cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+TEXTURES |= {"gel", "peignes", "coupures", "extrudats", "agregats", "fibrilles", "thiele", "barbotage", "mli"}
 # poids des champs de l'en-tête quand le motif est tiré du sujet
 POIDS = (("titre", 3), ("court", 3), ("soustitre", 2), ("surtitre", 2), ("cours", 1.5), ("description", 1))
 
@@ -408,6 +410,21 @@ COULEUR.update({
     # encres posées par le motif (une par sorte : allèles, groupes, classes, joueurs)
     "mendel": ("uni",), "schelling": ("uni",), "hemicycle": ("uni",), "grappes": ("uni",), "symboles": ("uni",), "nash": ("uni",),
     "depistage": ("uni",), "repliement": ("uni",), "mix": ("uni",),
+})
+# cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+COULEUR.update({
+    # une forme pleine par rangée ou par objet : une encre chacune (extrudats : rubans pleins, une encre par rangée)
+    "copolymeres": ("multi",), "extrudats": ("multi",), "agregats": ("multi",), "simplexe": ("multi",), "mli": ("multi",),
+    "tranches": ("multi",), "boole": ("multi",),
+    # rangées empilées, ou un profil du haut vers le bas
+    "peignes": ("degrade", "v"), "coupures": ("degrade", "v"), "fibrilles": ("degrade", "v"), "thiele": ("degrade", "v"),
+    "barbotage": ("degrade", "v"),
+    # le temps ou la droite, de gauche à droite
+    "selectivite": ("degrade", "h"), "poiseuille": ("degrade", "h"), "ecarts": ("degrade", "h"),
+    # le col de la striction au centre
+    "striction": ("degrade", "r", (100, 100)),
+    # chaque ligne de crête et sa jumelle en carrés ont déjà leur encre
+    "jumeau": ("uni",),
 })
 SEUIL_MULTI = 6
 # sciences exactes (physique et astronomie, Terre et climat, mathématiques, chimie générale)
@@ -619,6 +636,15 @@ def catalogue_md(court=False):
             lignes.append(f"| `{m}` | {dessin} | {', '.join(liste).replace('*', '…')} |")
         lignes.append("")
     return "\n".join(lignes)
+
+
+def catalogue_court():
+    """Le catalogue en une ligne par domaine : nom et dessin de chaque motif."""
+    return "\n".join(f"**{dom}** : " + " · ".join(f"`{m}` {v[0]}" for m, v in ms.items()) for dom, ms in CATALOGUE.items())
+
+
+def dessin(m):
+    return next(v[0] for ms in CATALOGUE.values() for m_, v in ms.items() if m_ == m)
 
 
 def proposer(sujet, k=6):
