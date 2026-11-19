@@ -17,7 +17,8 @@ couverture: binodale encre bas
   tire de l'en-tête. `--planche [domaine]` écrit `nom.couvertures.html`, le document dans chaque motif, pour l'utilisateur.
 - **teinte** : `claire` (pastel), `encre` (aplat), `sombre` (nuit teintée). En `claire` et `sombre`, l'accent prend
   une teinte presque opposée à l'encre ; un motif en traits passe en dégradé, un motif en formes pleines alterne
-  quatre encres (traitement déclaré par motif dans `COULEUR`, `couverture.py`) ; `mono` : une encre. `encre` : une.
+  quatre encres (traitement déclaré par motif dans `COULEUR`, `couverture.py`) ; un mot le force : `multi`, `uni`,
+  `degrade`, `horizontal`, `vertical`, `diagonal`, `radial` ; `mono` : une encre. `encre` : une.
 - **place** : `haut` (titre, illustration cadrée, fiche) · `bas` (illustration puis titre au tiers bas) · `plein`
   (illustration à fond perdu) · `fond` (motif sur toute la couverture, titre en cartouche).
 - **nombre** : un autre tirage du même motif (`couverture: reseau 2`). Même titre, même couverture.

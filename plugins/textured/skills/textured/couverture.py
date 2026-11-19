@@ -303,7 +303,7 @@ def lire_valeur(valeur, avis):
     motif = teinte = place = None
     variante = 0
     for mot in re.split(r"[\s,;]+", sans_accents(valeur.lower())):
-        if mot in ("", "oui", "yes", "auto", "true", "mono"):
+        if mot in ("", "oui", "yes", "auto", "true", "mono") or mot in TRAITEMENTS:
             continue
         if mot in MOTIFS or mot in ALIAS:
             motif = ALIAS.get(mot, mot)
@@ -379,11 +379,19 @@ def nettoyer_svg(perso, attributs):
 #   ("degrade", sens[, centre])   ses traits en stroke="currentColor" passent en dégradé : sens h (gauche-droite),
 #                                 v (haut-bas : une couleur par rangée), d (diagonale), r (rayons, depuis centre (x, y)) ;
 #   ("uni",)                      rien ne change (l'accent seul reste complémentaire).
+# Un dessin en rayons peut dire son centre : data-centre="x y" (ou "x y rayon") sur un de ses éléments ; il prime sur
+# celui de COULEUR et fait passer en rayons un motif qui n'a pas déclaré de sens.
+# Une couverture peut forcer son traitement dans l'en-tête : `multi`, `uni`, `degrade`, ou un sens (`horizontal`,
+# `vertical`, `diagonal`, `radial`), qui vaut dégradé ; l'accent reste complémentaire (sauf `mono`).
 # Un motif non déclaré est classé sur son dessin : au moins 6 formes pleines, quatre encres ; sinon des traits, dégradé
 # (en rayons s'il est dans RAYONNANTS, sinon dans un sens tiré de la graine). Un motif peut aussi poser lui-même ses
 # encres, élément par élément : fill="var(--m2, currentColor)" (colorier n'y touche pas ; en mono et sur l'aplat,
 # --m1 à --m4 valent le texte). Une forme pleine par élément, pas un chemin unique, pour que l'alternance existe.
 RAYONNANTS = {"anneaux", "spherolites", "reseau", "flocon", "arcs"}
+# mots de l'en-tête qui forcent le traitement : mode, et sens pour un dégradé
+TRAITEMENTS = {"multi": ("multi",), "uni": ("uni",), "degrade": ("degrade",), "gradient": ("degrade",),
+               "horizontal": ("degrade", "h"), "vertical": ("degrade", "v"), "diagonal": ("degrade", "d"),
+               "diagonale": ("degrade", "d"), "radial": ("degrade", "r"), "rayons": ("degrade", "r")}
 COULEUR = {
     # rangées empilées : une couleur par rangée
     "amortie": ("degrade", "v"), "dts": ("degrade", "v"), "fibres": ("degrade", "v"), "rheologie": ("degrade", "v"),
@@ -447,31 +455,42 @@ SENS = {"h": (10, 100, 190, 100), "v": (100, 10, 100, 190), "d": (10, 190, 190, 
 _degrades = [0]
 
 
-def colorier(svg, couleurs, motif, graine):
-    """Le dessin d'un motif, recoloré ; rend (svg, classe à ajouter à la couverture)."""
-    regle = COULEUR.get(motif)
+def colorier(svg, couleurs, motif, graine, force=None):
+    """Le dessin d'un motif, recoloré ; rend (svg, classe à ajouter à la couverture). force : traitement dit dans l'en-tête."""
+    regle = force or COULEUR.get(motif)
+    if force and force[0] == "degrade" and len(force) == 1 and COULEUR.get(motif, ("",))[0] == "degrade":
+        regle = COULEUR[motif]          # « degrade » seul garde le sens déclaré par le motif
     pleines = [m for m in FORMES.finditer(svg) if 'fill="currentColor"' in m.group(0)]
     mode = regle[0] if regle else ("multi" if len(pleines) >= SEUIL_MULTI else "degrade")
+    centre = re.search(r'\sdata-centre="([\d.]+)[ ,]+([\d.]+)(?:[ ,]+([\d.]+))?"', svg)
+    svg = re.sub(r'\sdata-centre="[^"]*"', "", svg)
     if mode == "uni":
         return svg, ""
-    if mode == "multi" and pleines:
+    if mode == "multi":
+        # une encre par forme pleine, et son contour avec elle ; un dessin tout en traits alterne ses traits
+        cible = 'fill="currentColor"' if pleines else 'stroke="currentColor"'
         rang = [0]
 
         def encre(m):
-            if 'fill="currentColor"' not in m.group(0):
+            if cible not in m.group(0):
                 return m.group(0)
             rang[0] += 1
-            return m.group(0).replace('fill="currentColor"', f'fill="var(--m{(rang[0] - 1) % 4 + 1})"')
-        return FORMES.sub(encre, svg), " couv-multi"
+            v = f'var(--m{(rang[0] - 1) % 4 + 1})'
+            return m.group(0).replace('fill="currentColor"', f'fill="{v}"').replace('stroke="currentColor"', f'stroke="{v}"')
+        if any(cible in m.group(0) for m in FORMES.finditer(svg)):
+            return FORMES.sub(encre, svg), " couv-multi"
     if not any('stroke="currentColor"' in m.group(0) for m in FORMES.finditer(svg)):
         return svg, ""
     _degrades[0] += 1
     ident = f"cdg{_degrades[0]}"
     stops = f'<stop offset="0" stop-color="{couleurs["g1"]}"/><stop offset="1" stop-color="{couleurs["g2"]}"/>'
-    sens = regle[1] if regle and len(regle) > 1 else ("r" if motif in RAYONNANTS else "hvd"[graine % 3])
+    sens = regle[1] if regle and len(regle) > 1 else ("r" if motif in RAYONNANTS or centre else "hvd"[graine % 3])
     if sens == "r":
-        cx, cy = regle[2] if regle and len(regle) > 2 else (100, 100)
-        defs = f'<defs><radialGradient id="{ident}" gradientUnits="userSpaceOnUse" cx="{cx}" cy="{cy}" r="120">{stops}</radialGradient></defs>'
+        cx, cy = ((float(centre.group(1)), float(centre.group(2))) if centre
+                  else regle[2] if regle and len(regle) > 2 else (100, 100))
+        rayon = float(centre.group(3)) if centre and centre.group(3) else 120
+        defs = (f'<defs><radialGradient id="{ident}" gradientUnits="userSpaceOnUse" cx="{cx:g}" cy="{cy:g}" r="{rayon:g}">'
+                f'{stops}</radialGradient></defs>')
     else:
         x1, y1, x2, y2 = SENS.get(sens, SENS["d"])
         defs = (f'<defs><linearGradient id="{ident}" gradientUnits="userSpaceOnUse" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">'
@@ -482,7 +501,9 @@ def colorier(svg, couleurs, motif, graine):
 
 def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
     """HTML de la couverture."""
-    mono = "mono" in re.split(r"[\s,;]+", sans_accents((meta.get("couverture") or "").lower()))
+    mots_couv = re.split(r"[\s,;]+", sans_accents((meta.get("couverture") or "").lower()))
+    mono = "mono" in mots_couv
+    force = max((TRAITEMENTS[m] for m in mots_couv if m in TRAITEMENTS), key=len, default=None)
     L, e, couleurs = TEXTES[lang], html.escape, palette(tirage, teinte, mono)
     titre, r = d["titre"], random.Random(graine + 7)
     d = {**d, "inverse": luminance(rgb(couleurs["ce"])) > luminance(rgb(couleurs["cf"]))}
@@ -516,7 +537,7 @@ def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
         vue = "8 8 184 184" if place == "plein" or (place == "fond" and motif in TEXTURES) else "0 0 200 200"
         corps_svg = "".join(x for x in MOTIFS[motif](rm, d) if x)
         if "g1" in couleurs:
-            corps_svg, classe_couleur = colorier(corps_svg, couleurs, motif, graine)
+            corps_svg, classe_couleur = colorier(corps_svg, couleurs, motif, graine, force)
         dessin = (f'<svg viewBox="{vue}"{tranche_vue} aria-hidden="true" focusable="false"><g fill="none" stroke-linecap="round" '
                   'stroke-linejoin="round">' + corps_svg + "</g></svg>")
     # fiche de laboratoire : jusqu'à trois mesures non nulles, puis le temps de lecture, en nombre pair de cases
