@@ -6,6 +6,10 @@ lettres ; « inverse » : texte plus clair que le fond). Couleurs : currentColor
 (trait doux), var(--cf) (fond, pour évider) ; rien en dur, la teinte de la couverture les fixe. Le groupe qui reçoit
 les éléments a fill="none" et des bouts ronds : un trait n'a qu'à donner stroke, une forme pleine fill.
 
+Couleurs : une forme pleine par élément (pas un chemin unique), en fill="currentColor" ; le traitement (quatre encres,
+dégradé et son sens, uni) se déclare dans COULEUR (couverture.py), ou un élément pose lui-même son encre :
+fill="var(--m2, currentColor)".
+
 CATALOGUE (en fin de fichier) range les motifs par domaine, avec leur dessin et les mots du sujet qui les appellent ;
 couverture.md n'en garde qu'une ligne par domaine, écrite à la main (lue à chaque couverture : rester bref) ; le
 détail : python3 couverture.py --catalogue, ou textured.py --motifs sans sujet.
@@ -1206,6 +1210,11 @@ def carreaux(r, d):
 
 # ---------- sciences du vivant ----------
 
+def encre_m(k):
+    """La k-ième des quatre encres de la couverture (1 à 4), le texte en mono et sur l'aplat."""
+    return f"var(--m{k}, currentColor)"
+
+
 def rond(x, y, rayon):
     """Sous-chemin d'un cercle, pour en réunir beaucoup dans un seul <path>."""
     return f"M{n(x - rayon)} {n(y)}a{n(rayon)} {n(rayon)} 0 1 0 {n(2 * rayon)} 0a{n(rayon)} {n(rayon)} 0 1 0 {n(-2 * rayon)} 0"
@@ -1507,7 +1516,7 @@ def depistage(r, d):
             (malades if s > seuil else faux_neg).append((x, y))
         else:
             (faux_pos if s > seuil else sains).append((x, y))
-    return [points(sains, pas * .4, ENCRE), f'<path d="{"".join(rond(x, y, pas * .23) for x, y in malades)}" stroke="{ENCRE}" stroke-width="1.2"/>',
+    return [points(sains, pas * .4, encre_m(1)), f'<path d="{"".join(rond(x, y, pas * .23) for x, y in malades)}" stroke="{encre_m(3)}" stroke-width="1.2"/>',
             points(faux_pos, pas * .5, ACC), f'<path d="{"".join(rond(x, y, pas * .26) for x, y in faux_neg)}" stroke="{ACC}" stroke-width="1.7"/>']
 
 
@@ -1574,7 +1583,7 @@ def grappes(r, d):
             if math.dist(t[-1], c) > .6:
                 t.append(c)
     liens = "".join(f"M{n(p[0])} {n(p[1])}L{n(c[0])} {n(c[1])}" for g, c in zip(groupes, cents) for p in g)
-    return ([f'<path d="{liens}" stroke="{DOUX}" stroke-width="0.7"/>', points(pts, 2.8, ENCRE)]
+    return ([f'<path d="{liens}" stroke="{DOUX}" stroke-width="0.7"/>'] + [points(g, 2.8, encre_m(k % 4 + 1)) for k, g in enumerate(groupes)]
             + [f'<path d="{trace(t)}" stroke="{ACC}" stroke-width="1.2" stroke-dasharray="0 3.4"/>' for t in traces if len(t) > 1]
             + [points([p for t in traces for p in t[:-1]], 2.6, ACC)]
             + [x for c in cents for x in (disque(c[0], c[1], 6, ACC), disque(c[0], c[1], 2.2, FOND))])
@@ -1857,8 +1866,8 @@ def schelling(r, d):
             derniers.append(j)
     acc = set(derniers[:6]) if derniers else set(r.sample([i for i in range(c * c) if cases[i]], 3))
     P = lambda i: (8 + s * (i % c + .5), 8 + s * (i // c + .5))
-    return [points([P(i) for i in range(c * c) if cases[i] == 1 and i not in acc], s * .62, ENCRE),
-            f'<path d="{"".join(rond(*P(i), s * .24) for i in range(c * c) if cases[i] == 2 and i not in acc)}" stroke="{ENCRE}" stroke-width="{n(s * .13, 2)}"/>',
+    return [points([P(i) for i in range(c * c) if cases[i] == 1 and i not in acc], s * .62, encre_m(1)),
+            f'<path d="{"".join(rond(*P(i), s * .24) for i in range(c * c) if cases[i] == 2 and i not in acc)}" stroke="{encre_m(3)}" stroke-width="{n(s * .13, 2)}"/>',
             points([P(i) for i in acc], s * .62, ACC)]
 
 
@@ -1954,7 +1963,7 @@ def derive(r, d):
     pleins = [(X(i), Y(g)) for g in range(G) for i in range(N) if allele[g][i]]
     creux = [(X(i), Y(g)) for g in range(G) for i in range(N) if not allele[g][i]]
     return ([f'<path d="{"".join(v)}" stroke="{c}" stroke-width="{w}"/>' for (c, v), w in zip(traits.items(), ("0.6", "1", "2.2"))]
-            + [points(pleins, 4.4, ENCRE), points(creux, 4.4, ENCRE), points(creux, 2, FOND)])
+            + [points(pleins, 4.4, encre_m(1)), points(creux, 4.4, encre_m(3)), points(creux, 2, FOND)])
 
 
 def alignement(r, d):
@@ -2084,8 +2093,8 @@ def repliement(r, d):
             if j is not None and abs(i - j) > 1 and hydro[i] and hydro[j]:
                 contacts.append(f"M{n(P[i][0])} {n(P[i][1])}L{n(P[j][0])} {n(P[j][1])}")
     return [f'<path d="{"".join(contacts)}" stroke="{ACC}" stroke-width="{n(p * .16, 2)}" stroke-dasharray="0 {n(p * .3, 2)}"/>',
-            trait(P, ENCRE, p * .14), points([q for q, hh in zip(P, hydro) if hh], p * .5, ENCRE),
-            points([q for q, hh in zip(P, hydro) if not hh], p * .42, ENCRE), points([q for q, hh in zip(P, hydro) if not hh], p * .2, FOND)]
+            trait(P, ENCRE, p * .14), points([q for q, hh in zip(P, hydro) if hh], p * .5, encre_m(1)),
+            points([q for q, hh in zip(P, hydro) if not hh], p * .42, encre_m(3)), points([q for q, hh in zip(P, hydro) if not hh], p * .2, FOND)]
 
 
 def mendel(r, d):
@@ -2097,7 +2106,7 @@ def mendel(r, d):
     r.shuffle(gametes)
     nb = len(gametes)
     pas = 184 / nb
-    pleins, contours, accent = [], [], []
+    pleins, contours, accent = defaultdict(list), [], []
     for i, gi in enumerate(gametes):
         for j, gj in enumerate(gametes):
             dom = [gi[b] or gj[b] for b in range(k)]
@@ -2107,12 +2116,13 @@ def mendel(r, d):
                 accent.append(rond(cx, cy, rho))
                 continue
             contours.append(rond(cx, cy, rho))
+            classe = 1 if dom[0] and dom[1] else 2 if dom[0] else 3
             if dom[0]:
-                pleins.append(f"M{n(cx)} {n(cy - rho)}A{n(rho)} {n(rho)} 0 0 0 {n(cx)} {n(cy + rho)}Z")
+                pleins[classe].append(f"M{n(cx)} {n(cy - rho)}A{n(rho)} {n(rho)} 0 0 0 {n(cx)} {n(cy + rho)}Z")
             if dom[1]:
-                pleins.append(f"M{n(cx)} {n(cy - rho)}A{n(rho)} {n(rho)} 0 0 1 {n(cx)} {n(cy + rho)}Z")
+                pleins[classe].append(f"M{n(cx)} {n(cy - rho)}A{n(rho)} {n(rho)} 0 0 1 {n(cx)} {n(cy + rho)}Z")
     w = n(max(.9, pas * .045), 2)
-    return [f'<path d="{"".join(pleins)}" fill="{ENCRE}"/>', f'<path d="{"".join(contours)}" stroke="{ENCRE}" stroke-width="{w}"/>',
+    return [f'<path d="{"".join(v)}" fill="{encre_m(k)}"/>' for k, v in sorted(pleins.items())] + [f'<path d="{"".join(contours)}" stroke="{ENCRE}" stroke-width="{w}"/>',
             f'<path d="{"".join(accent)}" fill="{ACC}"/>']
 
 
@@ -2500,16 +2510,16 @@ def symboles(r, d):
     pas = 172 / m
     sig, rot, phase = pas * r.uniform(.09, .15), r.uniform(-.14, .14), r.uniform(0, .05)
     nb = {4: (22, 36), 5: (16, 26), 6: (11, 18)}[m]
-    ia, ja, nuages = r.randrange(m), r.randrange(m), {ENCRE: [], ACC: []}
+    ia, ja, nuages = r.randrange(m), r.randrange(m), defaultdict(list)
     for i in range(m):
         for j in range(m):
             u, v = (j - (m - 1) / 2) * pas, (i - (m - 1) / 2) * pas
             for _ in range(r.randint(*nb)):
                 a = math.atan2(v, u) + rot + r.gauss(0, phase)
                 rr = math.hypot(u, v)
-                nuages[ACC if (i, j) == (ia, ja) else ENCRE].append((100 + rr * math.cos(a) + r.gauss(0, sig), 100 + rr * math.sin(a) + r.gauss(0, sig)))
+                nuages[ACC if (i, j) == (ia, ja) else encre_m(2 * (2 * i >= m) + (2 * j >= m) + 1)].append((100 + rr * math.cos(a) + r.gauss(0, sig), 100 + rr * math.sin(a) + r.gauss(0, sig)))
     t_ = {4: 2.8, 5: 2.5, 6: 2.2}[m]
-    return [points(nuages[ENCRE], t_, ENCRE), points(nuages[ACC], t_ * 1.2, ACC)]
+    return [points(v, t_ * (1.2 if c == ACC else 1), c) for c, v in sorted(nuages.items(), key=lambda x: x[0] == ACC)]
 
 
 def isostatiques(r, d):
@@ -2590,7 +2600,7 @@ def mix(r, d):
         haut = [b - v * e_ for b, v in zip(bas, e)]
         X = [8 + 184 * u for u in us]
         poly = list(zip(X, haut)) + list(zip(X, bas))[::-1]
-        c = ACC if k == ka else ENCRE if k % 2 == 0 else DOUX
+        c = ACC if k == ka else encre_m(k // 2 % 4 + 1) if k % 2 == 0 else DOUX
         out.append(f'<path d="{trace(poly)}Z" fill="{c}" stroke="{FOND}" stroke-width="1.4"/>')
         bas = haut
     return out
@@ -2839,7 +2849,8 @@ def hemicycle(r, d):
     classes = defaultdict(list)
     for s, (a, rr) in enumerate(sieges):
         g = next(i for i, b in enumerate(bornes) if s < b + 1e-9)
-        sorte, c = ("plein", ACC) if g == ga else styles[(g - (g > ga)) % len(styles)]
+        rang = g - (g > ga)
+        sorte, c = ("plein", ACC) if g == ga else (styles[rang % len(styles)][0], encre_m(rang % 4 + 1))
         classes[(sorte, c)].append((cx + rr * math.cos(a), cy - rr * math.sin(a)))
     t = pas * .7
     out = []
@@ -2901,7 +2912,7 @@ def nash(r, d):
     ma, mb = max(map(max, A)), max(map(max, B))
     lig = [max(range(m), key=lambda i: A[i][j]) for j in range(m)]
     col = [max(range(m), key=lambda j: B[i][j]) for i in range(m)]
-    pleins, contours, accent = [], [], []
+    pleins_a, pleins_b, contours, accent = [], [], [], []
     g = pas * .07
     c = pas - 2 * g
     for i in range(m):
@@ -2914,9 +2925,10 @@ def nash(r, d):
             if br_a and br_b:
                 accent += [ta, tb]
                 continue
-            (pleins if br_a else contours).append(ta)
-            (pleins if br_b else contours).append(tb)
-    return [f'<path d="{"".join(contours)}" stroke="{ENCRE}" stroke-width="1.1"/>', f'<path d="{"".join(pleins)}" fill="{ENCRE}"/>',
+            (pleins_a if br_a else contours).append(ta)
+            (pleins_b if br_b else contours).append(tb)
+    return [f'<path d="{"".join(contours)}" stroke="{ENCRE}" stroke-width="1.1"/>', f'<path d="{"".join(pleins_a)}" fill="{encre_m(1)}"/>',
+            f'<path d="{"".join(pleins_b)}" fill="{encre_m(3)}"/>',
             f'<path d="{"".join(accent)}" fill="{ACC}"/>']
 
 
@@ -3008,21 +3020,21 @@ CATALOGUE = {
         "homeostasie": ("trajectoires qui se resserrent sur une consigne", "homéostas*, physiolog*, régulation hormonale, hormon*, endocrin*, glycémie, blood glucose, insuline, insulin*, thermorégulation, thermoregulation, rétrocontrôle, diabète, diabetes, métabolisme, metabolism"),
     },
     "Informatique et IA": {
-        "perceptron": ("colonnes de points reliées par des faisceaux", "réseau de neurones, réseaux de neurones, neural net*, deep learning, apprentissage profond, perceptron*, couches cachées, hidden layer*, intelligence artificielle, artificial intelligence, ia, rétropropagation, backpropagation, descente de gradient, gradient descent, réseau convolutif, réseaux convolutifs, convolutional"),
+        "perceptron": ("colonnes de points reliées par des faisceaux", "réseau de neurones, réseaux de neurones, neural net*, deep learning, apprentissage profond, perceptron*, couches cachées, hidden layer*, intelligence artificielle, artificial intelligence, ia, rétropropagation, backpropagation, réseau convolutif, réseaux convolutifs, convolutional"),
         "grappes": ("nuages de points tirés vers leurs centres", "apprentissage automatique, machine learning, apprentissage statistique, statistical learning, apprentissage supervisé, apprentissage non supervisé, supervised learning, unsupervised learning, clustering, k-means, k-moyennes, partitionnement, fouille de données, data mining, science des données, data science, big data, mégadonnées, données massives, regroupement*"),
         "brassage": ("anneaux de bits, un écart qui gagne en spirale", "cryptograph*, cryptolog*, cryptanaly*, chiffrement*, encrypt*, déchiffr*, decrypt*, cipher*, hachage, hash*, aes, rsa, clé publique, clés publiques, public key*, cybersécurité, cybersecurity, sécurité informatique, computer security, blockchain*, signature numérique, digital signature*, cryptomonnaie*, cryptocurrenc*"),
-        "tri": ("fils croisés qui se rangent du fin à l'épais", "algorithmique, algorithme de tri, algorithmes de tri, sorting, tri, tri rapide, quicksort, tri fusion, merge sort, complexité algorithmique, computational complexity, structures de données, structure de données, data structure*, ordonnancement, scheduling, récursi*"),
+        "tri": ("fils croisés qui se rangent du fin à l'épais", "algorithmique, algorithme de tri, algorithmes de tri, sorting, tri, tri rapide, quicksort, tri fusion, merge sort, complexité algorithmique, computational complexity, structures de données, structure de données, data structure*, ordonnancement, scheduling"),
         "attention": ("triangle de carrés, une ligne à l'accent", "mécanisme d'attention, attention mechanism*, self-attention, auto-attention, architecture transformer, transformer architecture, transformer model*, modèles de langage, modèle de langage, language model*, grands modèles de langage, large language model*, llm*, traitement automatique des langues, traitement automatique du langage, natural language processing, nlp, tal, chatbot*, gpt, bert, plongements, embedding*"),
         "decision": ("le carré découpé en rectangles, aplats et points", "arbre de décision, arbres de décision, decision tree*, forêt aléatoire, forêts aléatoires, random forest*, gradient boosting, boosting, xgboost, apprentissage d'ensemble, ensemble learning, classifieur*, classifier*, classification supervisée, aide à la décision, decision making, théorie de la décision, decision theory"),
         "dedale": ("couloirs d'un labyrinthe, le chemin à l'accent", "plus court chemin, plus courts chemins, shortest path*, dijkstra, parcours de graphe, parcours de graphes, graph traversal, recherche de chemin, pathfinding, maze*, arbre couvrant, arbres couvrants, spanning tree*, routage, routing, recherche opérationnelle, operations research, voyageur de commerce, travelling salesman, optimisation combinatoire, combinatorial optimi*"),
         "quadrants": ("carrés partagés en quatre le long d'un trait", "compression de données, compression d'images, data compression, image compression, codage, huffman, quadtree*, traitement d'images, traitement de l'image, image processing, vision par ordinateur, computer vision, segmentation d'images, image segmentation, jpeg, théorie de l'information, information theory, shannon"),
         "debruitage": ("cases où un bruit se resserre sur une forme", "ia générative, intelligence artificielle générative, generative ai, modèles génératifs, modèle génératif, generative model*, modèles de diffusion, modèle de diffusion, diffusion model*, débruitage, denoising, génération d'images, image generation, stable diffusion, gan, gans, autoencod*, auto-encod*, vae"),
-        "binaire": ("peigne de barres du comptage binaire", "numération binaire, nombres binaires, binary number*, code binaire, binary code, arithmétique binaire, binary arithmetic, logique booléenne, boolean logic, algèbre de boole, boolean algebra, booléen*, boolean*, portes logiques, logic gate*, architecture des ordinateurs, computer architecture, bits, octet*, byte*, code de gray, gray code"),
+        "binaire": ("peigne de barres du comptage binaire", "numération binaire, nombres binaires, binary number*, code binaire, binary code, arithmétique binaire, binary arithmetic, architecture des ordinateurs, computer architecture, bits, octet*, byte*, code de gray, gray code"),
     },
     "Ingénierie": {
-        "pistes": ("bandes de pistes à 45 degrés, pastilles en escalier", "électronique numérique, électronique analogique, électronique de puissance, power electronics, electronics, composants électroniques, electronic components, circuits électroniques, electronic circuit*, systèmes embarqués, embedded system*, circuit*, circuit imprimé, circuits imprimés, printed circuit*, pcb, transistor*, semi-conducteur*, semiconductor*, microcontrôleur*, microcontroller*, microprocesseur*, microprocessor*, puce*, chip*, vlsi, fpga, cmos, hardware, digital electronics, conception de circuits, circuit design"),
-        "harmoniques": ("rangées d'ondes en hachures et leur somme", "traitement du signal, signal processing, série de fourier, séries de fourier, fourier series, analyse de fourier, fourier analysis, transformée de fourier, fourier transform, fft, harmoniques, harmonics, filtrage, filtering, filtre numérique, filtres numériques, digital filter*, filtre passe-bas, low-pass, convolution*, ondelette*, wavelet*, échantillonnage, sampling, nyquist, modulation*, analyse spectrale, spectral analysis, audio"),
-        "rubans": ("fils réunis en ruban, des faisceaux qui s'en détachent", "énergétique*, systèmes énergétiques, energy systems, efficacité énergétique, rendement énergétique, energy efficiency, sankey, bilan énergétique, bilans énergétiques, energy balance, transition énergétique, energy transition, réseau électrique, power grid, énergies renouvelables, énergie renouvelable, stockage de l'énergie, energy storage, renouvelable*, renewable*, centrale électrique, centrales électriques, power plant*, cogénération, cogeneration, photovolta*, éolien*, wind power, énergie solaire, solar energy, solar power"),
+        "pistes": ("bandes de pistes à 45 degrés, pastilles en escalier", "électronique numérique, électronique analogique, électronique de puissance, power electronics, electronics, composants électroniques, electronic components, circuits électroniques, electronic circuit*, systèmes embarqués, embedded system*, circuit*, circuit imprimé, circuits imprimés, printed circuit*, pcb, transistor*, microprocesseur*, microprocessor*, puce*, chip*, vlsi, fpga, cmos, hardware, digital electronics, conception de circuits, circuit design"),
+        "harmoniques": ("rangées d'ondes en hachures et leur somme", "traitement du signal, signal processing, fft, harmoniques, harmonics, filtrage, filtering, filtre numérique, filtres numériques, digital filter*, filtre passe-bas, low-pass, convolution*, ondelette*, wavelet*, échantillonnage, sampling, nyquist, modulation*, analyse spectrale, spectral analysis, audio"),
+        "rubans": ("fils réunis en ruban, des faisceaux qui s'en détachent", "énergétique*, systèmes énergétiques, energy systems, efficacité énergétique, rendement énergétique, energy efficiency, sankey, bilan énergétique, bilans énergétiques, energy balance, transition énergétique, energy transition, réseau électrique, power grid, énergies renouvelables, énergie renouvelable, stockage de l'énergie, energy storage, renouvelable*, renewable*, centrale électrique, centrales électriques, power plant*, cogénération, cogeneration, photovolta*, énergie éolienne, wind power, énergie solaire, solar energy, solar power"),
         "poses": ("chaîne articulée saisie pose après pose", "robot*, cinématique des robots, cinématique inverse, inverse kinematics, chaîne cinématique, kinematic chain*, bras manipulateur, bras robotisé, robot arm*, manipulateur*, manipulator*, mécatronique, mechatronic*, actionneur*, actuator*, degrés de liberté, degrees of freedom, cobot*, drone*, automatisme*, locomotion, biomécanique, biomechanic*, mouvement humain, human motion"),
         "symboles": ("nuages de points rangés en grille", "télécom*, telecom*, communications numériques, digital communication*, modulation numérique, digital modulation, qam, psk, ofdm, 5g, 4g, transmission numérique, communications sans fil, wireless, sans fil, radio, réseaux mobiles, mobile network*, codage canal, channel coding, antenne*"),
         "isostatiques": ("deux familles de courbes autour d'un trou", "génie civil, civil engineering, résistance des matériaux, strength of materials, rdm, calcul de structures, structural engineering, structural analysis, mécanique des structures, poutre*, béton*, bridge*, bâtiment*, ouvrages d'art, concentration de contraintes, stress concentration, mécanique des solides, solid mechanics, élasticité linéaire, photoélasticit*, photoelastic*"),
