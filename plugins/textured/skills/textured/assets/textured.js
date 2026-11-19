@@ -42,14 +42,32 @@
     peindre();
   }
 
-  // bouton du sommaire : le masque ou le montre, et s'en souvient
+  // bouton du sommaire : le masque ou le montre en fondu (sans fondu si l'on préfère le calme), et s'en souvient
   const bPlan = document.querySelector(".tete .plan-bouton");
   if (bPlan) {
+    const nav = document.getElementById("plan");
     const dire = () => bPlan.setAttribute("aria-expanded", String(!racine.classList.contains("sans-plan")));
+    // le fondu n'existe que si la feuille donne au sommaire une transition (voir « sommaire : apparition »)
+    const fondu = () => nav && getComputedStyle(nav).transitionDuration.split(",").some(d => parseFloat(d) > 0);
+    let sortie = 0;
+    const finir = () => { clearTimeout(sortie); sortie = 0; racine.classList.add("sans-plan"); racine.classList.remove("plan-sortie"); dire(); };
     bPlan.addEventListener("click", () => {
-      const cache = racine.classList.toggle("sans-plan");
-      try { if (cache) localStorage.setItem("tx-plan", "0"); else localStorage.removeItem("tx-plan"); } catch {}
-      dire();
+      const cacher = !racine.classList.contains("sans-plan") && !sortie;
+      try { if (cacher) localStorage.setItem("tx-plan", "0"); else localStorage.removeItem("tx-plan"); } catch {}
+      if (cacher && fondu()) {
+        racine.classList.add("plan-sortie");
+        sortie = setTimeout(finir, 400);
+        nav.addEventListener("transitionend", e => { if (e.target === nav && sortie) finir(); }, { once: true });
+        bPlan.setAttribute("aria-expanded", "false");
+      } else if (cacher) {
+        finir();
+      } else {
+        clearTimeout(sortie); sortie = 0;
+        racine.classList.remove("plan-sortie");
+        if (fondu()) { racine.classList.add("plan-entree"); racine.classList.remove("sans-plan"); void nav.offsetWidth; racine.classList.remove("plan-entree"); }
+        else racine.classList.remove("sans-plan");
+        dire();
+      }
     });
     dire();
   }

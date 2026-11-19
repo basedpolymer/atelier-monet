@@ -204,7 +204,8 @@ button.discret:hover { color: var(--encre); border-color: var(--trait); }
 footer.pied { margin-top: 2em; padding: 1.2em 0 3em; border-top: 1.2px solid var(--trait); font-size: .9em; color: var(--doux); }
 footer.pied p { margin: .2em 0; }
 
-@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; animation: none !important; } }
+/* calme demandé par le navigateur : ni transition ni animation, sauf si le site les a rallumées par son bouton */
+@media (prefers-reduced-motion: reduce) { :root:not([data-tx-anim="on"]) :is(*, *::before, *::after) { transition: none !important; animation: none !important; } }
 @media (forced-colors: active) {
   main a[href] { text-decoration: underline; }
   hr { background: none; border-top: 1px solid CanvasText; }
@@ -254,6 +255,11 @@ nav.plan .num { margin-right: .55em; }
   }
 }
 .sans-plan nav.plan { display: none; }
+/* sommaire : apparition et disparition en fondu, au bouton de l'en-tête. Rien si le visiteur préfère le calme, sauf si
+   le site a rallumé les animations (<html data-tx-anim="on">) ; rien non plus s'il les a arrêtées (« off »). */
+@media (prefers-reduced-motion: no-preference) { :root:not([data-tx-anim="off"]) nav.plan { transition: opacity .26s ease, translate .26s ease; } }
+:root[data-tx-anim="on"] nav.plan { transition: opacity .26s ease, translate .26s ease; }
+:is(.plan-sortie, .plan-entree) nav.plan { opacity: 0; translate: -.6rem 0; }
 @media print { nav.plan a[aria-current] { background: none; border-color: transparent; } }
 
 /*@ code | <(code|pre|kbd|samp)\b */
