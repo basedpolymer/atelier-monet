@@ -254,7 +254,8 @@ nav.plan .num { margin-right: .55em; }
     max-height: calc(100dvh - var(--h-tete) - 2.4rem); overflow-y: auto; overscroll-behavior: contain; margin: 2.6em 0 0;
   }
 }
-.sans-plan nav.plan { display: none; }
+/* replié par défaut à l'écran ; le PDF et l'impression gardent le sommaire */
+@media not print { .sans-plan nav.plan { display: none; } }
 /* sommaire : apparition et disparition en fondu, au bouton de l'en-tête. Rien si le visiteur préfère le calme, sauf si
    le site a rallumé les animations (<html data-tx-anim="on">) ; rien non plus s'il les a arrêtées (« off »). */
 @media (prefers-reduced-motion: no-preference) { :root:not([data-tx-anim="off"]) nav.plan { transition: opacity .26s ease, translate .26s ease; } }

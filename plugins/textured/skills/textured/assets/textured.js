@@ -42,7 +42,8 @@
     peindre();
   }
 
-  // bouton du sommaire : le masque ou le montre en fondu (sans fondu si l'on préfère le calme), et s'en souvient
+  // bouton du sommaire : le montre ou le masque en fondu (sans fondu si l'on préfère le calme), et s'en souvient ;
+  // replié par défaut (l'amorce du <head> pose « sans-plan » tant que tx-plan ne vaut pas "1")
   const bPlan = document.querySelector(".tete .plan-bouton");
   if (bPlan) {
     const nav = document.getElementById("plan");
@@ -53,7 +54,7 @@
     const finir = () => { clearTimeout(sortie); sortie = 0; racine.classList.add("sans-plan"); racine.classList.remove("plan-sortie"); dire(); };
     bPlan.addEventListener("click", () => {
       const cacher = !racine.classList.contains("sans-plan") && !sortie;
-      try { if (cacher) localStorage.setItem("tx-plan", "0"); else localStorage.removeItem("tx-plan"); } catch {}
+      try { if (cacher) localStorage.removeItem("tx-plan"); else localStorage.setItem("tx-plan", "1"); } catch {}
       if (cacher && fondu()) {
         racine.classList.add("plan-sortie");
         sortie = setTimeout(finir, 400);

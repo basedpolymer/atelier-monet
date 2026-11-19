@@ -36,7 +36,7 @@ tirage: #00a95c
 La page en tire ses pastels (lettrine, numéros, surlignages, losanges, jouets). Sans elle, une encre tirée du titre ;
 `tirage: non` : page grise.
 
-Facultatif : `lang: en` · `plan: non` (sommaire affiché par défaut dès deux titres) · `numeros: non` ·
+Facultatif : `lang: en` · `plan: non` (pas de sommaire ; sinon, dès deux titres, il est replié et le bouton de l'en-tête l'ouvre) · `numeros: non` ·
 `densite: compacte` · `lettrine: 3|non` · `court:` (titre courant et onglet) · `pied:` · `prive: oui` (noindex) ·
 `avertissement: **Gras.** Texte` (bandeau en haut jusqu'à « J'ai compris ») · `langues: fr=URL, en=URL` ·
 `url:`, `image:` (page publiée) · `csp: non`.

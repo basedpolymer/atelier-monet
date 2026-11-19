@@ -844,7 +844,8 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     motifs = sans_code(page)
     js = scripts(motifs)
     amorce = ('try{var t=localStorage.getItem("tx-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;'
-              'if(localStorage.getItem("tx-plan")==="0")document.documentElement.classList.add("sans-plan")}catch(e){}'
+              'if(localStorage.getItem("tx-plan")!=="1")document.documentElement.classList.add("sans-plan")}'
+              'catch(e){document.documentElement.classList.add("sans-plan")}'
               'document.documentElement.classList.add("js")')
     # jouets : boîte à outils (Cours.) ; KaTeX dans la page seulement pour des formules écrites à l'exécution
     outils = bool(re.search(r"\bCours\.", motifs))
