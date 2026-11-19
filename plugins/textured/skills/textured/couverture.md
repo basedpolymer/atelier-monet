@@ -48,19 +48,29 @@ plat puis en pente.
 `carreaux` carrés croissants.
 
 **Vivant** : `phylogenie` arbre en éventail · `division` disque refendu en galets · `proies` orbites en pointillé ·
-`influx` tirets en salves · `clones` anneaux ouverts vers un point.
+`influx` tirets en salves · `clones` anneaux ouverts vers un point · `derive` générations et lignées · `alignement`
+matrice de points en diagonales · `morphogenese` taches qui s'étirent en rayures · `circadien` jours empilés de salves ·
+`repliement` chaîne repliée sur une grille · `mendel` disques à moitiés pleines · `recombinaison` barres à segments
+échangés.
 
 **Médecine** : `contagion` propagation de proche en proche · `depistage` points et anneaux de part et d'autre d'un
-seuil · `sinogramme` sinusoïdes tressées.
+seuil · `sinogramme` sinusoïdes tressées · `dose` disques qui se remplissent en S · `survie` escaliers descendants ·
+`sommeil` nuits en paliers · `electrophorese` colonnes de bandes · `homeostasie` trajectoires vers une consigne.
 
-**Informatique, IA** : `couches` colonnes reliées en faisceaux · `grappes` nuages tirés vers leurs centres · `brassage`
-anneaux de bits brassés · `tri` fils croisés qui se rangent.
+**Informatique, IA** : `perceptron` colonnes reliées en faisceaux · `grappes` nuages tirés vers leurs centres ·
+`brassage` anneaux de bits brassés · `tri` fils croisés qui se rangent · `attention` triangle de carrés · `decision`
+carré découpé en rectangles · `dedale` couloirs d'un labyrinthe · `quadrants` carrés partagés en quatre · `debruitage`
+bruit qui se resserre en forme · `binaire` peigne du comptage binaire.
 
 **Ingénierie** : `pistes` pistes à 45 degrés · `harmoniques` ondes en hachures et leur somme · `rubans` ruban de fils
-qui se divise · `poses` chaîne articulée, pose après pose.
+qui se divise · `poses` chaîne articulée, pose après pose · `symboles` nuages en grille · `isostatiques` courbes
+autour d'un trou · `mix` couches empilées · `lidar` rayons et impacts · `spectrogramme` carrés d'un son · `parcours`
+contours et zigzag.
 
 **Sciences humaines** : `volatilite` faisceau de marches aléatoires · `schelling` points et anneaux en plaques ·
-`pyramide` pyramide des âges en points · `frise` traits en couloirs.
+`pyramide` pyramide des âges en points · `frise` traits en couloirs · `syntaxe` arcs emboîtés · `migrations` lieux
+reliés par des arcs · `fortunes` disques très inégaux · `hemicycle` sièges en demi-cercles · `ascendance` éventail
+généalogique · `nash` cases en deux triangles.
 
 Détail (dessins et mots du sujet) : `textured.py --motifs` sans sujet.
 
