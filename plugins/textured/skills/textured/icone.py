@@ -298,7 +298,7 @@ def choisir(meta, encre, source="", lang="fr"):
     forme = v.get("forme", "carre")
     pal = couverture.palette(encre, teinte)
     if forme == "nu":
-        pal = dict(pal, ce=couverture.palette(encre, "claire")["ca"], ca=couverture.palette(encre, "claire")["ca"])
+        pal = dict(pal, ce=couverture.palette(encre, "claire", True)["ca"], ca=couverture.palette(encre, "claire", True)["ca"])
     lettre = None
     if glyphe == "lettre":
         lettre = v.get("lettre") or next((c for c in (meta.get("court") or meta.get("titre") or "T") if c.isalnum()), "T")
