@@ -6,6 +6,10 @@ lettres ; « inverse » : texte plus clair que le fond). Couleurs : currentColor
 (trait doux), var(--cf) (fond, pour évider) ; rien en dur, la teinte de la couverture les fixe. Le groupe qui reçoit
 les éléments a fill="none" et des bouts ronds : un trait n'a qu'à donner stroke, une forme pleine fill.
 
+Couleurs : une forme pleine par élément (pas un chemin unique), en fill="currentColor" ; le traitement (quatre encres,
+dégradé et son sens, uni) se déclare dans COULEUR (couverture.py), ou un élément pose lui-même son encre :
+fill="var(--m2, currentColor)".
+
 CATALOGUE (en fin de fichier) range les motifs par domaine, avec leur dessin et les mots du sujet qui les appellent ;
 couverture.md n'en garde qu'une ligne par domaine, écrite à la main (lue à chaque couverture : rester bref) ; le
 détail : python3 couverture.py --catalogue, ou textured.py --motifs sans sujet.
@@ -1501,13 +1505,14 @@ def rechauffement(r, d):
         serie.append(pente * (i / k) ** 2.2 * 2 - .5 + x_)
     q = sorted(serie)
     seuils = [q[int(k * f)] for f in (.15, .35, .62, .82)]
-    pleins = {ENCRE: [], ACC: []}
+    froid = "var(--m1, currentColor)"
+    pleins = {froid: [], ACC: []}
     for i, v in enumerate(serie):
         x = 8 + i * l
         if v < seuils[0]:
-            pleins[ENCRE].append(f"M{n(x)} 8h{n(l)}V192h{n(-l)}Z")
+            pleins[froid].append(f"M{n(x)} 8h{n(l)}V192h{n(-l)}Z")
         elif v < seuils[1]:
-            pleins[ENCRE].append(f"M{n(x + l / 4)} 8h{n(l / 2)}V192h{n(-l / 2)}Z")
+            pleins[froid].append(f"M{n(x + l / 4)} 8h{n(l / 2)}V192h{n(-l / 2)}Z")
         elif v < seuils[2]:
             continue
         elif v < seuils[3]:
@@ -1737,7 +1742,7 @@ def electrode(r, d):
         col = ACC if r.random() < p else ENCRE
         classes[(col, round(1.8 + 1.6 * math.exp(-dist / lam), 1))].append((x, y))
     out = [points(p, t, c) for (c, t), p in classes.items()]
-    out.append(boite(8, 8, 9, 184, ENCRE, None))
+    out.append(boite(8, 8, 9, 184, "var(--m1, currentColor)", None))
     out.append(points([(21.5, y) for y in range(12, 192, 5)], 3.6, ACC))
     if not gauche:
         out = ['<g transform="translate(200 0) scale(-1 1)">'] + out + ["</g>"]
@@ -1848,6 +1853,15 @@ def voronoi(sites, x0=8, y0=8, x1=192, y1=192):
     return cellules
 
 
+def degrade_centre(cx, cy, rayon=130):
+    """Dégradé rayonnant centré là où le motif le veut, aux couleurs de la couverture (--g1 vers --g2 ; l'encre seule en
+    mono et sur l'aplat). Rend (élément <defs>, valeur pour stroke ou fill) ; le motif se déclare ("uni",) dans COULEUR."""
+    ident = f"dgc{int(cx * 10) % 100000}x{int(cy * 10) % 100000}r{int(rayon)}"
+    return (f'<defs><radialGradient id="{ident}" gradientUnits="userSpaceOnUse" cx="{n(cx)}" cy="{n(cy)}" r="{n(rayon)}">'
+            '<stop offset="0" style="stop-color:var(--g1, currentColor)"/><stop offset="1" style="stop-color:var(--g2, currentColor)"/>'
+            f'</radialGradient></defs>', f"url(#{ident})")
+
+
 def retrecit(poly, f):
     cx, cy = sum(p[0] for p in poly) / len(poly), sum(p[1] for p in poly) / len(poly)
     return [(cx + (x - cx) * f, cy + (y - cy) * f) for x, y in poly]
@@ -1942,17 +1956,18 @@ def kepler(r, d):
         return [(fx + a_ * (1 - e * e) / (1 + e * math.cos(t - om)) * math.cos(t), fy + a_ * (1 - e * e) / (1 + e * math.cos(t - om)) * math.sin(t))
                 for t in (2 * math.pi * q / 90 for q in range(91))]
 
-    out = []
+    defs, teinte_ = degrade_centre(fx, fy, 140)
+    out = [defs]
     a_, e, om = orbites[ir]
     for q in range(1, r.randint(6, 10)):
         out.append(f'<path d="{morceaux(courbe_(a_, e, om + q * .32))}" stroke="{DOUX}" stroke-width="0.7"/>')
     planetes = []
     for i, (a_, e, om) in enumerate(orbites):
-        out.append(f'<path d="{morceaux(courbe_(a_, e, om))}" stroke="{ACC if i == ia else ENCRE}" stroke-width="{1.8 if i == ia else 1.1}"/>')
+        out.append(f'<path d="{morceaux(courbe_(a_, e, om))}" stroke="{ACC if i == ia else teinte_}" stroke-width="{1.8 if i == ia else 1.1}"/>')
         t = r.uniform(0, 2 * math.pi)
         rr = a_ * (1 - e * e) / (1 + e * math.cos(t - om))
         planetes.append((fx + rr * math.cos(t), fy + rr * math.sin(t)))
-    return out + [points([p for p in planetes if 8 < p[0] < 192 and 8 < p[1] < 192], 5, ENCRE), points([(fx, fy)], 10, ACC)]
+    return out + [points([p for p in planetes if 8 < p[0] < 192 and 8 < p[1] < 192], 5, teinte_), points([(fx, fy)], 10, ACC)]
 
 
 def lissajous(r, d):
@@ -1995,7 +2010,8 @@ def collision(r, d):
     """Traces en pointillés qui partent d'un même point : spirales qui se resserrent, droites en tirets, une trace à
     l'accent : physique des particules, chambre à bulles, collisions, accélérateurs."""
     vx, vy = 100 + r.uniform(-30, 30), 100 + r.uniform(-30, 30)
-    out = []
+    defs, teinte_ = degrade_centre(vx, vy, 150)
+    out = [defs]
     k = r.randint(12, 18)
     ka = r.randrange(k)
     for i in range(k):
@@ -2014,7 +2030,7 @@ def collision(r, d):
                 break
         acc = i == ka
         extra = ' stroke-dasharray="5 4"' if neutre else ' stroke-dasharray="0 3.2"'
-        out.append(f'<path d="{morceaux(pts)}" stroke="{ACC if acc else ENCRE}" stroke-width="{2.6 if acc else 1.9}"{extra}/>')
+        out.append(f'<path d="{morceaux(pts)}" stroke="{ACC if acc else teinte_}" stroke-width="{2.6 if acc else 1.9}"{extra}/>')
     return out + [points([(vx, vy)], 6, ENCRE)]
 
 
@@ -2097,7 +2113,8 @@ def circumpolaire(r, d):
     l'accent : astronomie, rotation de la Terre, ciel nocturne, observation."""
     px, py = r.uniform(30, 170), r.uniform(20, 150)
     ouverture = math.radians(r.uniform(28, 70))
-    out, k = [], r.randint(60, 95)
+    defs, teinte_ = degrade_centre(px, py, 170)
+    out, k = [defs], r.randint(60, 95)
     acc = set(r.sample(range(k), 3))
     for i in range(k):
         rr, a0 = r.uniform(6, 250), r.uniform(0, 2 * math.pi)
@@ -2105,7 +2122,7 @@ def circumpolaire(r, d):
         chemin = morceaux(pts)
         if chemin:
             w = r.choice((.6, .8, 1.1, 1.5, 2.2))
-            out.append(f'<path d="{chemin}" stroke="{ACC if i in acc else ENCRE}" stroke-width="{n(w + (.8 if i in acc else 0), 2)}"/>')
+            out.append(f'<path d="{chemin}" stroke="{ACC if i in acc else teinte_}" stroke-width="{n(w + (.8 if i in acc else 0), 2)}"/>')
     return out + [points([(px, py)], 5, ACC)] if 8 < px < 192 and 8 < py < 192 else out
 
 
@@ -2114,6 +2131,7 @@ def lentille(r, d):
     l'accent : lentille gravitationnelle, relativité générale, cosmologie, matière noire."""
     cx, cy = 100 + r.uniform(-14, 14), 100 + r.uniform(-14, 14)
     te = r.uniform(30, 46)
+    defs, teinte_ = degrade_centre(cx, cy, 140)
     classes = defaultdict(list)
     for bx, by in semis_dans(lambda x, y: True, r.choice((6.4, 7.2)), -40, -40, 240, 240, decale=False):
         bx, by = bx - cx + r.uniform(-.8, .8), by - cy + r.uniform(-.8, .8)
@@ -2125,8 +2143,8 @@ def lentille(r, d):
                 continue
             mu = abs(1 / (1 - (te / th) ** 4)) if abs(th) != te else 9
             diam = round(min(4.6, 1.1 + .9 * math.sqrt(mu)), 1)
-            classes[(ACC if abs(abs(th) - te) < 5 else ENCRE, diam)].append((x, y))
-    return [points(p, t, c) for (c, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
+            classes[(ACC if abs(abs(th) - te) < 5 else teinte_, diam)].append((x, y))
+    return [defs] + [points(p, t, c) for (c, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
 
 
 def paquets(r, d):
@@ -2230,7 +2248,7 @@ def banquise(r, d):
         t = {"haut": y, "bas": 200 - y, "gauche": x, "droite": 200 - x}[bord] / 200
         if all(math.dist((x, y), q) > 7 + 22 * t for q in sites):
             sites.append((x, y))
-    out = [boite(8, 8, 184, 184, ENCRE, None)]
+    out = [boite(8, 8, 184, 184, "var(--m1, currentColor)", None)]
     for poly, _ in voronoi(sites):
         if len(poly) < 3:
             continue
@@ -2272,7 +2290,8 @@ def rossby(r, d):
     cx, cy = 100 + r.uniform(-10, 10), 100 + r.uniform(-10, 10)
     m, k = r.randint(4, 6), r.randint(8, 12)
     ka = k // 2 + r.randint(-1, 1)
-    out = []
+    defs, teinte_ = degrade_centre(cx, cy, 120)
+    out = [defs]
     for i in range(k):
         R = 10 + i * 92 / k
         amp = 2 + 11 * math.sin(math.pi * (i + .5) / k) ** 2
@@ -2280,7 +2299,7 @@ def rossby(r, d):
         pts = [(cx + (R + amp * math.sin(m * t + ph) + amp * .3 * math.sin(2 * m * t + ph2)) * math.cos(t),
                 cy + (R + amp * math.sin(m * t + ph) + amp * .3 * math.sin(2 * m * t + ph2)) * math.sin(t)) for t in (2 * math.pi * q / 180 for q in range(181))]
         acc = i == ka
-        out.append(f'<path d="{morceaux(pts)}" stroke="{ACC if acc else ENCRE}" stroke-width="{3 if acc else 1.2}"/>')
+        out.append(f'<path d="{morceaux(pts)}" stroke="{ACC if acc else teinte_}" stroke-width="{3 if acc else 1.2}"/>')
     return out + [points([(cx, cy)], 5, ENCRE)]
 
 
@@ -2908,6 +2927,7 @@ def belousov(r, d):
     réactions oscillantes, Belousov-Zhabotinsky, réaction-diffusion."""
     coeurs = [(r.uniform(30, 170), r.uniform(30, 170), r.choice((-1, 1, 1, 0)), r.uniform(0, 6.3)) for _ in range(r.randint(1, 3))]
     lam = r.uniform(14, 22)
+    defs, teinte_ = degrade_centre(coeurs[0][0], coeurs[0][1], 150)
     classes = defaultdict(list)
     for x, y in semis_dans(lambda x, y: True, 3.3, 8, 8, 192, 192):
         cx, cy, s, ph = min(coeurs, key=lambda c: math.hypot(x - c[0], y - c[1]))
@@ -2917,8 +2937,8 @@ def belousov(r, d):
         if v > .93:
             classes[(ACC, 2.4)].append((x, y))
         elif v > .2:
-            classes[(ENCRE, round(1 + 1.4 * v, 1))].append((x, y))
-    return [points(p, t, c) for (c, t), p in classes.items()]
+            classes[(teinte_, round(1 + 1.4 * v, 1))].append((x, y))
+    return [defs] + [points(p, t, c) for (c, t), p in classes.items()]
 
 
 def liesegang(r, d):
@@ -2926,14 +2946,15 @@ def liesegang(r, d):
     l'accent : anneaux de Liesegang, précipitation périodique, diffusion dans un gel."""
     ox, oy = r.choice(((8, 8), (8, 192), (192, 8), (192, 192), (100, 196), (4, 100)))
     q, r0 = r.uniform(1.12, 1.2), r.uniform(10, 18)
-    out, rr, k = [], r0, 0
+    defs, teinte_ = degrade_centre(ox, oy, 260)
+    out, rr, k = [defs], r0, 0
     while rr < 290 and k < 30:
         suivant = rr * q
         w = max(.8, (suivant - rr) * r.uniform(.3, .45))
         pts = [(ox + (rr + w / 2) * math.cos(t), oy + (rr + w / 2) * math.sin(t)) for t in (2 * math.pi * i / 240 for i in range(241))]
         chemin = morceaux(pts)
         if chemin:
-            out.append(f'<path d="{chemin}" stroke="{ACC if k == 0 else ENCRE}" stroke-width="{n(w, 2)}" stroke-linecap="butt"/>')
+            out.append(f'<path d="{chemin}" stroke="{ACC if k == 0 else teinte_}" stroke-width="{n(w, 2)}" stroke-linecap="butt"/>')
         rr, k = suivant + r.uniform(0, 2), k + 1
     return out
 

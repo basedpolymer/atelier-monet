@@ -30,8 +30,9 @@
 .couv-cadre { border: max(1px, .32cqi) solid; padding: 3.6cqi; }
 .couv-filet { flex: none; border-top: max(1px, .32cqi) solid; }
 .couverture svg { font-family: var(--sans); font-weight: 700; }
-/* quatre encres sur le papier : en surimpression, comme une risographie */
-.couv-multi.couv-claire svg [fill^="var(--m"] { mix-blend-mode: multiply; }
+/* quatre encres sur le papier : là où deux formes se recouvrent, la plus sombre l'emporte (darken), sans le trou noir
+   ni le gris de multiply */
+.couv-multi.couv-claire svg [fill^="var(--m"] { mix-blend-mode: darken; }
 /* plein : l'illustration mange les marges du haut et des côtés, coupée par les bords (preserveAspectRatio slice) */
 .couv-plein .couv-image { margin: -7.5cqi -7.5cqi 0; }
 .couv-plein .couv-tete { margin-top: .6cqi; }
