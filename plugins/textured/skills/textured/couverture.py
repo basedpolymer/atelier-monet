@@ -103,12 +103,27 @@ def tourne(c, degres, L, chroma):
     return depuis_oklab(L, chroma * math.cos(h), chroma * math.sin(h))
 
 
+def teinte_abs(h, L, chroma):
+    """Couleur de teinte h (degrés, OKLCH), clarté L, saturation chroma."""
+    return depuis_oklab(L, chroma * math.cos(math.radians(h)), chroma * math.sin(math.radians(h)))
+
+
+def vif(h, L, chroma):
+    """teinte_abs hors de la zone olive : entre 75 et 125°, une teinte assez sombre vire au kaki ; on l'écarte vers
+    l'orange (sous 100°) ou vers le vert (au-dessus)."""
+    h %= 360
+    if 75 <= h <= 125 and L < .72:
+        h = 60 if h < 100 else 140
+    return teinte_abs(h, L, chroma)
+
+
 def palette(encre, teinte, mono=False):
     """Fond, texte, accent et trait doux de la couverture, tirés de l'encre. claire : pastel de l'encre, texte noir ;
     encre : aplat de l'encre, texte noir ou crème, accent en réserve (le papier) ; sombre : nuit teintée de l'encre,
-    texte crème. Sur claire et sombre, l'accent prend la teinte opposée à l'encre, g1 et g2 bornent le dégradé des motifs
-    en traits (de l'encre à l'opposée), m1 à m4 sont quatre encres à un quart de tour l'une de l'autre pour les motifs en
-    formes pleines. mono : l'accent à l'encre, rien de plus (palette d'avant)."""
+    texte crème. Sur claire et sombre : l'accent prend la teinte décalée de 150° (la complémentaire stricte vire au brun),
+    saturée ; g1 et g2 bornent le dégradé des motifs en traits, de l'encre à son opposée pâle et peu saturée (l'accent
+    reste distinct) ; m1 à m4 sont quatre encres (0, 70, 220 et 290° : aucune sur l'accent) pour les formes pleines.
+    mono, ou l'aplat : m1 à m4 valent le texte (un motif qui les écrit lui-même reste d'une encre)."""
     e = rgb(encre)
     c = math.hypot(*oklab(e)[1:])
     if teinte == "encre":
@@ -120,23 +135,36 @@ def palette(encre, teinte, mono=False):
             h = math.atan2(*reversed(oklab(e)[1:]))
             ecart = lambda x: abs(math.remainder(math.atan2(*reversed(oklab(rgb(x))[1:])) - h, 2 * math.pi))
             accent = rgb(max((x for x in ENCRES if contraste(rgb(x), fond) >= 2), key=lambda x: contraste(rgb(x), fond) * (1 + ecart(x))))
-    elif teinte == "sombre":
-        fond, texte = teinte_de(e, .25, min(c * .3, .035)), CREME
-        accent = e if mono else tourne(e, 180, .8, .12)
-        while contraste(accent, fond) < 3.4:
-            accent = melange(accent, CREME, .12)
     else:
-        fond, texte = teinte_de(e, .915, min(c * .45, .065)), melange(NOIR, e, .08)
-        accent = e if mono else tourne(e, 180, .56, .15)
-        while contraste(accent, fond) < 2.4:
-            accent = melange(accent, NOIR, .12)
+        h0 = math.degrees(math.atan2(*reversed(oklab(e)[1:])))
+        if teinte == "sombre":
+            fond, texte = teinte_de(e, .25, min(c * .3, .035)), CREME
+            accent = e
+            if not mono:
+                # en éclaircissant à saturation gardée, jusqu'au contraste voulu
+                accent = next((x for x in (vif(h0 + 150, L / 100, .13) for L in range(76, 96, 2)) if contraste(x, fond) >= 3.4),
+                              vif(h0 + 150, .94, .08))
+            while contraste(accent, fond) < 3.4:
+                accent = melange(accent, CREME, .12)
+        else:
+            fond, texte = teinte_de(e, .915, min(c * .45, .065)), melange(NOIR, e, .08)
+            accent = e
+            if not mono:
+                # en assombrissant à saturation gardée (le mélange au noir donnait du brun), jusqu'au contraste voulu
+                accent = next((x for x in (vif(h0 + 150, L / 100, .17) for L in range(64, 30, -2)) if contraste(x, fond) >= 2.4),
+                              vif(h0 + 150, .3, .12))
+            while contraste(accent, fond) < 2.4:
+                accent = melange(accent, NOIR, .12)
     pal = {"cf": hexa(fond), "ce": hexa(texte), "ca": hexa(accent), "cd": hexa(melange(fond, texte, .42))}
     if teinte in ("claire", "sombre") and not mono:
         clair = teinte == "sombre"
-        pal["g1"] = hexa(tourne(e, 0, .72 if clair else .46, .13))
-        pal["g2"] = hexa(tourne(e, 165 if clair else 180, .86 if clair else .63, .1 if clair else .14))
-        for k, (dh, L) in enumerate(((0, .55), (90, .62), (180, .66), (270, .6)), 1):
-            pal[f"m{k}"] = hexa(tourne(e, dh, L + (.2 if clair else 0), .11 if clair else .15))
+        pal["g1"] = hexa(vif(h0, .74 if clair else .5, .12 if clair else .15))
+        pal["g2"] = hexa(vif(h0 + 180, .87 if clair else .7, .07 if clair else .08))
+        for k, (dh, L) in enumerate(((0, .55), (70, .62), (220, .6), (290, .6)), 1):
+            pal[f"m{k}"] = hexa(vif(h0 + dh, L + (.2 if clair else 0), .11 if clair else .15))
+    else:
+        for k in range(1, 5):
+            pal[f"m{k}"] = pal["ce"]
     return pal
 
 
@@ -341,17 +369,40 @@ def nettoyer_svg(perso, attributs):
     return re.sub(r"<svg\b", "<svg " + attributs, svg, count=1)
 
 
-# couleurs du motif (claire et sombre, hors « mono ») : les formes pleines nombreuses alternent quatre encres ; un motif
-# en traits passe en dégradé de l'encre à sa teinte opposée, en rayons depuis le centre pour un motif rayonnant
-RAYONNANTS = {"anneaux", "spherolites", "reseau", "flocon", "trame", "rayures", "arcs"}
+# couleurs du motif (claire et sombre, hors « mono »). Un motif peut DÉCLARER son traitement dans COULEUR :
+#   ("multi",)                    ses formes pleines en fill="currentColor" alternent quatre encres (--m1 à --m4) ;
+#   ("degrade", sens[, centre])   ses traits en stroke="currentColor" passent en dégradé : sens h (gauche-droite),
+#                                 v (haut-bas : une couleur par rangée), d (diagonale), r (rayons, depuis centre (x, y)) ;
+#   ("uni",)                      rien ne change (l'accent seul reste complémentaire).
+# Un motif non déclaré est classé sur son dessin : au moins 6 formes pleines, quatre encres ; sinon des traits, dégradé
+# (en rayons s'il est dans RAYONNANTS, sinon dans un sens tiré de la graine). Un motif peut aussi poser lui-même ses
+# encres, élément par élément : fill="var(--m2, currentColor)" (colorier n'y touche pas ; en mono et sur l'aplat,
+# --m1 à --m4 valent le texte). Une forme pleine par élément, pas un chemin unique, pour que l'alternance existe.
+RAYONNANTS = {"anneaux", "spherolites", "reseau", "flocon", "arcs"}
+COULEUR = {
+    # rangées empilées : une couleur par rangée
+    "amortie": ("degrade", "v"), "dts": ("degrade", "v"), "fibres": ("degrade", "v"), "rheologie": ("degrade", "v"),
+    "module": ("degrade", "v"), "helice": ("degrade", "v"),
+    # colonnes ou défilement de gauche à droite
+    "masses": ("degrade", "h"), "pareto": ("degrade", "h"), "semis": ("degrade", "h"), "trajectoires": ("degrade", "h"),
+    "cascade": ("degrade", "h"), "eventails": ("degrade", "h"), "tangentes": ("degrade", "h"),
+    # sphères éclairées : la lumière vient d'un coin, pas du centre
+    "trame": ("degrade", "d"), "rayures": ("degrade", "d"),
+}
+SEUIL_MULTI = 6
 FORMES = re.compile(r'<(path|circle|rect|ellipse|polygon|polyline|line)\b[^>]*>')
+SENS = {"h": (10, 100, 190, 100), "v": (100, 10, 100, 190), "d": (10, 190, 190, 10)}
 _degrades = [0]
 
 
 def colorier(svg, couleurs, motif, graine):
     """Le dessin d'un motif, recoloré ; rend (svg, classe à ajouter à la couverture)."""
+    regle = COULEUR.get(motif)
     pleines = [m for m in FORMES.finditer(svg) if 'fill="currentColor"' in m.group(0)]
-    if len(pleines) >= 8:
+    mode = regle[0] if regle else ("multi" if len(pleines) >= SEUIL_MULTI else "degrade")
+    if mode == "uni":
+        return svg, ""
+    if mode == "multi" and pleines:
         rang = [0]
 
         def encre(m):
@@ -364,12 +415,13 @@ def colorier(svg, couleurs, motif, graine):
         return svg, ""
     _degrades[0] += 1
     ident = f"cdg{_degrades[0]}"
-    g1, g2 = couleurs["g1"], couleurs["g2"]
-    stops = f'<stop offset="0" stop-color="{g1}"/><stop offset="1" stop-color="{g2}"/>'
-    if motif in RAYONNANTS:
-        defs = f'<defs><radialGradient id="{ident}" gradientUnits="userSpaceOnUse" cx="100" cy="100" r="110">{stops}</radialGradient></defs>'
+    stops = f'<stop offset="0" stop-color="{couleurs["g1"]}"/><stop offset="1" stop-color="{couleurs["g2"]}"/>'
+    sens = regle[1] if regle and len(regle) > 1 else ("r" if motif in RAYONNANTS else "hvd"[graine % 3])
+    if sens == "r":
+        cx, cy = regle[2] if regle and len(regle) > 2 else (100, 100)
+        defs = f'<defs><radialGradient id="{ident}" gradientUnits="userSpaceOnUse" cx="{cx}" cy="{cy}" r="120">{stops}</radialGradient></defs>'
     else:
-        x1, y1, x2, y2 = ((10, 100, 190, 100), (10, 190, 190, 10), (100, 10, 100, 190))[graine % 3]
+        x1, y1, x2, y2 = SENS.get(sens, SENS["d"])
         defs = (f'<defs><linearGradient id="{ident}" gradientUnits="userSpaceOnUse" x1="{x1}" y1="{y1}" x2="{x2}" y2="{y2}">'
                 f'{stops}</linearGradient></defs>')
     svg = FORMES.sub(lambda m: m.group(0).replace('stroke="currentColor"', f'stroke="url(#{ident})"'), svg)
