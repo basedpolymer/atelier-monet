@@ -411,15 +411,20 @@ def preparer(meta, corps, plan_, lang, avis, brut=None):
 
 
 def choisis(choix):
-    """« tout », un domaine (ou son début), ou des noms de motifs séparés par des virgules → [(domaine, [motifs])]."""
+    """« tout », ou des domaines (ou leur début) et des noms de motifs séparés par des virgules → [(domaine, [motifs])] :
+    chaque domaine nommé, puis les motifs nommés un à un sous « Choix »."""
     choix = sans_accents((choix or "tout").strip().lower())
     if choix in ("", "tout", "tous", "oui", "all"):
         return [(dom, list(ms)) for dom, ms in CATALOGUE.items()]
-    for dom, ms in CATALOGUE.items():
-        if sans_accents(dom.lower()).startswith(choix) or choix in sans_accents(dom.lower()).split():
-            return [(dom, list(ms))]
-    noms = [ALIAS.get(m.strip(), m.strip()) for m in re.split(r"[\s,;]+", choix) if m.strip()]
-    return [("Choix", [m for m in noms if m in MOTIFS])]
+    groupes, noms = [], []
+    for mot in (m.strip() for m in re.split(r"[,;]+", choix) if m.strip()):
+        dom = next((d for d in CATALOGUE if sans_accents(d.lower()).startswith(mot) or mot in sans_accents(d.lower()).split()), None)
+        if dom and mot not in MOTIFS:
+            groupes.append((dom, list(CATALOGUE[dom])))
+        else:
+            noms += [ALIAS.get(m, m) for m in mot.split()]
+    noms = [m for m in noms if m in MOTIFS]
+    return groupes + ([("Choix", noms)] if noms else [])
 
 
 def planche(meta, corps, plan_, lang, avis, brut=None, choix=None):

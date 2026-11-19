@@ -102,6 +102,26 @@ def _marques():
     G["tirets"] = [T([(6, 13), (13, 6)], 3.2), T([(8, 24), (24, 8)], 3.2, "a"), T([(19, 26), (26, 19)], 3.2)]
     G["croix"] = [T([(16, 5), (16, 27)], 3.6), T([(5, 16), (27, 16)], 3.6, "a")]
     G["lune"] = [D(16, 16, 11), D(20.5, 11.5, 8, "f"), D(23, 23, 3, "a")]
+    # sciences exactes : physique et astronomie, Terre et climat, mathématiques, chimie générale
+    G["moire"] = [C(11.5, 16, 7.5, 2.8), C(20.5, 16, 7.5, 2.8, "a")]
+    G["courbure"] = [T(courbe(lambda x: 6 + 7 * math.exp(-((x - 16) / 5.5) ** 2), 4, 28, 30), 2.8),
+                     T(courbe(lambda x: 13.5 + 7.5 * math.exp(-((x - 16) / 5) ** 2), 4, 28, 30), 2.8), D(16, 26.5, 3.4, "a")]
+    G["constellation"] = [T([(7, 23), (14, 10), (25, 14), (21, 25)], 2.2), D(7, 23, 2.8), D(14, 10, 4, "a"), D(25, 14, 2.8), D(21, 25, 2.8)]
+    G["secousse"] = [T([(4, 16), (9, 16)], 2.8), T([(9, 16), (11.5, 7), (14, 25), (16.5, 5), (19, 23), (21.5, 11), (23, 16)], 2.6, "a"), T([(23, 16), (28, 16)], 2.8)]
+    G["gyres"] = [T(ellipse(10.5, 16, 5.6, 10, 0, 32), 2.8), T(ellipse(21.5, 16, 5.6, 10, 0, 32), 2.8, "a")]
+    G["stries"] = [rect(4.5, 5, 4.2, 22), rect(10, 5, 4.2, 22), rect(17.8, 5, 4.2, 22, "a"), rect(23.3, 5, 4.2, 22, "a")]
+    G["huit"] = [T([(16 + 11 * math.cos(t) / (1 + math.sin(t) ** 2), 16 + 11 * math.sin(t) * math.cos(t) / (1 + math.sin(t) ** 2) * 1.4)
+                    for t in (2 * math.pi * i / 48 for i in range(49))], 2.8), D(27, 16, 3, "a")]
+    G["cordes"] = [C(16, 16, 11.5, 2.4), T([(16 + 11.5 * math.cos(math.radians(-90 + 144 * k)), 16 + 11.5 * math.sin(math.radians(-90 + 144 * k))) for k in range(6)], 2.2, "a")]
+    G["quinconce"] = [D(16, 7, 2.8), D(11, 14.5, 2.8), D(21, 14.5, 2.8), D(6, 22, 2.8), D(16, 22, 3.6, "a"), D(26, 22, 2.8)]
+    G["trefle"] = [T([(16 + 4.4 * (math.sin(t) + 2 * math.sin(2 * t)), 15.5 + 4.4 * (math.cos(t) - 2 * math.cos(2 * t)) * .95)
+                      for t in (2 * math.pi * i / 72 for i in range(73))], 2.8, "a")]
+    G["ulam"] = [T([(16, 16), (21, 16), (21, 21), (11, 21), (11, 11), (26, 11), (26, 26), (6, 26), (6, 6), (26, 6)], 2.4), D(16, 16, 3, "a")]
+    G["raies"] = [rect(5.5, 5, 2.6, 22), rect(10.5, 5, 4.6, 22, "a"), rect(17.5, 5, 2.6, 22), rect(22.5, 5, 3.6, 22)]
+    G["borne"] = [rect(5, 4, 5.5, 24), D(15.5, 8.5, 2.6, "a"), D(15.5, 16, 2.6, "a"), D(15.5, 23.5, 2.6, "a"), D(23.5, 12, 2.4), D(24, 21, 2.4)]
+    G["orbitale"] = [F(ellipse(16, 10, 5.2, 6.6, 0, 28)), F(ellipse(16, 22, 5.2, 6.6, 0, 28), "a")]
+    G["chromato"] = [T(courbe(lambda x: 26 - 17 * math.exp(-((x - 10.5) / 1.9) ** 2) - 7 * math.exp(-((x - 23) / 1.7) ** 2), 3.5, 28.5, 50), 2.6),
+                     F([(13.5, 26)] + courbe(lambda x: 26 - 12 * math.exp(-((x - 17) / 1.8) ** 2), 13.5, 20.5, 16) + [(20.5, 26)], "a")]
     return G
 
 
@@ -117,6 +137,13 @@ MARQUE_DE = {
     "maillage": "triangle", "tangentes": "quarts", "cube": "hexagone", "isoreponses": "anneaux", "pareto": "barres",
     "braises": "triangle", "eventails": "sablier", "panache": "disques", "carreaux": "grille",
 }
+# sciences exactes
+MARQUE_DE.update({
+    "interference": "moire", "geodesiques": "courbure", "ising": "damier", "galaxie": "spirale", "cosmique": "constellation",
+    "plissement": "ondes", "sismogramme": "secousse", "gyres": "gyres", "isobares": "anneaux", "rechauffement": "stries",
+    "isoclines": "tirets", "attracteur": "huit", "modulo": "cordes", "galton": "quinconce", "entrelacs": "trefle", "ulam": "ulam",
+    "raies": "raies", "electrode": "borne", "orbitales": "orbitale", "chromato": "chromato",
+})
 FORMES = {"carre": "carre", "carree": "carre", "square": "carre", "rond": "rond", "ronde": "rond", "round": "rond", "disque": "rond",
           "nu": "nu", "nue": "nu", "seul": "nu", "bare": "nu"}
 POLICE_LETTRE = "system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif"

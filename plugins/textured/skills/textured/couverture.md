@@ -47,6 +47,18 @@ plat puis en pente.
 **Risques** : `braises` triangles chauffés · `eventails` deux éventails convergents · `panache` nuage qui s'élargit ·
 `carreaux` carrés croissants.
 
+**Physique, astronomie** : `interference` franges de points · `geodesiques` quadrillage creusé · `ising` domaines de
+spins · `galaxie` spirale de points · `cosmique` toile de filaments.
+
+**Terre, climat** : `plissement` couches plissées · `sismogramme` traces secouées · `gyres` cellules de courant ·
+`isobares` lignes de niveau serrées · `rechauffement` bandes froides puis chaudes.
+
+**Mathématiques** : `isoclines` champ de pentes · `attracteur` nuage chaotique · `modulo` cordes sur un cercle ·
+`galton` billes en cloche · `entrelacs` nœud en ruban · `ulam` spirale des premiers.
+
+**Chimie générale** : `raies` bandes de raies · `electrode` couche contre une paroi · `orbitales` lobes de points ·
+`chromato` pistes de pics.
+
 Détail (dessins et mots du sujet) : `textured.py --motifs` sans sujet.
 
 ## Dessin sur mesure
