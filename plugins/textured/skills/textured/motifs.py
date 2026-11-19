@@ -6,6 +6,10 @@ lettres ; « inverse » : texte plus clair que le fond). Couleurs : currentColor
 (trait doux), var(--cf) (fond, pour évider) ; rien en dur, la teinte de la couverture les fixe. Le groupe qui reçoit
 les éléments a fill="none" et des bouts ronds : un trait n'a qu'à donner stroke, une forme pleine fill.
 
+Couleurs : une forme pleine par élément (pas un chemin unique), en fill="currentColor" ; le traitement (quatre encres,
+dégradé et son sens, uni) se déclare dans COULEUR (couverture.py), ou un élément pose lui-même son encre :
+fill="var(--m2, currentColor)".
+
 CATALOGUE (en fin de fichier) range les motifs par domaine, avec leur dessin et les mots du sujet qui les appellent ;
 couverture.md n'en garde qu'une ligne par domaine, écrite à la main (lue à chaque couverture : rester bref) ; le
 détail : python3 couverture.py --catalogue, ou textured.py --motifs sans sujet.
