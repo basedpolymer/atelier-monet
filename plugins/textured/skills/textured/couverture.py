@@ -391,6 +391,21 @@ COULEUR = {
     # sphères éclairées : la lumière vient d'un coin, pas du centre
     "trame": ("degrade", "d"), "rayures": ("degrade", "d"),
 }
+# cours de M2 : polymères, génie de la réaction, optimisation et digitalisation, prévention des risques
+COULEUR.update({
+    # une forme pleine par rangée ou par objet : une encre chacune (extrudats : rubans pleins, une encre par rangée)
+    "copolymeres": ("multi",), "extrudats": ("multi",), "agregats": ("multi",), "simplexe": ("multi",), "mli": ("multi",),
+    "tranches": ("multi",), "boole": ("multi",),
+    # rangées empilées, ou un profil du haut vers le bas
+    "peignes": ("degrade", "v"), "coupures": ("degrade", "v"), "fibrilles": ("degrade", "v"), "thiele": ("degrade", "v"),
+    "barbotage": ("degrade", "v"),
+    # le temps ou la droite, de gauche à droite
+    "selectivite": ("degrade", "h"), "poiseuille": ("degrade", "h"), "ecarts": ("degrade", "h"),
+    # le col de la striction au centre
+    "striction": ("degrade", "r", (100, 100)),
+    # chaque ligne de crête et sa jumelle en carrés ont déjà leur encre
+    "jumeau": ("uni",),
+})
 SEUIL_MULTI = 6
 FORMES = re.compile(r'<(path|circle|rect|ellipse|polygon|polyline|line)\b[^>]*>')
 SENS = {"h": (10, 100, 190, 100), "v": (100, 10, 100, 190), "d": (10, 190, 190, 10)}

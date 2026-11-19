@@ -1681,17 +1681,21 @@ def simplexe(r, d):
 
 def boole(r, d):
     """Damier de disques pleins et d'anneaux rangé en code de Gray ; des cadres arrondis à l'accent regroupent les
-    disques par blocs : logique booléenne, tables de vérité, tableaux de Karnaugh, automatismes."""
+    disques par blocs, chaque bloc d'une encre : logique booléenne, tables de vérité, tableaux de Karnaugh,
+    automatismes."""
     m = r.choice((6, 8, 8))
     cel = 184 / m
-    groupes, vrai = [], set()
-    for _ in range(r.randint(3, 5)):
+    groupes, vrai, encre_de = [], set(), {}
+    for q in range(r.randint(3, 5)):
         lx, ly = r.choice((1, 2, 2, 4)), r.choice((1, 2, 2, 4))
         if lx * ly == 1:
             lx = 2
         i0, j0 = r.randrange(0, m - lx + 1), r.randrange(0, m - ly + 1)
         groupes.append((i0, j0, lx, ly))
-        vrai |= {(i0 + a, j0 + b) for a in range(lx) for b in range(ly)}
+        bloc = {(i0 + a, j0 + b) for a in range(lx) for b in range(ly)}
+        vrai |= bloc
+        for case in bloc:
+            encre_de.setdefault(case, f"var(--m{q % 4 + 1}, currentColor)")
     for _ in range(r.randint(1, 3)):
         vrai.add((r.randrange(m), r.randrange(m)))
     out, anneaux_ = [], []
@@ -1699,7 +1703,7 @@ def boole(r, d):
         for i in range(m):
             x, y = 8 + cel * (i + .5), 8 + cel * (j + .5)
             if (i, j) in vrai:
-                out.append(disque(x, y, cel * .3, ENCRE))
+                out.append(disque(x, y, cel * .3, encre_de.get((i, j), ENCRE)))
             else:
                 anneaux_.append(cercle(x, y, cel * .22, DOUX, 1.4))
     cadres = []
@@ -1736,17 +1740,18 @@ def mli(r, d):
 
 def jumeau(r, d):
     """Un même relief tracé deux fois, en miroir : à gauche en lignes de crête continues, à droite les mêmes lignes
-    échantillonnées en carrés sur une grille ; les sommets à l'accent : jumeau numérique, modèle et mesure, capteurs,
-    industrie 4.0."""
+    échantillonnées en carrés sur une grille, chaque ligne et sa jumelle de la même encre ; les sommets à l'accent :
+    jumeau numérique, modèle et mesure, capteurs, industrie 4.0."""
     bosses = [(r.uniform(22, 86), r.uniform(30, 170), r.uniform(12, 26), r.uniform(.5, 1)) for _ in range(r.randint(2, 4))]
     F = lambda x, y: sum(h * math.exp(-((x - bx) ** 2 + (y - by) ** 2) / (2 * s * s)) for bx, by, s, h in bosses)
     fmax = max(F(x, y) for x in range(8, 100, 3) for y in range(8, 193, 3)) or 1
     A, pas = r.uniform(16, 22), r.choice((7.2, 8, 8.8))
     cel = r.choice((4.4, 5.5))
     lignes, rangs, acc = [], [], []
-    y = 12 + A
+    y, j = 12 + A, 0
     while y < 190:
-        lignes.append(trait([(x, y - A * F(x, y) / fmax) for x in (8 + t for t in range(0, 89))], ENCRE, 1.4))
+        encre = f"var(--m{j % 4 + 1}, currentColor)"
+        lignes.append(trait([(x, y - A * F(x, y) / fmax) for x in (8 + t for t in range(0, 89))], encre, 1.4))
         ligne = []
         x = 192 - cel / 2
         while x > 104:
@@ -1755,8 +1760,8 @@ def jumeau(r, d):
             c = cel * (.5 + .38 * v)
             (acc if v > .78 else ligne).append(f"M{n(x - c / 2)} {n(yq - c / 2)}h{n(c)}v{n(c)}h{n(-c)}z")
             x -= cel
-        rangs.append(f'<path d="{"".join(ligne)}" fill="{ENCRE}"/>')
-        y += pas
+        rangs.append(f'<path d="{"".join(ligne)}" fill="{encre}"/>')
+        y, j = y + pas, j + 1
     return lignes + rangs + ([f'<path d="{"".join(acc)}" fill="{ACC}"/>'] if acc else [])
 
 
