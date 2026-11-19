@@ -179,6 +179,18 @@ def main():
             echecs.append("couverture absente de la page")
         if not (tmp / "couv" / "chapitre.couvertures.html").is_file():
             echecs.append("planche des couvertures absente")
+        # étagère : l'accueil d'un cours à couverture montre chaque chapitre en mini-couverture, légère
+        import shutil
+        shutil.copytree(RACINE / "exemples" / "cours", tmp / "etagere")
+        idx = tmp / "etagere" / "index.md"
+        idx.write_text(idx.read_text(encoding="utf-8").replace("densite: compacte\n", "densite: compacte\ncouverture: oui\n", 1), encoding="utf-8")
+        lancer([str(tmp / "etagere")])
+        accueil = (tmp / "etagere" / "index.html").read_text(encoding="utf-8")
+        vignettes = re.findall(r'<a class="vignette".*?</a>', accueil, re.S)
+        if 'class="chapitres etagere"' not in accueil or len(vignettes) != 2:
+            echecs.append(f"étagère : {len(vignettes)} vignette(s) au lieu de 2")
+        elif max(len(x.encode()) for x in vignettes) > 14_000:
+            echecs.append("étagère : vignette trop lourde")
         nav = textured.navigateur()
         if nav:
             for page in sorted((tmp / "cours").glob("*.html")):

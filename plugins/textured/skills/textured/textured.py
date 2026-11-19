@@ -672,7 +672,7 @@ def cours_de(src):
         m = entete(f.read_text(encoding="utf-8"))[0]
         if m.get("chapitre"):
             chapitres.append({"f": nom_sortie(f).name, "n": m["chapitre"], "titre": m.get("titre") or f.stem,
-                              "prio": niveau_priorite(m.get("priorite", ""))[0]})
+                              "prio": niveau_priorite(m.get("priorite", ""))[0], "meta": m})
     return {"nom": mi["cours"], "cle": mi.get("cle") or f"tx:{slug(mi['cours'])}:", "index": mi,
             "fichier_index": nom_sortie(idx).name, "chapitres": chapitres, "source_index": texte_index}
 
@@ -735,9 +735,15 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
             {"f": c["f"], "n": c["n"], "titre": e(c["titre"]), "prio": c.get("prio", 0)} for c in cours["chapitres"]]
         if page_nom == cours["fichier_index"]:
             etoiles = lambda n: (f' <span class="prio p{n}" title="{T["prio_mot"]} : {T["niveaux"][n]}">{"★" * n}</span>' if n else "")
-            liste = "".join(f'<li><span class="n">{e(c["n"])}</span><a href="{e(c["f"])}">{c["titre"]}</a>'
-                            f'{etoiles(c["prio"])}</li>' for c in suite[1:])
-            liste = f'<ol class="chapitres">{liste}</ol>' if liste else ""
+            # accueil à couverture : une étagère, chaque chapitre en mini-couverture (le lien en double est caché aux
+            # lecteurs d'écran) ; sans couverture, la liste
+            vignettes = (couverture.etagere([c.get("meta", {}) for c in cours["chapitres"]], lang, couv["tirage"], couv["teinte"],
+                                             deja=[couv.get("motif")])
+                         if couv else [""] * len(cours["chapitres"]))
+            liste = "".join((f'<li><a class="vignette" href="{e(c["f"])}" tabindex="-1" aria-hidden="true">{v}</a>' if v else "<li>")
+                            + f'<span class="n">{e(c["n"])}</span><a href="{e(c["f"])}">{c["titre"]}</a>{etoiles(c["prio"])}</li>'
+                            for c, v in zip(suite[1:], vignettes))
+            liste = f'<ol class="chapitres{" etagere" if couv else ""}">{liste}</ol>' if liste else ""
             if not liste:
                 avis.append("cours sans chapitre : les sources voisines doivent porter « chapitre: n » dans leur en-tête")
             place = re.search(r'<div class="chapitres">\s*</div>', corps)
