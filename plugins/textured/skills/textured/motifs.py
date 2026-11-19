@@ -14,6 +14,7 @@ CATALOGUE (en fin de fichier) range les motifs par domaine, avec leur dessin et 
 couverture.md n'en garde qu'une ligne par domaine, écrite à la main (lue à chaque couverture : rester bref) ; le
 détail : python3 couverture.py --catalogue, ou textured.py --motifs sans sujet.
 """
+import cmath
 import html
 import math
 import re
@@ -1208,6 +1209,1948 @@ def carreaux(r, d):
     return out
 
 
+# ---------- sciences exactes : physique et astronomie, Terre et climat, mathématiques, chimie générale ----------
+
+def lignes_de_niveau(f, niveaux, m=56, x0=8, y0=8, x1=192, y1=192):
+    """Lignes de niveau d'une fonction f(x, y) (carrés marchants), raccordées en polylignes : {niveau: [polylignes]}."""
+    xs = [x0 + (x1 - x0) * i / m for i in range(m + 1)]
+    ys = [y0 + (y1 - y0) * j / m for j in range(m + 1)]
+    v = [[f(x, y) for x in xs] for y in ys]
+    sortie = {}
+    for c in niveaux:
+        segs = []
+        for j in range(m):
+            for i in range(m):
+                coins = [(xs[i], ys[j], v[j][i]), (xs[i + 1], ys[j], v[j][i + 1]), (xs[i + 1], ys[j + 1], v[j + 1][i + 1]), (xs[i], ys[j + 1], v[j + 1][i])]
+                pts = []
+                for k in range(4):
+                    (ax, ay, a), (bx, by, b) = coins[k], coins[(k + 1) % 4]
+                    if (a > c) != (b > c):
+                        t = (c - a) / (b - a)
+                        pts.append((round(ax + (bx - ax) * t, 2), round(ay + (by - ay) * t, 2)))
+                if len(pts) == 2:
+                    segs.append(tuple(pts))
+                elif len(pts) == 4:
+                    segs += [(pts[0], pts[1]), (pts[2], pts[3])]
+        voisins = defaultdict(list)
+        for k, (a, b) in enumerate(segs):
+            voisins[a].append(k)
+            voisins[b].append(k)
+        vus, lignes = set(), []
+        for k in range(len(segs)):
+            if k in vus:
+                continue
+            vus.add(k)
+            ligne = list(segs[k])
+            for sens in (0, 1):
+                while True:
+                    bout = ligne[-1] if sens == 0 else ligne[0]
+                    suite = next((q for q in voisins[bout] if q not in vus), None)
+                    if suite is None:
+                        break
+                    vus.add(suite)
+                    a, b = segs[suite]
+                    autre = b if a == bout else a
+                    if sens == 0:
+                        ligne.append(autre)
+                    else:
+                        ligne.insert(0, autre)
+            lignes.append(ligne)
+        sortie[c] = lignes
+    return sortie
+
+
+# physique et astronomie
+
+def interference(r, d):
+    """Champ de points dont la taille suit l'interférence de deux sources : franges en hyperboles, la frange centrale
+    à l'accent : ondes, optique, interférences, diffraction."""
+    ecart, lam = r.uniform(26, 60), r.uniform(9, 15)
+    bas = r.random() < .6
+    s1, s2 = ((100 - ecart / 2, 204), (100 + ecart / 2, 204)) if bas else ((-4, 100 - ecart / 2), (-4, 100 + ecart / 2))
+    classes = defaultdict(list)
+    for x, y in semis_dans(lambda x, y: True, 4.6, 8, 8, 192, 192):
+        dd = math.dist((x, y), s1) - math.dist((x, y), s2)
+        i = math.cos(math.pi * dd / lam) ** 2
+        t = round(.6 + 3.4 * i ** 1.6, 1)
+        if t >= .9:
+            classes[(ACC if abs(dd) < lam / 2 and i > .5 else ENCRE, t)].append((x, y))
+    return [points(p, t, c) for (c, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
+
+
+def geodesiques(r, d):
+    """Quadrillage que creusent une ou deux masses (lignes tirées vers elles), les masses à l'accent : relativité,
+    gravitation, espace-temps, courbure."""
+    masses_ = [(r.uniform(60, 140), r.uniform(60, 140), r.uniform(1600, 2600))]
+    if r.random() < .4:
+        masses_ = [(r.uniform(50, 90), r.uniform(70, 130), r.uniform(900, 1500)), (r.uniform(110, 150), r.uniform(70, 130), r.uniform(900, 1500))]
+
+    def tire(x, y):
+        dx = dy = 0.0
+        fen = math.sin(math.pi * (x - 8) / 184) * math.sin(math.pi * (y - 8) / 184)
+        for mx, my, k in masses_:
+            ex, ey = mx - x, my - y
+            f = min(k / (ex * ex + ey * ey + 260), .85) * fen
+            dx, dy = dx + ex * f, dy + ey * f
+        return x + dx, y + dy
+
+    m = r.randint(12, 16)
+    traits = []
+    for i in range(m + 1):
+        c = 8 + 184 * i / m
+        traits.append(trace([tire(c, 8 + 184 * k / 80) for k in range(81)]))
+        traits.append(trace([tire(8 + 184 * k / 80, c) for k in range(81)]))
+    return ([f'<path d="{"".join(traits)}" stroke="{ENCRE}" stroke-width="1"/>']
+            + [disque(mx, my, 3 + k / 260, ACC) for mx, my, k in masses_])
+
+
+def ising(r, d):
+    """Réseau de spins en domaines : cases pleines (haut) et vides (bas), quelques spins retournés, des cases de paroi
+    à l'accent : physique statistique, transition de phase, magnétisme, modèle d'Ising."""
+    n = r.choice((28, 32, 36))
+    c = 184 / n
+    modes = [(r.uniform(-.5, .5), r.uniform(-.5, .5), r.uniform(0, 6.3), r.uniform(.5, 1)) for _ in range(6)]
+    champ = lambda i, j: sum(a * math.cos(kx * i + ky * j + p) for kx, ky, p, a in modes)
+    seuil = r.uniform(-.4, .4)
+    spin = [[(champ(i, j) > seuil) != (r.random() < .05) for j in range(n)] for i in range(n)]
+    domaine, domaines, accents = {}, [], []
+    for i in range(n):
+        for j in range(n):
+            if not spin[i][j] or (i, j) in domaine:
+                continue
+            pile, cases_ = [(i, j)], []
+            domaine[(i, j)] = len(domaines)
+            while pile:
+                a, b = pile.pop()
+                cases_.append((a, b))
+                for da, db in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    q = (a + da, b + db)
+                    if 0 <= q[0] < n and 0 <= q[1] < n and spin[q[0]][q[1]] and q not in domaine:
+                        domaine[q] = len(domaines)
+                        pile.append(q)
+            domaines.append(cases_)
+    out = [points([(8 + (i + .5) * c, 8 + (j + .5) * c) for i in range(n) for j in range(n) if not spin[i][j]], c * .22, DOUX)]
+    for cases_ in sorted(domaines, key=len, reverse=True):
+        pleins = []
+        for a, b in cases_:
+            paroi = any(0 <= a + da < n and 0 <= b + db < n and not spin[a + da][b + db] for da, db in ((1, 0), (-1, 0), (0, 1), (0, -1)))
+            (accents if paroi and r.random() < .22 else pleins).append((8 + a * c + c * .1, 8 + b * c + c * .1))
+        if pleins:
+            out.append(f'<path d="{carres(pleins, c * .8)}" fill="{ENCRE}"/>')
+    return out + ([f'<path d="{carres(accents, c * .8)}" fill="{ACC}"/>'] if accents else [])
+
+
+def galaxie(r, d):
+    """Spirale de points : bras logarithmiques, bulbe dense, quelques étoiles à l'accent, vue inclinée : astrophysique,
+    astronomie, galaxies, étoiles."""
+    bras, pas_ = r.choice((2, 2, 3, 4)), r.uniform(.22, .34)
+    incl, rot = r.uniform(.62, 1), r.uniform(0, math.pi)
+    pts = defaultdict(list)
+    for _ in range(2200):
+        if r.random() < .22:
+            rr, a = abs(r.gauss(0, 12)), r.uniform(0, 2 * math.pi)
+            t = 2.6
+        else:
+            u = r.random() ** .8
+            rr = 8 + 88 * u
+            a = 2 * math.pi * r.randrange(bras) / bras + math.log(rr / 8) / math.tan(pas_) + r.gauss(0, .2 + .25 * u)
+            t = 2 if u < .5 else 1.5
+        x, y = rr * math.cos(a), rr * math.sin(a) * incl
+        x, y = 100 + x * math.cos(rot) - y * math.sin(rot), 100 + x * math.sin(rot) + y * math.cos(rot)
+        if 8 < x < 192 and 8 < y < 192:
+            pts[(ACC if r.random() < .025 else ENCRE, t)].append((x, y))
+    out = [points(p, t * (1.9 if c == ACC else 1), c) for (c, t), p in sorted(pts.items(), key=lambda k: k[0][0] == ACC)]
+    return out + [points([(100, 100)], 9, ENCRE)]
+
+
+def cosmique(r, d):
+    """Toile de filaments : des nœuds denses reliés à leurs voisins par des traînées de points, les plus gros nœuds à
+    l'accent, un semis épars dans les vides : cosmologie, grandes structures, univers, matière noire."""
+    noeuds = []
+    for _ in range(400):
+        if len(noeuds) >= r.randint(18, 26):
+            break
+        p = (r.uniform(14, 186), r.uniform(14, 186))
+        if all(math.dist(p, q) > 26 for q in noeuds):
+            noeuds.append(p)
+    aretes = set()
+    for i, p in enumerate(noeuds):
+        proches = sorted(range(len(noeuds)), key=lambda j: math.dist(p, noeuds[j]))[1:r.randint(3, 4)]
+        aretes |= {tuple(sorted((i, j))) for j in proches}
+    degre = Counter(k for a in aretes for k in a)
+    fil, amas, acc = [], [], []
+    for i, j in aretes:
+        (ax, ay), (bx, by) = noeuds[i], noeuds[j]
+        for _ in range(int(math.dist(noeuds[i], noeuds[j]) * .9)):
+            t = r.random()
+            fil.append((ax + (bx - ax) * t + r.gauss(0, 2.4), ay + (by - ay) * t + r.gauss(0, 2.4)))
+    gros = {k for k, _ in degre.most_common(3)}
+    for k, (x, y) in enumerate(noeuds):
+        cible = acc if k in gros else amas
+        for _ in range(10 + 6 * degre[k]):
+            cible.append((x + r.gauss(0, 3.4), y + r.gauss(0, 3.4)))
+    vide = [(r.uniform(8, 192), r.uniform(8, 192)) for _ in range(140)]
+    garde = lambda ps: [p for p in ps if 8 < p[0] < 192 and 8 < p[1] < 192]
+    return [points(garde(vide), 1.1, DOUX), points(garde(fil), 1.5, ENCRE), points(garde(amas), 2.2, ENCRE), points(garde(acc), 2.6, ACC)]
+
+
+# sciences de la Terre et climat
+
+def plissement(r, d):
+    """Couches plissées en bandes alternées (pleines, en trame, vides), une couche à l'accent, rejetées par une faille
+    oblique : géologie, stratigraphie, tectonique, sédiments."""
+    k = r.randint(11, 16)
+    ep = 184 / k
+    lam, amp, phi = r.uniform(110, 220), r.uniform(10, 26), r.uniform(0, 6.3)
+    xf, pente, rejet = r.uniform(70, 130), r.uniform(-.5, .5), r.uniform(.6, 1.6) * ep
+    ka = r.randrange(2, k - 2)
+    pli = lambda x, i: 8 + i * ep + amp * math.sin(2 * math.pi * x / lam + phi) * (.5 + .5 * math.sin(math.pi * i / k))
+    out, trame = [], []
+    for i in range(-2, k + 2):
+        sorte = ACC if i == ka else (ENCRE if i % 3 == 0 else DOUX if i % 3 == 1 else None)
+        if sorte is None:
+            continue
+        for cote in (0, 1):
+            ym = 8 + (i + .5) * ep
+            xc = xf + pente * (ym - 100)
+            xa, xb = (8, xc) if cote == 0 else (xc, 192)
+            dec = rejet if cote else 0
+            xs = [xa + (xb - xa) * q / 30 for q in range(31)]
+            haut_ = [(x, pli(x, i) + dec) for x in xs]
+            bas_ = [(x, pli(x, i + 1) + dec - ep * .12) for x in xs[::-1]]
+            poly = [(x, min(192.0, max(8.0, y))) for x, y in haut_ + bas_]
+            if sorte == DOUX:
+                trame += [p for p in semis_dans(lambda x, y: xa < x < xb and pli(x, i) + dec < y < pli(x, i + 1) + dec - ep * .12, 3.6, xa, 8, xb, 192)]
+            else:
+                out.append(plein(poly, sorte))
+    xa_, xb_ = xf + pente * (8 - 100), xf + pente * (192 - 100)
+    return [points(trame, 1.5, ENCRE)] + out + [trait([(xa_, 8), (xb_, 192)], FOND, 4), trait([(xa_, 8), (xb_, 192)], ENCRE, 1.4)]
+
+
+def sismogramme(r, d):
+    """Traces superposées, calmes puis secouées par deux arrivées dont les temps s'alignent sur une hyperbole ; une
+    trace à l'accent : sismologie, séismes, ondes sismiques, géophysique."""
+    k = r.randint(13, 19)
+    pas = 176 / k
+    t0, v, x0 = r.uniform(20, 46), r.uniform(1.4, 2.4), r.uniform(20, 60)
+    ka, out = r.randrange(k), []
+    for i in range(k):
+        y0 = 14 + i * pas
+        dist = math.hypot(x0, (i - k / 2) * 9)
+        tp, ts = t0 + dist / v, t0 + dist / v * 1.7
+        pts = []
+        for s in range(0, 231):
+            x = 8 + s * .8
+            bruit = r.gauss(0, .35)
+            onde = 0.0
+            for ta, a, f in ((tp, .5, .9), (ts, 1, .55)):
+                if x > ta:
+                    onde += a * math.exp(-(x - ta) / 14) * math.sin((x - ta) * f) * (1 - math.exp(-(x - ta) / 1.5))
+            pts.append((x, y0 - (bruit + onde * pas * .9)))
+        out.append(trait(pts, ACC if i == ka else ENCRE, 1.5 if i == ka else .8))
+    return out
+
+
+def gyres(r, d):
+    """Cellules de circulation côte à côte, tournant en sens contraires : lignes de courant fermées en tirets, le cœur
+    d'une cellule à l'accent : océanographie, courants marins, circulation, tourbillons."""
+    a, b = r.choice(((2, 1), (2, 2), (3, 2), (1, 2), (3, 1)))
+    ph, amp = r.uniform(0, 6.3), r.uniform(.15, .35)
+    psi = lambda x, y: (math.sin(a * math.pi * (x - 8) / 184) * math.sin(b * math.pi * (y - 8) / 184)
+                        + amp * math.sin(math.pi * (x - 8) / 92 + ph) * math.sin(math.pi * (y - 8) / 184))
+    niveaux = [s_ * f for s_ in (-1, 1) for f in (.1, .25, .4, .55, .7, .85)]
+    lignes = lignes_de_niveau(psi, niveaux, 64)
+    ca = r.choice((-.85, .85))
+    out = []
+    for c, ls in lignes.items():
+        acc = c == ca
+        for l_ in ls:
+            if len(l_) > 3:
+                out.append(trait(l_, ACC if acc else ENCRE, 2.4 if acc else 1.2, "" if acc else ' stroke-dasharray="5 3.4"'))
+    return out
+
+
+def isobares(r, d):
+    """Lignes de niveau serrées d'un champ à plusieurs creux et bosses ; les plus serrées autour du creux le plus
+    profond à l'accent, les centres marqués : météorologie, pression, dépressions, anticyclones, vent."""
+    k = r.randint(4, 7)
+    centres = [(r.uniform(-10, 210), r.uniform(-10, 210), r.choice((-1, 1)) * r.uniform(.6, 1.3), r.uniform(28, 60)) for _ in range(k)]
+    gx, gy = r.uniform(-.004, .004), r.uniform(-.004, .004)
+    f = lambda x, y: gx * x + gy * y + sum(s * math.exp(-((x - a) ** 2 + (y - b) ** 2) / (2 * w * w)) for a, b, s, w in centres)
+    creux = min(centres, key=lambda c: c[2])
+    lo, hi = min(c[2] for c in centres) - .3, max(c[2] for c in centres) + .3
+    niveaux = [lo + (hi - lo) * q / 22 for q in range(1, 22)]
+    lignes = lignes_de_niveau(f, niveaux)
+    out = []
+    for c, ls in lignes.items():
+        for l_ in ls:
+            if len(l_) < 3:
+                continue
+            pres = min(math.dist(p, creux[:2]) for p in l_[::3])
+            acc = c < creux[2] * .45 and pres < 70
+            out.append(trait(l_, ACC if acc else ENCRE, 1.8 if acc else 1))
+    marques_ = [(a, b) for a, b, s, w in centres if 14 < a < 186 and 14 < b < 186]
+    return out + [disque(a, b, 3.4, FOND, ENCRE, 1.4) for a, b in marques_]
+
+
+def rechauffement(r, d):
+    """Bandes verticales d'une série qui se réchauffe : froides à l'encre, tièdes vides, chaudes à l'accent, la moitié
+    ou toute la largeur selon l'écart : climat, réchauffement climatique, températures, anomalies."""
+    k = r.choice((48, 60, 72))
+    l = 184 / k
+    serie, x_ = [], 0.0
+    pente, ar = r.uniform(.8, 1.6), r.uniform(.4, .7)
+    for i in range(k):
+        x_ = ar * x_ + r.gauss(0, .55)
+        serie.append(pente * (i / k) ** 2.2 * 2 - .5 + x_)
+    q = sorted(serie)
+    seuils = [q[int(k * f)] for f in (.15, .35, .62, .82)]
+    froid = "var(--m1, currentColor)"
+    pleins = {froid: [], ACC: []}
+    for i, v in enumerate(serie):
+        x = 8 + i * l
+        if v < seuils[0]:
+            pleins[froid].append(f"M{n(x)} 8h{n(l)}V192h{n(-l)}Z")
+        elif v < seuils[1]:
+            pleins[froid].append(f"M{n(x + l / 4)} 8h{n(l / 2)}V192h{n(-l / 2)}Z")
+        elif v < seuils[2]:
+            continue
+        elif v < seuils[3]:
+            pleins[ACC].append(f"M{n(x + l / 4)} 8h{n(l / 2)}V192h{n(-l / 2)}Z")
+        else:
+            pleins[ACC].append(f"M{n(x)} 8h{n(l)}V192h{n(-l)}Z")
+    return [f'<path d="{"".join(v)}" fill="{c}"/>' for c, v in pleins.items() if v]
+
+
+# mathématiques
+
+def isoclines(r, d):
+    """Champ de pentes en petits tirets et quelques courbes intégrales qui le suivent, une à l'accent : équations
+    différentielles, analyse, intégration."""
+    choix = r.randrange(4)
+    a = r.uniform(.6, 1.4)
+    fs = (lambda x, y: math.sin(a * x) - .6 * y, lambda x, y: x * x - y * a, lambda x, y: math.sin(x * y * a * .6),
+          lambda x, y: y * (1 - y * .45) - .4 * math.cos(a * x * 1.5))
+    f = fs[choix]
+    U = lambda px: (px - 100) / 46
+    P = lambda u: 100 + 46 * u
+    m, out = r.choice((14, 16, 18)), []
+    tirets = []
+    for i in range(m):
+        for j in range(m):
+            x, y = 8 + 184 * (i + .5) / m, 8 + 184 * (j + .5) / m
+            s = f(U(x), -U(y))
+            ang = math.atan(s)
+            dx, dy = 184 / m * .34 * math.cos(ang), -184 / m * .34 * math.sin(ang)
+            tirets.append(f"M{n(x - dx)} {n(y - dy)}L{n(x + dx)} {n(y + dy)}")
+    out.append(f'<path d="{"".join(tirets)}" stroke="{DOUX}" stroke-width="1.4"/>')
+    k = r.randint(4, 7)
+    for q in range(k):
+        x, y = -2, -1.8 + 3.6 * (q + .5) / k
+        pts = [(P(x), P(-y))]
+        h = .02
+        for _ in range(240):
+            k1 = f(x, y)
+            k2 = f(x + h / 2, y + h * k1 / 2)
+            k3 = f(x + h / 2, y + h * k2 / 2)
+            k4 = f(x + h, y + h * k3)
+            x, y = x + h, y + h * (k1 + 2 * k2 + 2 * k3 + k4) / 6
+            if abs(y) > 2.2:
+                break
+            pts.append((P(x), P(-y)))
+        out.append(f'<path d="{morceaux(pts)}" stroke="{ACC if q == k // 2 else ENCRE}" stroke-width="{2.4 if q == k // 2 else 1.4}"/>')
+    return out
+
+
+def attracteur(r, d):
+    """Nuage d'un attracteur étrange (de Jong ou Clifford), points de plus en plus gros là où l'orbite repasse, les plus
+    denses à l'accent : systèmes dynamiques, chaos, itérations."""
+    jeux = (("j", 1.4, -2.3, 2.4, -2.1), ("j", 2.01, -2.53, 1.61, -.33), ("j", -2.7, -.09, -.86, -2.2), ("j", -.827, -1.637, 1.659, -.943),
+            ("c", -1.4, 1.6, 1, .7), ("c", 1.7, 1.7, .06, 1.2), ("c", 1.5, -1.8, 1.6, .9), ("c", -1.7, 1.3, -.1, -1.2))
+    sorte, a, b, c, e = r.choice(jeux)
+    a, b = a + r.uniform(-.03, .03), b + r.uniform(-.03, .03)
+    x = y = .1
+    g, m = Counter(), 64
+    pts = []
+    for i in range(30000):
+        if sorte == "j":
+            x, y = math.sin(a * y) - math.cos(b * x), math.sin(c * x) - math.cos(e * y)
+        else:
+            x, y = math.sin(a * y) + c * math.cos(a * x), math.sin(b * x) + e * math.cos(b * y)
+        if i > 100:
+            pts.append((x, y))
+    xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    s = 176 / max(x1 - x0, y1 - y0)
+    ox, oy = 100 - s * (x0 + x1) / 2, 100 - s * (y0 + y1) / 2
+    for px, py in pts:
+        g[(int((px * s + ox - 8) / 184 * m), int((py * s + oy - 8) / 184 * m))] += 1
+    haut = max(g.values())
+    classes = defaultdict(list)
+    for (i, j), k in g.items():
+        t = math.log(1 + k) / math.log(1 + haut)
+        diam = round(.8 + 2.8 * t, 1)
+        classes[(ACC if t > .82 else ENCRE, diam)].append((8 + (i + .5) * 184 / m, 8 + (j + .5) * 184 / m))
+    return [points(p, t, col) for (col, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
+
+
+def modulo(r, d):
+    """Table de multiplication sur un cercle : chaque point relié à son multiple modulo n, les cordes dessinant une
+    enveloppe (cardioïde, néphroïde…), une famille de cordes à l'accent : algèbre, arithmétique modulaire, groupes."""
+    n_ = r.choice((120, 144, 160, 180))
+    k = r.choice((2, 3, 4, 5, 7, 9, 34, 51, 61))
+    R = 86
+    P = lambda i: (100 + R * math.cos(2 * math.pi * i / n_ - math.pi / 2), 100 + R * math.sin(2 * math.pi * i / n_ - math.pi / 2))
+    pas_acc = r.choice((6, 8, 10, 12))
+    cordes, accents = [], []
+    for i in range(n_):
+        a, b = P(i), P(i * k % n_)
+        (accents if i % pas_acc == 0 else cordes).append(f"M{n(a[0])} {n(a[1])}L{n(b[0])} {n(b[1])}")
+    return [cercle(100, 100, R, ENCRE, 1.2), f'<path d="{"".join(cordes)}" stroke="{ENCRE}" stroke-width="0.55"/>',
+            f'<path d="{"".join(accents)}" stroke="{ACC}" stroke-width="1.3"/>', points([P(i) for i in range(0, n_, 2)], 1.8, ENCRE)]
+
+
+def galton(r, d):
+    """Planche de Galton : clous en quinconce, billes empilées en cloche dans les cases, le chemin d'une bille et
+    sa case à l'accent : probabilités, loi binomiale, hasard, statistique."""
+    rangs = r.randint(9, 12)
+    pas = 150 / (rangs + 1)
+    top, haut_clous = 14, rangs * pas * .52
+    clous = []
+    for i in range(rangs):
+        for j in range(i + 1):
+            clous.append((100 + (j - i / 2) * pas, top + 10 + i * haut_clous / rangs))
+    yb = top + 10 + haut_clous + 6
+    billes = Counter()
+    chemin_, case_a = None, None
+    for b in range(r.randint(160, 260)):
+        pos, chemin = 0, [(100, top)]
+        for i in range(rangs):
+            pos += r.random() < .5
+            chemin.append((100 + (pos - (i + 1) / 2) * pas, top + 10 + (i + .5) * haut_clous / rangs))
+        billes[pos] += 1
+        if b == 0:
+            chemin_, case_a = chemin, pos
+    d_b = min(5.2, pas * .42, (190 - yb - 4) / math.ceil(max(billes.values()) / 2) / 1.05)
+    tas, acc = [], []
+    for pos, nb in billes.items():
+        x = 100 + (pos - rangs / 2) * pas
+        for q in range(nb):
+            col, lig = q % 2, q // 2
+            p = (x + (col - .5) * d_b * 1.05, 190 - lig * d_b * 1.05)
+            (acc if pos == case_a and q == nb - 1 else tas).append(p)
+    cloisons = "".join(f"M{n(100 + (p_ - rangs / 2 - .5) * pas)} {n(yb)}V192" for p_ in range(rangs + 2))
+    return [points(clous, 2.4, ENCRE), f'<path d="{cloisons}" stroke="{DOUX}" stroke-width="0.9"/>',
+            trait(chemin_, ACC, 1.6), points(tas, d_b, ENCRE), points(acc, d_b * 1.2, ACC)]
+
+
+def entrelacs(r, d):
+    """Nœud torique en ruban épais : le brin repasse dessus et dessous, les passages hauts à l'accent : topologie,
+    nœuds, géométrie, invariants."""
+    p, q = r.choice(((2, 3), (2, 5), (3, 4), (3, 5), (2, 7), (3, 7), (4, 5)))
+    R, rho = r.uniform(50, 58), r.uniform(22, 30)
+    rot = r.uniform(0, math.pi)
+    seg = []
+    N = 720
+    prec = None
+    for i in range(N + 1):
+        t = 2 * math.pi * i / N
+        rr = R + rho * math.cos(q * t)
+        x, y, z = rr * math.cos(p * t), rr * math.sin(p * t), math.sin(q * t)
+        x, y = 100 + x * math.cos(rot) - y * math.sin(rot), 100 + x * math.sin(rot) + y * math.cos(rot)
+        if prec:
+            seg.append((prec[2] + z, prec[:2], (x, y)))
+        prec = (x, y, z)
+    couches = defaultdict(list)
+    for z, a, b in seg:
+        couches[min(9, int((z + 2) / 4 * 10))].append(f"M{n(a[0])} {n(a[1])}L{n(b[0])} {n(b[1])}")
+    out = []
+    for k in sorted(couches):
+        chemin = "".join(couches[k])
+        out += [f'<path d="{chemin}" stroke="{FOND}" stroke-width="9" stroke-linecap="butt"/>',
+                f'<path d="{chemin}" stroke="{ACC if k >= 8 else ENCRE}" stroke-width="4"/>']
+    return out
+
+
+def ulam(r, d):
+    """Spirale d'Ulam : les entiers rangés en spirale carrée (semis clair), les nombres premiers en points ; ceux du
+    polynôme d'Euler n² + n + 41 forment une diagonale à l'accent : théorie des nombres, nombres premiers."""
+    m = r.choice((41, 45, 49, 53))
+    c = 184 / m
+    limite = 41 + m * m + 4
+    crible = bytearray([1]) * (limite + 1)
+    crible[0] = crible[1] = 0
+    for i in range(2, int(limite ** .5) + 1):
+        if crible[i]:
+            crible[i * i::i] = bytearray(len(crible[i * i::i]))
+    euler = {q * q + q + 41 for q in range(0, 200)}
+    x = y = m // 2
+    dx, dy, longueur, k, tour = 1, 0, 1, 41, 0
+    prem, acc, tous = [], [], []
+    pos = lambda i, j: (8 + (i + .5) * c, 8 + (j + .5) * c)
+    while 0 <= x < m and 0 <= y < m:
+        for _ in range(longueur):
+            if 0 <= x < m and 0 <= y < m:
+                p = pos(x, y)
+                (acc if k in euler and crible[k] else prem if crible[k] else tous).append(p)
+            x, y, k = x + dx, y + dy, k + 1
+        dx, dy = -dy, dx
+        tour += 1
+        if tour % 2 == 0:
+            longueur += 1
+    return [points(tous, c * .2, DOUX), points(prem, c * .62, ENCRE), points(acc, c * .8, ACC)]
+
+
+# chimie générale
+
+def raies(r, d):
+    """Bandes de raies : chaque bande une série de traits qui se resserrent vers une limite, d'intensités diverses,
+    quelques raies à l'accent : spectroscopie, spectres, atomes, émission et absorption."""
+    k = r.randint(6, 10)
+    h = 176 / k
+    out = []
+    for j in range(k):
+        y0 = 12 + j * h
+        lim = r.uniform(120, 186)
+        C = r.uniform(70, 150)
+        xs = [(lim - C / (q * q) * 4, r.uniform(.3, 1)) for q in range(2, 18)]
+        xs += [(r.uniform(10, 190), r.uniform(.15, .6)) for _ in range(r.randint(2, 6))]
+        tr = {ENCRE: [], ACC: []}
+        for x, i in xs:
+            if 9 < x < 191:
+                w = .5 + 2.4 * i
+                tr[ACC if r.random() < .06 else ENCRE].append((x, w))
+        for col, l_ in tr.items():
+            for x, w in l_:
+                out.append(f'<path d="M{n(x)} {n(y0 + h * .12)}V{n(y0 + h * .88)}" stroke="{col}" stroke-width="{n(w, 2)}" stroke-linecap="butt"/>')
+    return out
+
+
+def electrode(r, d):
+    """Une paroi épaisse et, contre elle, une couche serrée de points d'accent ; plus loin, les deux couleurs se
+    mêlent à mesure qu'on s'en éloigne : électrochimie, double couche, électrodes, ions, piles."""
+    lam = r.uniform(18, 40)
+    gauche = r.random() < .7
+    classes = defaultdict(list)
+    for x, y in semis_dans(lambda x, y: True, 6.2, 24, 8, 192, 192):
+        x, y = x + r.uniform(-1.6, 1.6), y + r.uniform(-1.6, 1.6)
+        dist = x - 22
+        p = .5 + .48 * math.exp(-dist / lam)
+        dens = 1 if r.random() < .7 + .3 * math.exp(-dist / lam) else 0
+        if not dens:
+            continue
+        col = ACC if r.random() < p else ENCRE
+        classes[(col, round(1.8 + 1.6 * math.exp(-dist / lam), 1))].append((x, y))
+    out = [points(p, t, c) for (c, t), p in classes.items()]
+    out.append(boite(8, 8, 9, 184, "var(--m1, currentColor)", None))
+    out.append(points([(21.5, y) for y in range(12, 192, 5)], 3.6, ACC))
+    if not gauche:
+        out = ['<g transform="translate(200 0) scale(-1 1)">'] + out + ["</g>"]
+    return out
+
+
+def orbitales(r, d):
+    """Nuage de points tiré d'une densité orbitale (lobes, nœuds, anneaux), le signe de la fonction donnant la
+    couleur : chimie quantique, orbitales, liaisons, mécanique quantique."""
+    choix = r.randrange(5)
+    a0 = r.uniform(8, 11)
+
+    def psi(x, y):
+        rr = math.hypot(x, y) / a0 + 1e-9
+        c, s = x / (rr * a0), y / (rr * a0)
+        if choix == 0:
+            return rr * c * math.exp(-rr / 2)
+        if choix == 1:
+            return rr * rr * 2 * s * c * math.exp(-rr / 3)
+        if choix == 2:
+            return rr * rr * (3 * s * s - 1) * math.exp(-rr / 3)
+        if choix == 3:
+            return (6 - rr) * rr * c * math.exp(-rr / 3)
+        return (27 - 18 * rr + 2 * rr * rr) * math.exp(-rr / 3) / 10
+
+    rot = r.uniform(0, math.pi)
+    echant = [psi(r.uniform(-92, 92), r.uniform(-92, 92)) ** 2 for _ in range(400)]
+    pmax = max(echant) * 1.3
+    plus, moins = [], []
+    while len(plus) + len(moins) < 2400:
+        x, y = r.uniform(-92, 92), r.uniform(-92, 92)
+        v = psi(x, y)
+        if r.random() * pmax < v * v:
+            X = 100 + x * math.cos(rot) - y * math.sin(rot)
+            Y = 100 + x * math.sin(rot) + y * math.cos(rot)
+            if 8 < X < 192 and 8 < Y < 192:
+                (plus if v > 0 else moins).append((X, Y))
+    return [points(plus, 1.8, ENCRE), points(moins, 1.8, ACC), points([(100, 100)], 4, ENCRE)]
+
+
+def chromato(r, d):
+    """Pistes superposées de pics étroits, dont certains reviennent au même temps d'une piste à l'autre ; ceux d'un
+    même composé pleins d'accent : chimie analytique, chromatographie, séparation, dosage."""
+    k = r.randint(6, 9)
+    pas = 160 / k
+    composes = [(r.uniform(.06, .94), r.uniform(.008, .02)) for _ in range(r.randint(7, 11))]
+    ca = r.randrange(len(composes))
+    X = lambda t: 8 + 184 * t
+    out = []
+    for j in range(k):
+        y0 = 30 + (j + 1) * pas
+        presents = [(t, w, r.uniform(.25, 1) if r.random() < .75 else 0) for t, w in composes]
+        f = lambda t: sum(h * math.exp(-((t - t0) / w) ** 2) for t0, w, h in presents)
+        ts = [q / 160 for q in range(161)]
+        pts = [(X(t), y0 - pas * 1.6 * f(t)) for t in ts]
+        out += [plein([(X(0), y0)] + pts + [(X(1), y0)], FOND), trait(pts, ENCRE, 1.2)]
+        t0, w, h = composes[ca][0], composes[ca][1], presents[ca][2]
+        if h:
+            pic = [(X(t), y0 - pas * 1.6 * f(t)) for t in ts if abs(t - t0) < 2.4 * w]
+            out.append(plein([(pic[0][0], y0)] + pic + [(pic[-1][0], y0)], ACC))
+    return out
+
+
+# ---------- sciences exactes, suite : outils ----------
+
+def champ_lisse(r, k=7, fmin=.012, fmax=.04):
+    """Fonction douce f(x, y) à peu près dans [-1, 1] : somme de quelques ondes planes de fréquences tirées."""
+    modes = []
+    for _ in range(k):
+        f, a = r.uniform(fmin, fmax), r.uniform(0, 2 * math.pi)
+        modes.append((f * math.cos(a), f * math.sin(a), r.uniform(0, 2 * math.pi), r.uniform(.5, 1)))
+    norme = sum(m[3] for m in modes) * .55
+    return lambda x, y: sum(am * math.sin(fx * x + fy * y + ph) for fx, fy, ph, am in modes) / norme
+
+
+def coupe_poly(poly, a, b, c, etiquette):
+    """Le côté a·x + b·y ≤ c d'un polygone [(x, y, étiquette du côté qui part de ce sommet)]."""
+    out, m = [], len(poly)
+    for k in range(m):
+        x1, y1, l1 = poly[k]
+        x2, y2, _ = poly[(k + 1) % m]
+        d1, d2 = a * x1 + b * y1 - c, a * x2 + b * y2 - c
+        if d1 <= 0:
+            out.append((x1, y1, l1))
+            if d2 > 0:
+                t = d1 / (d1 - d2)
+                out.append((x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, etiquette))
+        elif d2 <= 0:
+            t = d1 / (d1 - d2)
+            out.append((x1 + (x2 - x1) * t, y1 + (y2 - y1) * t, l1))
+    return out
+
+
+def voronoi(sites, x0=8, y0=8, x1=192, y1=192):
+    """Cellules de Voronoï des sites dans le rectangle : [(polygone [(x, y)], voisins {indices})]."""
+    cellules = []
+    for i, (sx, sy) in enumerate(sites):
+        poly = [(x0, y0, None), (x1, y0, None), (x1, y1, None), (x0, y1, None)]
+        for j in sorted(range(len(sites)), key=lambda j: (sites[j][0] - sx) ** 2 + (sites[j][1] - sy) ** 2)[1:]:
+            tx, ty = sites[j]
+            dist = math.hypot(tx - sx, ty - sy)
+            if dist > 2 * max(math.hypot(px - sx, py - sy) for px, py, _ in poly) + 1:
+                break
+            poly = coupe_poly(poly, tx - sx, ty - sy, (tx * tx + ty * ty - sx * sx - sy * sy) / 2, j)
+            if len(poly) < 3:
+                break
+        cellules.append(([(x, y) for x, y, _ in poly], {l for _, _, l in poly if l is not None}))
+    return cellules
+
+
+def degrade_centre(cx, cy, rayon=130):
+    """Dégradé rayonnant centré là où le motif le veut, aux couleurs de la couverture (--g1 vers --g2 ; l'encre seule en
+    mono et sur l'aplat). Rend (élément <defs>, valeur pour stroke ou fill) ; le motif se déclare ("uni",) dans COULEUR."""
+    ident = f"dgc{int(cx * 10) % 100000}x{int(cy * 10) % 100000}r{int(rayon)}"
+    return (f'<defs><radialGradient id="{ident}" gradientUnits="userSpaceOnUse" cx="{n(cx)}" cy="{n(cy)}" r="{n(rayon)}">'
+            '<stop offset="0" style="stop-color:var(--g1, currentColor)"/><stop offset="1" style="stop-color:var(--g2, currentColor)"/>'
+            f'</radialGradient></defs>', f"url(#{ident})")
+
+
+def retrecit(poly, f):
+    cx, cy = sum(p[0] for p in poly) / len(poly), sum(p[1] for p in poly) / len(poly)
+    return [(cx + (x - cx) * f, cy + (y - cy) * f) for x, y in poly]
+
+
+# physique et astronomie (suite)
+
+def dipole(r, d):
+    """Lignes de champ qui jaillissent de charges et plongent dans d'autres, deux lignes et les charges positives à
+    l'accent : électromagnétisme, électrostatique, champ électrique, charges."""
+    k = r.choice((2, 2, 3, 4))
+    charges = []
+    for _ in range(300):
+        if len(charges) == k:
+            break
+        p = (r.uniform(48, 152), r.uniform(48, 152))
+        if all(math.dist(p, q[:2]) > 46 for q in charges):
+            charges.append((p[0], p[1], 1 if len(charges) % 2 == 0 else -1))
+
+    def champ(x, y):
+        ex = ey = 0.0
+        for cx, cy, q in charges:
+            dx, dy = x - cx, y - cy
+            r3 = (dx * dx + dy * dy) ** 1.5 + 1e-9
+            ex, ey = ex + q * dx / r3, ey + q * dy / r3
+        return ex, ey
+
+    lignes, m = [], r.randint(14, 22)
+    for cx, cy, q in charges:
+        if q < 0:
+            continue
+        for i in range(m):
+            a = 2 * math.pi * (i + .5) / m
+            x, y = cx + 4 * math.cos(a), cy + 4 * math.sin(a)
+            pts = [(x, y)]
+            for s in range(380):
+                ex, ey = champ(x, y)
+                nn = math.hypot(ex, ey) or 1
+                x, y = x + 1.6 * ex / nn, y + 1.6 * ey / nn
+                if s % 3 == 0:
+                    pts.append((x, y))
+                if not (0 < x < 200 and 0 < y < 200) or any(q2 < 0 and math.hypot(x - c2x, y - c2y) < 4 for c2x, c2y, q2 in charges):
+                    pts.append((x, y))
+                    break
+            lignes.append(pts)
+    acc = set(r.sample(range(len(lignes)), 2))
+    out = [f'<path d="{morceaux(l_)}" stroke="{ACC if i in acc else ENCRE}" stroke-width="{1.8 if i in acc else 1}"/>' for i, l_ in enumerate(lignes)]
+    return out + [disque(cx, cy, 5.4, ACC if q > 0 else FOND, None if q > 0 else ENCRE, 2) for cx, cy, q in charges]
+
+
+def limaille(r, d):
+    """Semis de tirets courts alignés sur le champ de deux pôles, comme de la limaille ; près des pôles, à l'accent :
+    magnétisme, champ magnétique, aimants, induction."""
+    a, l = r.uniform(0, math.pi), r.uniform(20, 36)
+    p1 = (100 + l * math.cos(a), 100 + l * math.sin(a))
+    p2 = (100 - l * math.cos(a), 100 - l * math.sin(a))
+
+    def champ(x, y):
+        bx = by = 0.0
+        for (cx, cy), q in ((p1, 1), (p2, -1)):
+            dx, dy = x - cx, y - cy
+            r3 = (dx * dx + dy * dy) ** 1.5 + 1e-9
+            bx, by = bx + q * dx / r3, by + q * dy / r3
+        return bx, by
+
+    traits = {ENCRE: [], ACC: []}
+    for x, y in semis_dans(lambda x, y: min(math.dist((x, y), p1), math.dist((x, y), p2)) > 7, 6.6, 8, 8, 192, 192):
+        x, y = x + r.uniform(-1.8, 1.8), y + r.uniform(-1.8, 1.8)
+        bx, by = champ(x, y)
+        nn = math.hypot(bx, by) or 1
+        ln = 2.6 + r.uniform(-.4, .6)
+        dx, dy = ln * bx / nn, ln * by / nn
+        pres = min(math.dist((x, y), p1), math.dist((x, y), p2)) < 22
+        traits[ACC if pres else ENCRE].append(f"M{n(x - dx)} {n(y - dy)}L{n(x + dx)} {n(y + dy)}")
+    return [f'<path d="{"".join(v)}" stroke="{c}" stroke-width="1.4"/>' for c, v in traits.items() if v]
+
+
+def kepler(r, d):
+    """Ellipses de foyer commun, l'une reprise en rosace par la précession, des points sur chaque orbite, le foyer
+    et une orbite à l'accent : mécanique céleste, orbites, gravitation, Kepler, systèmes planétaires."""
+    fx, fy = 100 + r.uniform(-16, 16), 100 + r.uniform(-16, 16)
+    k = r.randint(5, 8)
+    orbites = []
+    for i in range(k):
+        a_ = 14 + 82 * (i + .5) / k * r.uniform(.9, 1.1)
+        e = r.uniform(.05, .55)
+        om = r.uniform(0, 2 * math.pi)
+        orbites.append((a_, e, om))
+    ia, ir = r.randrange(k), r.randrange(k)
+
+    def courbe_(a_, e, om):
+        return [(fx + a_ * (1 - e * e) / (1 + e * math.cos(t - om)) * math.cos(t), fy + a_ * (1 - e * e) / (1 + e * math.cos(t - om)) * math.sin(t))
+                for t in (2 * math.pi * q / 90 for q in range(91))]
+
+    defs, teinte_ = degrade_centre(fx, fy, 140)
+    out = [defs]
+    a_, e, om = orbites[ir]
+    for q in range(1, r.randint(6, 10)):
+        out.append(f'<path d="{morceaux(courbe_(a_, e, om + q * .32))}" stroke="{DOUX}" stroke-width="0.7"/>')
+    planetes = []
+    for i, (a_, e, om) in enumerate(orbites):
+        out.append(f'<path d="{morceaux(courbe_(a_, e, om))}" stroke="{ACC if i == ia else teinte_}" stroke-width="{1.8 if i == ia else 1.1}"/>')
+        t = r.uniform(0, 2 * math.pi)
+        rr = a_ * (1 - e * e) / (1 + e * math.cos(t - om))
+        planetes.append((fx + rr * math.cos(t), fy + rr * math.sin(t)))
+    return out + [points([p for p in planetes if 8 < p[0] < 192 and 8 < p[1] < 192], 5, teinte_), points([(fx, fy)], 10, ACC)]
+
+
+def lissajous(r, d):
+    """Table de figures de Lissajous, les rapports de fréquences croissant en ligne et en colonne, une figure à
+    l'accent : oscillations, vibrations, résonance, signaux, mécanique ondulatoire."""
+    m = r.choice((3, 4, 4, 5))
+    s, dph = 184 / m, r.choice((math.pi / 2, math.pi / 4, math.pi / 3))
+    ia = (r.randrange(m), r.randrange(m))
+    out = []
+    for i in range(m):
+        for j in range(m):
+            a_, b_ = i + 1, j + 1
+            cx, cy, h = 8 + (i + .5) * s, 8 + (j + .5) * s, s * .4
+            pts = [(cx + h * math.sin(a_ * t + dph), cy + h * math.sin(b_ * t)) for t in (2 * math.pi * q / 150 for q in range(151))]
+            acc = (i, j) == ia
+            out.append(trait(pts, ACC if acc else ENCRE, 1.7 if acc else .9))
+    return out
+
+
+def chladni(r, d):
+    """Figure de Chladni : du sable rassemblé le long des lignes nodales d'une plaque qui vibre, quelques grains à
+    l'accent : acoustique, vibrations, modes propres, résonance, ondes stationnaires."""
+    a_, b_ = r.sample(range(1, 8), 2)
+    sg = r.choice((-1, 1))
+    f = lambda u, v: math.cos(a_ * math.pi * u) * math.cos(b_ * math.pi * v) + sg * math.cos(b_ * math.pi * u) * math.cos(a_ * math.pi * v)
+    grains = {ENCRE: [], ACC: []}
+    total = 0
+    for _ in range(26000):
+        if total >= 2400:
+            break
+        x, y = r.uniform(8, 192), r.uniform(8, 192)
+        v = f((x - 8) / 184, (y - 8) / 184)
+        if r.random() < math.exp(-(v / .09) ** 2):
+            grains[ACC if r.random() < .05 else ENCRE].append((x, y))
+            total += 1
+    return [points(grains[ENCRE], 1.7, ENCRE), points(grains[ACC], 2.4, ACC)]
+
+
+def collision(r, d):
+    """Traces en pointillés qui partent d'un même point : spirales qui se resserrent, droites en tirets, une trace à
+    l'accent : physique des particules, chambre à bulles, collisions, accélérateurs."""
+    vx, vy = 100 + r.uniform(-30, 30), 100 + r.uniform(-30, 30)
+    defs, teinte_ = degrade_centre(vx, vy, 150)
+    out = [defs]
+    k = r.randint(12, 18)
+    ka = r.randrange(k)
+    for i in range(k):
+        a = 2 * math.pi * (i + r.uniform(-.3, .3)) / k
+        neutre = r.random() < .2
+        courb = 0 if neutre else r.choice((-1, 1)) * r.uniform(.004, .03)
+        g = r.uniform(1.004, 1.02)
+        x, y, pts = vx, vy, [(vx, vy)]
+        for s in range(260):
+            a += courb
+            courb *= g
+            x, y = x + 2 * math.cos(a), y + 2 * math.sin(a)
+            if s % 2 == 0:
+                pts.append((x, y))
+            if not (6 < x < 194 and 6 < y < 194) or abs(courb) > .5:
+                break
+        acc = i == ka
+        extra = ' stroke-dasharray="5 4"' if neutre else ' stroke-dasharray="0 3.2"'
+        out.append(f'<path d="{morceaux(pts)}" stroke="{ACC if acc else teinte_}" stroke-width="{2.6 if acc else 1.9}"{extra}/>')
+    return out + [points([(vx, vy)], 6, ENCRE)]
+
+
+def brillouin(r, d):
+    """Zones de Brillouin : un semis de points dont la présence alterne d'une zone à la suivante autour d'une zone
+    centrale à l'accent : physique du solide, cristaux, bandes d'énergie, réseau réciproque."""
+    a_ = r.uniform(44, 60)
+    hexa = r.random() < .45
+    rot = r.uniform(0, math.pi / 2)
+    G = []
+    for i in range(-9, 10):
+        for j in range(-9, 10):
+            if i == j == 0:
+                continue
+            x, y = (a_ * (i + .5 * j), a_ * j * math.sqrt(3) / 2) if hexa else (a_ * i, a_ * j)
+            x, y = x * math.cos(rot) - y * math.sin(rot), x * math.sin(rot) + y * math.cos(rot)
+            if math.hypot(x, y) < 300:
+                G.append((x, y, x * x + y * y))
+    classes = defaultdict(list)
+    for px, py in semis_dans(lambda x, y: True, 3.4, 8, 8, 192, 192):
+        x, y = px - 100, py - 100
+        zone = 1 + sum(1 for gx, gy, g2 in G if g2 < 2 * (x * gx + y * gy))
+        if zone == 1:
+            classes[(ACC, 2.2)].append((px, py))
+        elif zone > 9:
+            continue
+        elif zone % 2 == 0:
+            classes[(ENCRE, 2.2)].append((px, py))
+        else:
+            classes[(DOUX, 1)].append((px, py))
+    return [points(p, t, c) for (c, t), p in classes.items()]
+
+
+def chirikov(r, d):
+    """Section de Poincaré de l'application standard : courbes invariantes, îlots et mer chaotique en points, quelques
+    orbites à l'accent : plasmas, accélérateurs, chaos hamiltonien, mécanique céleste."""
+    K = r.choice((.45, .6, .75, .9))
+    m, bins = 96, {}
+    nb = r.randint(36, 50)
+    acc = set(r.sample(range(nb), 4))
+    for o in range(nb):
+        th, p = r.uniform(0, 2 * math.pi), r.uniform(0, 2 * math.pi)
+        for _ in range(300):
+            p = (p + K * math.sin(th)) % (2 * math.pi)
+            th = (th + p) % (2 * math.pi)
+            cle = (int(th / (2 * math.pi) * m), int(p / (2 * math.pi) * m))
+            if cle not in bins or o in acc:
+                bins[cle] = o in acc
+    pts = {True: [], False: []}
+    for (i, j), a in bins.items():
+        pts[a].append((8 + (i + .5) * 184 / m, 8 + (j + .5) * 184 / m))
+    return [points(pts[False], 1.5, ENCRE), points(pts[True], 2.2, ACC)]
+
+
+def hertzsprung(r, d):
+    """Nuage d'étoiles en bande diagonale, un amas à part en haut et une poignée en bas, les plus chaudes à l'accent :
+    étoiles, astrophysique stellaire, évolution stellaire, diagramme de Hertzsprung-Russell."""
+    classes = defaultdict(list)
+    courbe_ = lambda s: (22 + 156 * s, 26 + 150 * (s + .18 * math.sin(math.pi * s * 1.4)) / 1.1)
+    for _ in range(r.randint(700, 950)):
+        s = r.random() ** .7
+        x, y = courbe_(s)
+        e = r.gauss(0, 4 + 5 * s)
+        x, y = x + e * .6, y - e
+        diam = round(4.6 - 3.2 * s + r.uniform(-.4, .4), 1)
+        classes[(ACC if s < .12 else ENCRE, max(1.2, diam))].append((x, y))
+    gx, gy = r.uniform(130, 165), r.uniform(48, 74)
+    for _ in range(r.randint(90, 140)):
+        classes[(ENCRE, 3)].append((gx + r.gauss(0, 13), gy + r.gauss(0, 9)))
+    for _ in range(r.randint(18, 30)):
+        classes[(ENCRE, 4.2)].append((r.uniform(40, 185), r.uniform(18, 32)))
+    for _ in range(r.randint(30, 60)):
+        classes[(ENCRE, 1.3)].append((r.gauss(62, 9), r.gauss(168, 6)))
+    garde = lambda ps: [p for p in ps if 8 < p[0] < 192 and 8 < p[1] < 192]
+    return [points(garde(p), t, c) for (c, t), p in sorted(classes.items(), key=lambda k: -k[0][1])]
+
+
+def circumpolaire(r, d):
+    """Arcs concentriques d'égale ouverture autour d'un pôle, d'épaisseurs diverses, quelques arcs et le pôle à
+    l'accent : astronomie, rotation de la Terre, ciel nocturne, observation."""
+    px, py = r.uniform(30, 170), r.uniform(20, 150)
+    ouverture = math.radians(r.uniform(28, 70))
+    defs, teinte_ = degrade_centre(px, py, 170)
+    out, k = [defs], r.randint(60, 95)
+    acc = set(r.sample(range(k), 3))
+    for i in range(k):
+        rr, a0 = r.uniform(6, 250), r.uniform(0, 2 * math.pi)
+        pts = [(px + rr * math.cos(a0 + ouverture * q / 18), py + rr * math.sin(a0 + ouverture * q / 18)) for q in range(19)]
+        chemin = morceaux(pts)
+        if chemin:
+            w = r.choice((.6, .8, 1.1, 1.5, 2.2))
+            out.append(f'<path d="{chemin}" stroke="{ACC if i in acc else teinte_}" stroke-width="{n(w + (.8 if i in acc else 0), 2)}"/>')
+    return out + [points([(px, py)], 5, ACC)] if 8 < px < 192 and 8 < py < 192 else out
+
+
+def lentille(r, d):
+    """Un réseau de points vu à travers une lentille : il s'ouvre en anneau, les points de l'anneau grossis et à
+    l'accent : lentille gravitationnelle, relativité générale, cosmologie, matière noire."""
+    cx, cy = 100 + r.uniform(-14, 14), 100 + r.uniform(-14, 14)
+    te = r.uniform(30, 46)
+    defs, teinte_ = degrade_centre(cx, cy, 140)
+    classes = defaultdict(list)
+    for bx, by in semis_dans(lambda x, y: True, r.choice((6.4, 7.2)), -40, -40, 240, 240, decale=False):
+        bx, by = bx - cx + r.uniform(-.8, .8), by - cy + r.uniform(-.8, .8)
+        b = math.hypot(bx, by) or 1e-6
+        for sg in (1, -1):
+            th = (b + sg * math.sqrt(b * b + 4 * te * te)) / 2
+            x, y = cx + bx / b * th, cy + by / b * th
+            if not (8 < x < 192 and 8 < y < 192) or abs(th) < te * .62:
+                continue
+            mu = abs(1 / (1 - (te / th) ** 4)) if abs(th) != te else 9
+            diam = round(min(4.6, 1.1 + .9 * math.sqrt(mu)), 1)
+            classes[(ACC if abs(abs(th) - te) < 5 else teinte_, diam)].append((x, y))
+    return [defs] + [points(p, t, c) for (c, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
+
+
+def paquets(r, d):
+    """Rangées de traits calmes qu'un paquet d'ondes soulève, de plus en plus large et décalé d'une rangée à
+    l'autre ; une rangée à l'accent : mécanique quantique, paquets d'ondes, dispersion, fonction d'onde."""
+    k = r.randint(11, 16)
+    pas = 176 / k
+    k0, ka = r.uniform(.24, .42), r.randrange(k)
+    x0, v = r.uniform(36, 70), r.uniform(5, 9)
+    out = []
+    for j in range(k):
+        y0 = 14 + (j + .5) * pas
+        xc, sig = x0 + v * j, 8 + 3 * j
+        pts = [(x, y0 - pas * 1.05 * math.exp(-((x - xc) / sig) ** 2 / 2) * math.cos(k0 * (x - xc))) for x in (8 + 1.6 * q for q in range(116))]
+        out.append(trait(pts, ACC if j == ka else ENCRE, 2.2 if j == ka else 1.1))
+    return out
+
+def abrikosov(r, d):
+    """Réseau triangulaire de petits tourbillons à anneaux, quelques défauts, un tourbillon plein d'accent :
+    supraconductivité, vortex, superfluides, matière condensée."""
+    a_ = r.uniform(21, 30)
+    rot = r.uniform(0, math.pi / 3)
+    sites = []
+    for i in range(-10, 11):
+        for j in range(-10, 11):
+            x, y = a_ * (i + .5 * j), a_ * j * math.sqrt(3) / 2
+            x, y = 100 + x * math.cos(rot) - y * math.sin(rot) + r.gauss(0, 1), 100 + x * math.sin(rot) + y * math.cos(rot) + r.gauss(0, 1)
+            if 8 + a_ * .4 < x < 192 - a_ * .4 and 8 + a_ * .4 < y < 192 - a_ * .4:
+                sites.append((x, y))
+    for _ in range(r.randint(1, 3)):
+        if sites:
+            sites.pop(r.randrange(len(sites)))
+    ia = r.randrange(len(sites))
+    out = []
+    for i, (x, y) in enumerate(sites):
+        if i == ia:
+            out.append(disque(x, y, a_ * .4, ACC))
+        out += [cercle(x, y, a_ * .38, ENCRE, .9), cercle(x, y, a_ * .23, DOUX, .9)]
+    return out + [points(sites, 2.6, ENCRE)]
+
+
+# sciences de la Terre et climat (suite)
+
+def hachures(r, d):
+    """Relief rendu par des hachures : traits courts dans le sens de la pente, d'autant plus longs et épais qu'elle est
+    raide, ceux qui font face à la lumière à l'accent : cartographie, géomorphologie, relief, terrain."""
+    h = champ_lisse(r, 6, .01, .03)
+    lum = r.uniform(0, 2 * math.pi)
+    traits = defaultdict(list)
+    for x, y in semis_dans(lambda x, y: True, 5, 8, 8, 192, 192):
+        x, y = x + r.uniform(-1.2, 1.2), y + r.uniform(-1.2, 1.2)
+        gx, gy = (h(x + .8, y) - h(x - .8, y)) / 1.6, (h(x, y + .8) - h(x, y - .8)) / 1.6
+        g = math.hypot(gx, gy)
+        pente = min(1.0, g / .042)
+        if pente < .2:
+            continue
+        ux, uy = gx / g, gy / g
+        l = 1.2 + 3.2 * pente
+        w = (.8, 1.3, 1.9)[min(2, int(pente * 3))]
+        cle = (ACC if ux * math.cos(lum) + uy * math.sin(lum) > .6 else ENCRE, w)
+        traits[cle].append(f"M{n(x - ux * l)} {n(y - uy * l)}L{n(x + ux * l)} {n(y + uy * l)}")
+    return [f'<path d="{"".join(v)}" stroke="{c}" stroke-width="{w}"/>' for (c, w), v in traits.items()]
+
+
+def orgues(r, d):
+    """Prismes vus d'en haut : cellules presque hexagonales, pleines, en trame ou vides, quelques-unes à l'accent :
+    volcanologie, basaltes, roches magmatiques, laves."""
+    a = r.uniform(20, 26)
+    sites = []
+    for i in range(-2, 14):
+        for j in range(-2, 14):
+            x, y = 4 + a * (i + .5 * (j % 2)) + r.gauss(0, 2.2), 4 + a * j * .866 + r.gauss(0, 2.2)
+            if -10 < x < 210 and -10 < y < 210:
+                sites.append((x, y))
+    out = []
+    for poly, _ in voronoi(sites):
+        if len(poly) < 3:
+            continue
+        q = r.random()
+        poly = retrecit(poly, .88)
+        if q < .05:
+            out.append(plein(poly, ACC))
+        elif q < .4:
+            out += [plein(poly, ENCRE), plein(retrecit(poly, .5), "none", f' stroke="{FOND}" stroke-width="0.9"')]
+        elif q < .72:
+            out.append(plein(poly, DOUX))
+        else:
+            out.append(plein(poly, "none", f' stroke="{ENCRE}" stroke-width="1.1"'))
+    return out
+
+
+def banquise(r, d):
+    """Plaques claires sur une eau sombre : cellules irrégulières qui se détachent, plus petites vers un bord,
+    quelques-unes à l'accent : glace de mer, régions polaires, cryosphère, glaciers."""
+    bord = r.choice(("haut", "bas", "gauche", "droite"))
+    sites = []
+    for _ in range(4000):
+        if len(sites) >= 110:
+            break
+        x, y = r.uniform(4, 196), r.uniform(4, 196)
+        t = {"haut": y, "bas": 200 - y, "gauche": x, "droite": 200 - x}[bord] / 200
+        if all(math.dist((x, y), q) > 7 + 22 * t for q in sites):
+            sites.append((x, y))
+    out = [boite(8, 8, 184, 184, "var(--m1, currentColor)", None)]
+    for poly, _ in voronoi(sites):
+        if len(poly) < 3:
+            continue
+        f = r.uniform(.68, .93)
+        out.append(plein(retrecit(poly, f), ACC if r.random() < .05 else FOND))
+    bris = [(r.uniform(9, 191), r.uniform(9, 191)) for _ in range(160)]
+    return out + [points(bris, 1.4, FOND)]
+
+
+def affluents(r, d):
+    """Réseau de rivières qui se ramifie depuis une embouchure, épaisseur selon l'ordre, le cours principal à
+    l'accent : hydrologie, bassins versants, rivières, érosion."""
+    traits = defaultdict(list)
+    prof_max = r.randint(7, 8)
+
+    def branche(x, y, a, w, prof, principal):
+        pts = [(x, y)]
+        for _ in range(int(r.randint(4, 7) * (1 + .5 * (prof_max - prof) / prof_max) * 1.4)):
+            a += r.gauss(0, .2)
+            x, y = x + 3.6 * math.cos(a), y + 3.6 * math.sin(a)
+            pts.append((x, y))
+            if not (8 < x < 192 and 8 < y < 192):
+                break
+        traits[(ACC if principal else ENCRE, round(w, 1))].append(trace(pts))
+        if prof < prof_max and 8 < x < 192 and 8 < y < 192:
+            ecart = r.uniform(.35, .75)
+            cote = r.choice((-1, 1))
+            branche(x, y, a + cote * ecart * r.uniform(.2, .6), w * .82, prof + 1, principal)
+            branche(x, y, a - cote * ecart, w * .62, prof + 1, False)
+
+    depart = r.choice(((100, 192, -math.pi / 2), (8, 100, 0), (100, 8, math.pi / 2), (192, 100, math.pi)))
+    branche(depart[0] + r.uniform(-20, 20) * (depart[1] != 100), depart[1] + r.uniform(-20, 20) * (depart[0] != 100), depart[2], 4.6, 0, True)
+    return [f'<path d="{"".join(v)}" stroke="{c}" stroke-width="{w}"/>' for (c, w), v in sorted(traits.items(), key=lambda k: -k[0][1])]
+
+
+def rossby(r, d):
+    """Anneaux qui ondulent autour d'un pôle, plus agités aux latitudes moyennes, l'anneau du courant-jet à
+    l'accent : circulation atmosphérique, courant-jet, ondes de Rossby, vortex polaire."""
+    cx, cy = 100 + r.uniform(-10, 10), 100 + r.uniform(-10, 10)
+    m, k = r.randint(4, 6), r.randint(8, 12)
+    ka = k // 2 + r.randint(-1, 1)
+    defs, teinte_ = degrade_centre(cx, cy, 120)
+    out = [defs]
+    for i in range(k):
+        R = 10 + i * 92 / k
+        amp = 2 + 11 * math.sin(math.pi * (i + .5) / k) ** 2
+        ph, ph2 = .35 * i + r.uniform(-.2, .2), r.uniform(0, 6.3)
+        pts = [(cx + (R + amp * math.sin(m * t + ph) + amp * .3 * math.sin(2 * m * t + ph2)) * math.cos(t),
+                cy + (R + amp * math.sin(m * t + ph) + amp * .3 * math.sin(2 * m * t + ph2)) * math.sin(t)) for t in (2 * math.pi * q / 180 for q in range(181))]
+        acc = i == ka
+        out.append(f'<path d="{morceaux(pts)}" stroke="{ACC if acc else teinte_}" stroke-width="{3 if acc else 1.2}"/>')
+    return out + [points([(cx, cy)], 5, ENCRE)]
+
+
+def averse(r, d):
+    """Tirets obliques plus ou moins serrés selon des cellules de pluie, les plus denses à l'accent : météorologie,
+    précipitations, pluie, orages, cycle de l'eau."""
+    a = math.pi / 2 + r.uniform(-.45, .45)
+    f = champ_lisse(r, 5, .01, .028)
+    traits = {ENCRE: [], ACC: []}
+    nb = 0
+    for _ in range(7000):
+        if nb >= 620:
+            break
+        x, y = r.uniform(10, 190), r.uniform(10, 190)
+        v = max(0.0, min(1.0, (f(x, y) + 1) / 2))
+        if r.random() < v ** 1.7:
+            l = r.uniform(3, 6.5)
+            traits[ACC if v > .82 else ENCRE].append(f"M{n(x - l * math.cos(a))} {n(y - l * math.sin(a))}L{n(x + l * math.cos(a))} {n(y + l * math.sin(a))}")
+            nb += 1
+    return [f'<path d="{"".join(v)}" stroke="{c}" stroke-width="1.3"/>' for c, v in traits.items() if v]
+
+
+def carottes(r, d):
+    """Colonnes de couches minces d'épaisseurs variables, la même séquence d'une colonne à l'autre, étirée ; une
+    couche repère à l'accent, reliée en tirets : paléoclimat, carottes glaciaires, archives sédimentaires."""
+    k = r.randint(6, 9)
+    fente = 184 / k
+    w = fente * .56
+    base = [r.lognormvariate(1.1, .55) for _ in range(70)]
+    ia = r.randint(8, 22)
+    tons = (ENCRE, DOUX, None, ENCRE, None, DOUX, None)
+    out, reperes = [], []
+    for c in range(k):
+        x = 8 + c * fente + (fente - w) / 2
+        y, ech = 8.0, r.uniform(.8, 1.25)
+        for i, e in enumerate(base):
+            h = e * ech * r.uniform(.75, 1.25) * (1 - .25 * (y - 8) / 184)
+            if y + h > 192:
+                h = 192 - y
+            ton = ACC if i == ia else tons[i % len(tons)]
+            if ton:
+                out.append(boite(x, y, w, h, ton, None))
+            if i == ia:
+                reperes.append((x, x + w, y))
+            y += h
+            if y >= 192:
+                break
+        out.append(boite(x, 8, w, 184, "none", ENCRE, .9))
+    liens = "".join(f"M{n(a[1])} {n(a[2])}L{n(b[0])} {n(b[2])}" for a, b in zip(reperes, reperes[1:]))
+    return out + [f'<path d="{liens}" stroke="{ACC}" stroke-width="1" stroke-dasharray="2.4 2"/>']
+
+
+def dorsale(r, d):
+    """Bandes verticales symétriques de part et d'autre d'un axe à l'accent, décalées par des failles transversales :
+    tectonique des plaques, dorsales océaniques, paléomagnétisme, inversions magnétiques."""
+    largeurs = []
+    total = 0
+    while total < 100:
+        l = r.uniform(2, 10)
+        largeurs.append(l)
+        total += l
+    coupes = sorted(r.sample(range(40, 161, 30), r.randint(2, 4)))
+    bornes = [8] + coupes + [192]
+    out, failles = [], []
+    for y0, y1 in zip(bornes, bornes[1:]):
+        xc = 100 + r.uniform(-14, 14)
+        x = 0.0
+        for i, l in enumerate(largeurs):
+            if i % 2 == 0:
+                paire = ""
+                for sg in (1, -1):
+                    xa, xb = xc + sg * (x + 1.6), xc + sg * (x + l + 1.6)
+                    xa, xb = max(8.0, min(192.0, min(xa, xb))), max(8.0, min(192.0, max(xa, xb)))
+                    if xb > xa:
+                        paire += f"M{n(xa)} {n(y0 + .8)}H{n(xb)}V{n(y1 - .8)}H{n(xa)}Z"
+                if paire:
+                    out.append(f'<path d="{paire}" fill="{ENCRE}"/>')
+            x += l
+        out.append(boite(xc - 1.6, y0 + .8, 3.2, y1 - y0 - 1.6, ACC, None))
+        failles.append(y1)
+    return out + [trait([(8, y), (192, y)], DOUX, .9) for y in failles[:-1]]
+
+
+def dunes(r, d):
+    """Crêtes sinueuses en rangées, chacune ourlée d'une ombre pleine sous le vent, des rides fines entre elles ; une
+    crête à l'accent : déserts, dunes, transport éolien, sable."""
+    k = r.randint(8, 12)
+    pas = 184 / k
+    lam, phi = r.uniform(70, 140), r.uniform(0, 6.3)
+    ka, out, rides = r.randrange(k), [], []
+    for j in range(k):
+        y0 = 8 + (j + .55) * pas
+        ph = phi + j * r.uniform(.3, .9)
+        crete = lambda x, ph=ph, y0=y0: y0 + pas * .28 * math.sin(2 * math.pi * x / lam + ph) + pas * .1 * math.sin(2 * math.pi * x / (lam * .37) + ph * 2)
+        xs = [8 + 184 * q / 80 for q in range(81)]
+        haut_ = [(x, crete(x)) for x in xs]
+        ombre = [(x, crete(x) + pas * (.18 + .14 * (1 + math.sin(2 * math.pi * x / lam + ph + 1.2)) / 2)) for x in xs[::-1]]
+        out.append(plein([(x, min(192.0, y)) for x, y in haut_ + ombre], ACC if j == ka else ENCRE))
+        for q in range(3):
+            yr = y0 + pas * (.45 + .15 * q)
+            if yr < 190:
+                rides.append(trace([(x, crete(x) - y0 + yr) for x in xs[::4]]))
+    return [f'<path d="{"".join(rides)}" stroke="{DOUX}" stroke-width="0.7"/>'] + out
+
+
+def nebulosite(r, d):
+    """Trame de points dont la taille suit une couverture nuageuse : vides là où le ciel se dégage, gros points au
+    cœur des nuages, les plus épais à l'accent : nuages, télédétection, imagerie satellite, aérosols."""
+    f1, f2 = champ_lisse(r, 7, .01, .03), champ_lisse(r, 7, .03, .08)
+    grille = [(x, y, f1(x, y) * .75 + f2(x, y) * .25) for x, y in semis_dans(lambda x, y: True, 4.4, 8, 8, 192, 192)]
+    vals = sorted(g[2] for g in grille)
+    seuil, haut = vals[int(len(vals) * r.uniform(.4, .6))], vals[-1]
+    classes = defaultdict(list)
+    for x, y, v in grille:
+        v = (v - seuil) / (haut - seuil)
+        if v <= .04:
+            continue
+        diam = round(min(4.6, .8 + 4 * v), 1)
+        classes[(ACC if v > .78 else ENCRE, diam)].append((x, y))
+    return [points(p, t, c) for (c, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
+
+
+def poreux(r, d):
+    """Grains serrés de tailles diverses, un semis fin dans les vides, et un chemin d'accent qui traverse de part en
+    part entre les grains : milieux poreux, perméabilité, aquifères, eaux souterraines."""
+    grains = []
+    for _ in range(3000):
+        if len(grains) >= 70:
+            break
+        rr = min(18.0, max(5.0, r.lognormvariate(2.2, .35)))
+        x, y = r.uniform(8 + rr, 192 - rr), r.uniform(8 + rr, 192 - rr)
+        if all(math.dist((x, y), (a, b)) > rr + c + 2.6 for a, b, c in grains):
+            grains.append((x, y, rr))
+    libre = lambda x, y, m=2.4: all(math.dist((x, y), (a, b)) > c + m for a, b, c in grains)
+    pores = semis_dans(lambda x, y: libre(x, y, 1.6), 4.8, 9, 9, 191, 191)
+
+    def chemin(couleur, w):
+        meilleur = []
+        for _ in range(14):
+            y0 = r.uniform(20, 180)
+            x, y, a, pts = 8.0, y0, 0.0, [(8.0, y0)]
+            if not libre(x + 2, y, 1):
+                continue
+            for _ in range(520):
+                choix_ = [a + da for da in (0, .3, -.3, .6, -.6, .9, -.9, 1.2, -1.2, 1.6, -1.6, 2, -2)]
+                choix_ = [b for b in choix_ if abs(b) < 2.2 and libre(x + 2 * math.cos(b), y + 2 * math.sin(b), 1) and 9 < y + 2 * math.sin(b) < 191]
+                if not choix_:
+                    break
+                a = choix_[0] * .85 + r.gauss(0, .1)
+                x, y = x + 2 * math.cos(a), y + 2 * math.sin(a)
+                pts.append((x, y))
+                if x > 191:
+                    break
+            if pts[-1][0] > meilleur[-1][0] if meilleur else True:
+                meilleur = pts
+            if meilleur[-1][0] > 190:
+                break
+        return trait(meilleur, couleur, w) if len(meilleur) > 1 else ""
+
+    out = [points(pores, 1.1, DOUX)]
+    out += [cercle(x, y, rr, ENCRE, 1.3) for x, y, rr in grains]
+    return out + [chemin(DOUX, 1.3), chemin(ACC, 2.2)]
+
+
+def epicentres(r, d):
+    """Points de tailles très inégales (beaucoup de petits, peu de gros) massés le long de deux ou trois frontières
+    invisibles ; les plus gros cerclés à l'accent : aléa sismique, sismicité, failles actives."""
+    courbes = []
+    for _ in range(r.randint(2, 3)):
+        y0, a1, f1, p1 = r.uniform(30, 170), r.uniform(10, 40), r.uniform(.008, .02), r.uniform(0, 6.3)
+        verticale = r.random() < .4
+        courbes.append((y0, a1, f1, p1, verticale))
+    classes = defaultdict(list)
+    gros = []
+    for _ in range(r.randint(300, 440)):
+        y0, a1, f1, p1, vert = r.choice(courbes)
+        t = r.uniform(8, 192)
+        u = y0 + a1 * math.sin(f1 * t + p1) + r.gauss(0, 5 if r.random() < .8 else 16)
+        x, y = (u, t) if vert else (t, u)
+        if not (8 < x < 192 and 8 < y < 192):
+            continue
+        m = 2 + r.expovariate(1 / .55)
+        if m > 4.6:
+            gros.append((x, y, m))
+        else:
+            classes[round(1 + (m - 2) * 1.2, 1)].append((x, y))
+    out = [points(p, t, ENCRE) for t, p in sorted(classes.items())]
+    for x, y, m in gros:
+        rr = min(9.0, 2 + (m - 4.6) * 3)
+        out += [disque(x, y, rr * .55, ACC), cercle(x, y, rr * 1.4, ACC, 1)]
+    return out
+
+
+# mathématiques (suite)
+
+def mandelbrot(r, d):
+    """L'ensemble de Mandelbrot en trame : points pleins dedans, points qui grossissent vers le bord dehors, une bande
+    d'échappement sur six à l'accent : fractales, ensemble de Mandelbrot, itérations complexes."""
+    cx, cy, demi = -.62 + r.uniform(-.1, .1), r.uniform(-.08, .08), r.uniform(1.25, 1.5)
+    m = 60
+    grille = []
+    for px, py in semis_dans(lambda x, y: True, 3.7, 8, 8, 192, 192):
+        c = complex(cx + (px - 100) / 92 * demi, cy + (py - 100) / 92 * demi)
+        z, k = 0j, 0
+        while k < m and abs(z) <= 2:
+            z, k = z * z + c, k + 1
+        grille.append((px, py, k))
+    kmin = min(g[2] for g in grille)
+    classes = defaultdict(list)
+    for px, py, k in grille:
+        if k == m:
+            classes[(ENCRE, 2.6)].append((px, py))
+        elif k >= kmin + 2:
+            t = ((k - kmin) / (m - kmin)) ** .45
+            classes[(ACC if (k - kmin) % 6 == 0 and t > .3 else ENCRE, round(.5 + 2 * t, 1))].append((px, py))
+    return [points(p, t, c) for (c, t), p in sorted(classes.items(), key=lambda k: k[0][1])]
+
+
+def hilbert(r, d):
+    """Courbe de Hilbert qui remplit le carré sans jamais se croiser, un tronçon à l'accent : courbes remplissantes,
+    récursivité, espaces de Hilbert, ordre et parcours."""
+    ordre = r.choice((4, 5, 5))
+    m = 2 ** ordre
+
+    def d2xy(dd):
+        x = y = 0
+        s, t = 1, dd
+        while s < m:
+            rx = 1 & (t // 2)
+            ry = 1 & (t ^ rx)
+            if ry == 0:
+                if rx == 1:
+                    x, y = s - 1 - x, s - 1 - y
+                x, y = y, x
+            x, y, t, s = x + s * rx, y + s * ry, t // 4, s * 2
+        return x, y
+
+    c = 184 / m
+    rot = r.randrange(4)
+    pts = []
+    for dd in range(m * m):
+        x, y = d2xy(dd)
+        for _ in range(rot):
+            x, y = m - 1 - y, x
+        pts.append((8 + (x + .5) * c, 8 + (y + .5) * c))
+    debut = r.randrange(m * m * 2 // 3)
+    fin = debut + m * m // r.choice((5, 6, 8))
+    return [trait(pts, ENCRE, 1.6 if ordre == 4 else 1.2), trait(pts[debut:fin], ACC, 3 if ordre == 4 else 2.4)]
+
+
+def penrose(r, d):
+    """Pavage de Penrose : losanges fins et épais sans période, les fins à l'encre, quelques-uns à l'accent :
+    pavages apériodiques, quasicristaux, symétrie d'ordre cinq."""
+    phi = (1 + 5 ** .5) / 2
+    R = r.uniform(150, 230)
+    c0 = complex(100 + r.uniform(-30, 30), 100 + r.uniform(-30, 30))
+    rot = r.uniform(0, 2 * math.pi)
+    tri = []
+    for i in range(10):
+        B = c0 + R * complex(math.cos((2 * i - 1) * math.pi / 10 + rot), math.sin((2 * i - 1) * math.pi / 10 + rot))
+        C = c0 + R * complex(math.cos((2 * i + 1) * math.pi / 10 + rot), math.sin((2 * i + 1) * math.pi / 10 + rot))
+        if i % 2 == 0:
+            B, C = C, B
+        tri.append((0, c0, B, C))
+    for _ in range(5 if R > 190 else 4):
+        nouv = []
+        for col, A, B, C in tri:
+            if col == 0:
+                P = A + (B - A) / phi
+                nouv += [(0, C, P, B), (1, P, C, A)]
+            else:
+                Q, Rr = B + (A - B) / phi, B + (C - B) / phi
+                nouv += [(1, Rr, C, A), (1, Q, Rr, B), (0, Rr, Q, A)]
+        tri = nouv
+    losanges, bords = defaultdict(list), []
+    for col, A, B, C in tri:
+        if not all(7 < p.real < 193 and 7 < p.imag < 193 for p in (A, B, C)):
+            continue
+        poly = f"M{n(A.real)} {n(A.imag)}L{n(B.real)} {n(B.imag)}L{n(C.real)} {n(C.imag)}Z"
+        if col == 0:
+            m = (B + C) / 2
+            losanges[(round(m.real, 1), round(m.imag, 1))].append(poly)
+        bords.append(f"M{n(C.real)} {n(C.imag)}L{n(A.real)} {n(A.imag)}L{n(B.real)} {n(B.imag)}")
+    out = [f'<path d="{"".join(v)}" fill="{ACC if r.random() < .06 else ENCRE}"/>' for _, v in sorted(losanges.items())]
+    return out + [f'<path d="{"".join(bords)}" stroke="{DOUX}" stroke-width="0.8"/>']
+
+
+def apollonius(r, d):
+    """Baderne d'Apollonius : cercles tangents qui remplissent chaque interstice, les plus petits en points, un
+    cercle plein d'accent : géométrie du cercle, empilements, inversion, fractales."""
+    R, cx, cy = 90.0, 100.0, 100.0
+    u = r.uniform(.3, .62)
+    r1, r2 = R * u, R * (1 - u)
+    cercles = [(-1 / R, complex(cx, cy)), (1 / r1, complex(cx - R + r1, cy)), (1 / r2, complex(cx + R - r2, cy))]
+    (k0, z0), (k1, z1), (k2, z2) = cercles
+    k3 = k0 + k1 + k2 + 2 * math.sqrt(max(0.0, k0 * k1 + k1 * k2 + k2 * k0))
+    racine = cmath.sqrt(k0 * k1 * z0 * z1 + k1 * k2 * z1 * z2 + k2 * k0 * z2 * z0)
+    z3 = min(((k0 * z0 + k1 * z1 + k2 * z2 + sg * 2 * racine) / k3 for sg in (1, -1)), key=lambda z: abs(abs(z - z1) - (r1 + 1 / k3)))
+    c3 = (k3, z3)
+    rot = r.uniform(0, 2 * math.pi)
+    tous = [cercles[1], cercles[2], c3]
+    rmin, limite = .75, 1400
+
+    def reflet(a, b, c, vieux):
+        k = 2 * (a[0] + b[0] + c[0]) - vieux[0]
+        kz = 2 * (a[0] * a[1] + b[0] * b[1] + c[0] * c[1]) - vieux[0] * vieux[1]
+        return k, kz / k
+
+    pile = [(cercles[0], cercles[1], cercles[2], c3), (cercles[0], cercles[1], c3, cercles[2]),
+            (cercles[0], cercles[2], c3, cercles[1]), (cercles[1], cercles[2], c3, cercles[0])]
+    debut_ = 0
+    while debut_ < len(pile) and len(tous) < limite:
+        a, b, c, vieux = pile[debut_]
+        debut_ += 1
+        e = reflet(a, b, c, vieux)
+        if e[0] <= 0 or 1 / e[0] < rmin:
+            continue
+        tous.append(e)
+        pile += [(a, b, e, c), (a, c, e, b), (b, c, e, a)]
+    tourne = lambda z: complex(cx, cy) + (z - complex(cx, cy)) * cmath.exp(1j * rot)
+    ia = max(range(len(tous)), key=lambda i: (1 / tous[i][0]) * (1 if i > 2 else .3))
+    out, petits = [cercle(cx, cy, R, ENCRE, 1.6)], defaultdict(list)
+    for i, (k, z) in enumerate(tous):
+        z = tourne(z)
+        rr = 1 / k
+        if rr < 3:
+            petits[round(max(1.2, rr * 1.8), 1)].append((z.real, z.imag))
+        elif i == ia:
+            out.append(disque(z.real, z.imag, rr, ACC))
+        else:
+            out.append(cercle(z.real, z.imag, rr, ENCRE, 1.2 if rr > 12 else .8))
+    return out + [points(p, t, ENCRE) for t, p in petits.items()]
+
+
+def angledor(r, d):
+    """Spirale de Vogel : des points posés à l'angle d'or, de plus en plus gros vers le bord, une famille de
+    spirales (parastiques) à l'accent : nombre d'or, suite de Fibonacci, phyllotaxie."""
+    nb = r.randint(380, 700)
+    c = 88 / math.sqrt(nb)
+    ga = math.pi * (3 - math.sqrt(5))
+    fam, j0 = r.choice((13, 21, 34)), r.randrange(8)
+    rot = r.uniform(0, 2 * math.pi)
+    classes = defaultdict(list)
+    for k in range(1, nb):
+        rr, a = c * math.sqrt(k), k * ga + rot
+        diam = round(1.2 + 3.4 * (k / nb) ** .6, 1)
+        classes[(ACC if k % fam == j0 else ENCRE, diam)].append((100 + rr * math.cos(a), 100 + rr * math.sin(a)))
+    return [points(p, t, c_) for (c_, t), p in classes.items()]
+
+
+def collatz(r, d):
+    """Corail de Collatz : chaque suite de Syracuse remonte du même pied en tournant d'un côté pour les pairs, de
+    l'autre pour les impairs ; une suite à l'accent : suites récurrentes, conjectures, arithmétique."""
+    pair, impair = r.uniform(.12, .2), r.uniform(-.34, -.22)
+    nombres = r.sample(range(3, 3000), r.randint(70, 95))
+    pos, aretes, chemins = {1: (0.0, 0.0, -math.pi / 2)}, set(), []
+    for nb in nombres:
+        seq = [nb]
+        while seq[-1] != 1 and len(seq) < 400:
+            v = seq[-1]
+            seq.append(v // 2 if v % 2 == 0 else 3 * v + 1)
+        seq = seq[::-1]
+        for a, b in zip(seq, seq[1:]):
+            if b not in pos:
+                x, y, ang = pos[a]
+                ang += pair if b % 2 == 0 else impair
+                pos[b] = (x + 2 * math.cos(ang), y + 2 * math.sin(ang), ang)
+            aretes.add((a, b))
+        chemins.append(seq)
+    xs, ys = [p[0] for p in pos.values()], [p[1] for p in pos.values()]
+    e = 176 / max(max(xs) - min(xs), max(ys) - min(ys))
+    ox, oy = 100 - e * (max(xs) + min(xs)) / 2, 100 - e * (max(ys) + min(ys)) / 2
+    P = lambda k: (ox + e * pos[k][0], oy + e * pos[k][1])
+    traits = "".join(f"M{n(P(a)[0])} {n(P(a)[1])}L{n(P(b)[0])} {n(P(b)[1])}" for a, b in aretes)
+    acc = max(chemins, key=len)
+    return [f'<path d="{traits}" stroke="{ENCRE}" stroke-width="0.8"/>', trait([P(k) for k in acc], ACC, 2), points([P(1)], 6, ACC)]
+
+
+def quatrecouleurs(r, d):
+    """Carte de régions irrégulières coloriée en quatre tons sans que deux voisines se ressemblent : théorie des
+    graphes, coloration, théorème des quatre couleurs, graphes planaires."""
+    sites = []
+    for _ in range(3000):
+        if len(sites) >= 48:
+            break
+        p = (r.uniform(4, 196), r.uniform(4, 196))
+        if all(math.dist(p, q) > 21 for q in sites):
+            sites.append(p)
+    cell = voronoi(sites)
+    couleurs = {}
+    ordre_ = sorted(range(len(cell)), key=lambda i: -len(cell[i][1]))
+    tons = [ENCRE, ACC, DOUX, FOND]
+    for i in ordre_:
+        pris = {couleurs.get(j) for j in cell[i][1]}
+        couleurs[i] = next((t for t in tons if t not in pris), r.choice(tons))
+    out = []
+    for i, (poly, _) in enumerate(cell):
+        if len(poly) < 3:
+            continue
+        p = retrecit(poly, .93)
+        out.append(plein(p, couleurs[i], f' stroke="{ENCRE}" stroke-width="1"' if couleurs[i] == FOND else ""))
+    return out
+
+
+def epicycles(r, d):
+    """Épicycles : une chaîne de cercles, chacun centré sur le bord du précédent, et la courbe fermée que trace le
+    dernier ; la plume à l'accent : séries de Fourier, analyse harmonique, transformée de Fourier."""
+    k = r.randint(4, 7)
+    freqs = r.sample([f for f in range(-7, 8) if f], k)
+    rayons = sorted((r.uniform(.3, 1) * .62 ** i for i in range(k)), reverse=True)
+    phases = [r.uniform(0, 2 * math.pi) for _ in range(k)]
+    somme = lambda t, j=k: sum(rayons[i] * cmath.exp(1j * (freqs[i] * t + phases[i])) for i in range(j))
+    courbe_ = [somme(2 * math.pi * q / 600) for q in range(601)]
+    t0 = r.uniform(0, 2 * math.pi)
+    centres = [somme(t0, j) for j in range(k + 1)]
+    xs = [z.real for z in courbe_ + centres] + [c.real + rayons[i] for i, c in enumerate(centres[:-1])] + [c.real - rayons[i] for i, c in enumerate(centres[:-1])]
+    ys = [z.imag for z in courbe_ + centres] + [c.imag + rayons[i] for i, c in enumerate(centres[:-1])] + [c.imag - rayons[i] for i, c in enumerate(centres[:-1])]
+    e = 176 / max(max(xs) - min(xs), max(ys) - min(ys))
+    ox, oy = 100 - e * (max(xs) + min(xs)) / 2, 100 - e * (max(ys) + min(ys)) / 2
+    P = lambda z: (ox + e * z.real, oy + e * z.imag)
+    out = [trait([P(z) for z in courbe_], ENCRE, 1.5)]
+    for i in range(k):
+        cx_, cy_ = P(centres[i])
+        out.append(cercle(cx_, cy_, rayons[i] * e, DOUX, .9))
+    out.append(trait([P(c) for c in centres], ENCRE, 1))
+    return out + [points([P(c) for c in centres[:-1]], 3, ENCRE), points([P(centres[-1])], 7, ACC)]
+
+
+def hyperbolique(r, d):
+    """Disque de Poincaré : des familles de géodésiques (arcs perpendiculaires au bord) joignant des points
+    équidistants du cercle, une famille à l'accent : géométrie hyperbolique, géométries non euclidiennes."""
+    R, cx, cy = 90.0, 100.0, 100.0
+    m = r.choice((7, 8, 9, 10, 12))
+    sauts = r.sample([s for s in range(2, m // 2 + 1)], min(3, m // 2 - 1))
+    fa = r.randrange(len(sauts))
+    rot = r.uniform(0, 2 * math.pi)
+    out = [cercle(cx, cy, R, ENCRE, 1.8)]
+    bouts = []
+    for f, s in enumerate(sauts):
+        dec = rot + f * math.pi / m * r.choice((0, 1))
+        chemins = []
+        for i in range(m):
+            a, b = dec + 2 * math.pi * i / m, dec + 2 * math.pi * (i + s) / m
+            pa, pb = (cx + R * math.cos(a), cy + R * math.sin(a)), (cx + R * math.cos(b), cy + R * math.sin(b))
+            bouts.append(pa)
+            h = (b - a) / 2
+            if abs(math.cos(h)) < 1e-6:
+                chemins.append(f"M{n(pa[0])} {n(pa[1])}L{n(pb[0])} {n(pb[1])}")
+                continue
+            dc, rr = R / math.cos(h), R * abs(math.tan(h))
+            ox, oy = cx + dc * math.cos((a + b) / 2), cy + dc * math.sin((a + b) / 2)
+            ta, tb = math.atan2(pa[1] - oy, pa[0] - ox), math.atan2(pb[1] - oy, pb[0] - ox)
+            dt = math.remainder(tb - ta, 2 * math.pi)
+            pts = [(ox + rr * math.cos(ta + dt * q / 36), oy + rr * math.sin(ta + dt * q / 36)) for q in range(37)]
+            chemins.append(trace(pts))
+        acc = f == fa
+        out.append(f'<path d="{"".join(chemins)}" stroke="{ACC if acc else ENCRE}" stroke-width="{2.2 if acc else 1.1}"/>')
+    return out + [points(bouts, 3.4, ENCRE)]
+
+
+def young(r, d):
+    """Diagramme de Young d'une partition tirée au hasard : cases en escalier, le carré de Durfee en trame douce, une
+    équerre à l'accent : partitions d'entiers, combinatoire algébrique, représentations."""
+    lignes = [0] * 40
+    for _ in range(r.randint(110, 190)):
+        coins = [i for i in range(len(lignes)) if (i == 0 or lignes[i] < lignes[i - 1])]
+        i = r.choice(coins)
+        lignes[i] += 1
+    lignes = [l for l in lignes if l]
+    m = max(len(lignes), lignes[0])
+    c = 184 / m
+    durfee = max(i + 1 for i in range(len(lignes)) if lignes[i] >= i + 1)
+    hi, hj = r.randrange(min(4, len(lignes))), r.randrange(min(4, lignes[0]))
+    hj = min(hj, lignes[hi] - 1)
+    out = []
+    for i, l in enumerate(lignes):
+        for j in range(l):
+            equerre = (i == hi and j >= hj) or (j == hj and i >= hi and lignes[i] > hj)
+            fond = ACC if equerre else DOUX if i < durfee and j < durfee else FOND
+            out.append(boite(8 + j * c, 8 + i * c, c, c, fond, ENCRE, .9))
+    return out
+
+
+def complexe(r, d):
+    """Portrait d'une fonction complexe : lignes d'égal module autour des zéros et des pôles, lignes d'égal argument
+    qui en rayonnent ; zéros pleins, pôles cerclés à l'accent : analyse complexe, fonctions holomorphes."""
+    zeros = [complex(r.uniform(-.9, .9), r.uniform(-.9, .9)) for _ in range(r.randint(2, 3))]
+    poles = [complex(r.uniform(-.9, .9), r.uniform(-.9, .9)) for _ in range(r.randint(1, 2))]
+    Z = lambda x, y: complex((x - 100) / 80, (y - 100) / 80)
+    k = r.choice((4, 5, 6))
+
+    def module(x, y):
+        z = Z(x, y)
+        return sum(math.log(abs(z - a) + 1e-9) for a in zeros) - sum(math.log(abs(z - b) + 1e-9) for b in poles)
+
+    def argument(x, y):
+        z = Z(x, y)
+        return math.sin(k * (sum(cmath.phase(z - a) for a in zeros) - sum(cmath.phase(z - b) for b in poles)))
+
+    out = []
+    for c, ls in lignes_de_niveau(module, [-2.4 + .5 * q for q in range(10)], 46).items():
+        out += [trait(l_, ENCRE, 1) for l_ in ls if len(l_) > 2]
+    for c, ls in lignes_de_niveau(argument, [0.0], 46).items():
+        out += [trait(l_, DOUX, 1.1) for l_ in ls if len(l_) > 2]
+    P = lambda z: (100 + 80 * z.real, 100 + 80 * z.imag)
+    return out + [points([P(a) for a in zeros], 7, ENCRE)] + [cercle(*P(b), 4.4, ACC, 2.2) for b in poles]
+
+
+def spirographe(r, d):
+    """Courbes de spirographe (hypotrochoïdes) superposées, l'une à l'accent : courbes paramétrées, roulettes,
+    géométrie des courbes planes."""
+    R = r.choice((60, 72, 84, 90, 96, 105))
+    rr = r.choice([q for q in range(13, 48) if 3 <= q // math.gcd(R, q) <= 9])
+    tours = rr // math.gcd(R, rr)
+    out = []
+    ds = sorted(r.sample([.45, .6, .75, .9, 1.05], 2))
+    ka = r.randrange(2)
+    for i, dd in enumerate(ds):
+        dd *= rr
+        echelle = 88 / (R - rr + dd)
+        N = 130 * tours
+        pts = [(100 + echelle * ((R - rr) * math.cos(t) + dd * math.cos((R - rr) / rr * t)),
+                100 + echelle * ((R - rr) * math.sin(t) - dd * math.sin((R - rr) / rr * t))) for t in (2 * math.pi * tours * q / N for q in range(N + 1))]
+        out.append(trait(pts, ACC if i == ka else ENCRE, 1.1 if i == ka else .7))
+    return out
+
+
+def tesseract(r, d):
+    """Hypercube projeté de la quatrième dimension : seize sommets, trente-deux arêtes, des sillages de sa rotation en
+    trait doux, le cube intérieur à l'accent : géométrie en dimension n, algèbre linéaire, polytopes."""
+    som = [(a, b, c, e) for a in (-1, 1) for b in (-1, 1) for c in (-1, 1) for e in (-1, 1)]
+    aretes = [(i, j) for i in range(16) for j in range(i + 1, 16) if sum(x != y for x, y in zip(som[i], som[j])) == 1]
+    a0, b0, c0 = r.uniform(0, 6.3), r.uniform(0, 6.3), r.uniform(0, 6.3)
+
+    def projete(p, a, b, c):
+        x, y, z, w = p
+        x, w = x * math.cos(a) - w * math.sin(a), x * math.sin(a) + w * math.cos(a)
+        y, z = y * math.cos(b) - z * math.sin(b), y * math.sin(b) + z * math.cos(b)
+        x, y = x * math.cos(c) - y * math.sin(c), x * math.sin(c) + y * math.cos(c)
+        f = 1 / (3 - w)
+        x, y, z = x * f, y * f, z * f
+        g = 1 / (3 - z)
+        return x * g, y * g, w
+
+    base = [projete(p, a0, b0, c0) for p in som]
+    e = 80 / max(max(abs(p[0]), abs(p[1])) for p in base)
+    P = lambda p: (100 + e * p[0], 100 + e * p[1])
+    out = []
+    for q in range(1, 6):
+        pr = [projete(p, a0 - .07 * q, b0 - .05 * q, c0) for p in som]
+        out.append(f'<path d="{"".join(f"M{n(P(pr[i])[0])} {n(P(pr[i])[1])}L{n(P(pr[j])[0])} {n(P(pr[j])[1])}" for i, j in aretes)}" stroke="{DOUX}" stroke-width="0.6"/>')
+    dedans = {i for i in range(16) if base[i][2] < 0}
+    for i, j in aretes:
+        acc = i in dedans and j in dedans
+        out.append(trait([P(base[i]), P(base[j])], ACC if acc else ENCRE, 2.2 if acc else 1.6))
+    return out + [points([P(p) for p in base], 5, ENCRE)]
+
+
+# chimie générale (suite)
+
+def laue(r, d):
+    """Cliché de diffraction : taches disposées selon une symétrie d'ordre quatre ou six, plus grosses près du
+    centre, les plus fortes à l'accent, des anneaux pâles : cristallographie, diffraction des rayons X."""
+    sym = r.choice((4, 6))
+    a2 = (0.0, 1.0) if sym == 4 else (.5, math.sqrt(3) / 2)
+    ech, rot = r.uniform(13, 18), r.uniform(0, math.pi)
+    poids = {}
+    out = [cercle(100, 100, rr, DOUX, .7) for rr in sorted(r.sample(range(30, 92, 6), 3))]
+    classes = defaultdict(list)
+    for h in range(-8, 9):
+        for k in range(-8, 9):
+            if h == k == 0:
+                continue
+            gx, gy = h + k * a2[0], k * a2[1]
+            g = math.hypot(gx, gy)
+            cle = round(g, 3)
+            if cle not in poids:
+                poids[cle] = r.uniform(.3, 1)
+            i = math.exp(-(g * ech / 70) ** 2) * poids[cle]
+            rho = g * ech * (1 + .004 * g * ech)
+            a = math.atan2(gy, gx) + rot
+            x, y = 100 + rho * math.cos(a), 100 + rho * math.sin(a)
+            diam = round(1 + 7 * i, 1)
+            if diam >= 1.5 and 8 < x < 192 and 8 < y < 192:
+                classes[(ACC if i > .62 else ENCRE, diam)].append((x, y))
+    return out + [points(p, t, c) for (c, t), p in classes.items()] + [disque(100, 100, 7, ENCRE), cercle(100, 100, 11, ENCRE, 1.2)]
+
+
+def mendeleiev(r, d):
+    """La silhouette du tableau périodique : cases dont la taille suit une tendance (plus grosses vers le bas et la
+    gauche), un bloc à l'accent : tableau périodique, éléments chimiques, chimie générale."""
+    c = 184 / 18
+    lignes = [[1, 18], [1, 2] + list(range(13, 19)), [1, 2] + list(range(13, 19))] + [list(range(1, 19))] * 4
+    bloc_acc = r.choice(("s", "p", "d", "f"))
+    sens = r.choice(((1, 1), (1, -1), (-1, 1)))
+    haut = 9.6 * c
+    y0 = 100 - haut / 2
+    out = []
+
+    def case(col, lig, bloc, yy):
+        t = ((lig / 9) if sens[0] > 0 else 1 - lig / 9) * .55 + ((1 - col / 18) if sens[1] > 0 else col / 18) * .45
+        s = c * (.36 + .58 * t)
+        x = 8 + (col - 1) * c + (c - s) / 2
+        y = yy + (c - s) / 2
+        if bloc == bloc_acc:
+            return boite(x, y, s, s, ACC, None)
+        if bloc == "d":
+            return boite(x, y, s, s, ENCRE, None)
+        if bloc == "p":
+            return boite(x, y, s, s, DOUX, None)
+        return boite(x, y, s, s, "none", ENCRE, .9)
+
+    for i, cols in enumerate(lignes):
+        for col in cols:
+            bloc = "s" if col <= 2 or (i == 0 and col == 18 and False) else "d" if col <= 12 else "p"
+            out.append(case(col, i, bloc, y0 + i * c))
+    for j in range(2):
+        for col in range(3, 18):
+            out.append(case(col, 7 + j, "f", y0 + (7.6 + j) * c))
+    return out
+
+
+def belousov(r, d):
+    """Ondes chimiques en spirales et en cibles autour de quelques cœurs, en trame de points, les fronts à l'accent :
+    réactions oscillantes, Belousov-Zhabotinsky, réaction-diffusion."""
+    coeurs = [(r.uniform(30, 170), r.uniform(30, 170), r.choice((-1, 1, 1, 0)), r.uniform(0, 6.3)) for _ in range(r.randint(1, 3))]
+    lam = r.uniform(14, 22)
+    defs, teinte_ = degrade_centre(coeurs[0][0], coeurs[0][1], 150)
+    classes = defaultdict(list)
+    for x, y in semis_dans(lambda x, y: True, 3.3, 8, 8, 192, 192):
+        cx, cy, s, ph = min(coeurs, key=lambda c: math.hypot(x - c[0], y - c[1]))
+        rho = math.hypot(x - cx, y - cy)
+        th = math.atan2(y - cy, x - cx)
+        v = math.sin(s * th + 2 * math.pi * rho / lam + ph)
+        if v > .93:
+            classes[(ACC, 2.4)].append((x, y))
+        elif v > .2:
+            classes[(teinte_, round(1 + 1.4 * v, 1))].append((x, y))
+    return [defs] + [points(p, t, c) for (c, t), p in classes.items()]
+
+
+def liesegang(r, d):
+    """Anneaux de précipité de plus en plus espacés et de plus en plus minces à partir d'un coin, le premier à
+    l'accent : anneaux de Liesegang, précipitation périodique, diffusion dans un gel."""
+    ox, oy = r.choice(((8, 8), (8, 192), (192, 8), (192, 192), (100, 196), (4, 100)))
+    q, r0 = r.uniform(1.12, 1.2), r.uniform(10, 18)
+    defs, teinte_ = degrade_centre(ox, oy, 260)
+    out, rr, k = [defs], r0, 0
+    while rr < 290 and k < 30:
+        suivant = rr * q
+        w = max(.8, (suivant - rr) * r.uniform(.3, .45))
+        pts = [(ox + (rr + w / 2) * math.cos(t), oy + (rr + w / 2) * math.sin(t)) for t in (2 * math.pi * i / 240 for i in range(241))]
+        chemin = morceaux(pts)
+        if chemin:
+            out.append(f'<path d="{chemin}" stroke="{ACC if k == 0 else teinte_}" stroke-width="{n(w, 2)}" stroke-linecap="butt"/>')
+        rr, k = suivant + r.uniform(0, 2), k + 1
+    return out
+
+
+def maxwell(r, d):
+    """Molécules d'un gaz dans une boîte, chacune avec la traînée de sa vitesse, les plus rapides à l'accent :
+    théorie cinétique des gaz, distribution de Maxwell-Boltzmann, pression."""
+    parts = []
+    for _ in range(3000):
+        if len(parts) >= 210:
+            break
+        p = (r.uniform(14, 186), r.uniform(14, 186))
+        if all(math.dist(p, q[:2]) > 7.5 for q in parts):
+            parts.append((p[0], p[1], r.gauss(0, 1), r.gauss(0, 1)))
+    vit = sorted(math.hypot(p[2], p[3]) for p in parts)
+    seuil = vit[int(len(vit) * .93)]
+    out, tr = [boite(8, 8, 184, 184, "none", ENCRE, 1.6)], {ENCRE: [], ACC: []}
+    pts = {ENCRE: [], ACC: []}
+    for x, y, vx, vy in parts:
+        v = math.hypot(vx, vy)
+        c = ACC if v >= seuil else ENCRE
+        x0, y0 = max(9.0, min(191.0, x - vx * 6)), max(9.0, min(191.0, y - vy * 6))
+        tr[c].append(f"M{n(x0)} {n(y0)}L{n(x)} {n(y)}")
+        pts[c].append((x, y))
+    out += [f'<path d="{"".join(v)}" stroke="{c if c == ACC else DOUX}" stroke-width="1.1"/>' for c, v in tr.items() if v]
+    return out + [points(pts[ENCRE], 3.4, ENCRE), points(pts[ACC], 4.4, ACC)]
+
+
+def solvatation(r, d):
+    """Ions entourés d'une couronne de molécules de solvant, puis d'une seconde plus lâche, dans un semis : chimie
+    des solutions, solvatation, ions en solution, solubilité."""
+    ions = []
+    for _ in range(2000):
+        if len(ions) >= r.randint(10, 15):
+            break
+        p = (r.uniform(26, 174), r.uniform(26, 174))
+        if all(math.dist(p, q[:2]) > 38 for q in ions):
+            ions.append((p[0], p[1], r.random() < .5))
+    out, coq1, coq2 = [], [], []
+    for x, y, anion in ions:
+        m1, a0 = r.randint(6, 8), r.uniform(0, 2 * math.pi)
+        coq1 += [(x + 9.5 * math.cos(a0 + 2 * math.pi * i / m1), y + 9.5 * math.sin(a0 + 2 * math.pi * i / m1)) for i in range(m1)]
+        coq2 += [(x + 16 * math.cos(a0 + 2 * math.pi * i / 13 + .2), y + 16 * math.sin(a0 + 2 * math.pi * i / 13 + .2)) for i in range(13) if r.random() < .8]
+    libres = [(x, y) for x, y in ((r.uniform(10, 190), r.uniform(10, 190)) for _ in range(500)) if all(math.dist((x, y), i[:2]) > 21 for i in ions)][:220]
+    return [points(libres, 1.6, DOUX), points(coq2, 2, DOUX), points(coq1, 3.2, ENCRE),
+            points([(x, y) for x, y, a in ions if a], 8.5, ACC), points([(x, y) for x, y, a in ions if not a], 8.5, ENCRE)]
+
+
+def miroir(r, d):
+    """Crochets semés à gauche d'un axe et leurs images exactes à droite, une paire à l'accent : chiralité,
+    énantiomères, stéréochimie, symétrie miroir."""
+    out = [trait([(100, 8), (100, 192)], DOUX, 1, ' stroke-dasharray="3 3"')]
+    k = r.randint(9, 15)
+    ka = r.randrange(k)
+    for i in range(k):
+        cx, cy, R = r.uniform(18, 86), r.uniform(16, 184), r.uniform(5, 12)
+        a0, ouv = r.uniform(0, 2 * math.pi), r.uniform(3.4, 4.8)
+        arc_ = [(cx + R * math.cos(a0 + ouv * q / 20), cy + R * math.sin(a0 + ouv * q / 20)) for q in range(21)]
+        fin = arc_[-1]
+        queue = [(cx, cy), (cx + R * 1.5 * math.cos(a0 - .6), cy + R * 1.5 * math.sin(a0 - .6))]
+        for sg in (1, -1):
+            m = (lambda p: p) if sg > 0 else (lambda p: (200 - p[0], p[1]))
+            col = ACC if i == ka else ENCRE
+            out += [trait([m(p) for p in arc_], col, 1.8), trait([m(p) for p in queue], col, 1.2), points([m(fin)], 4.4, col)]
+    return out
+
+
+def nucleation(r, d):
+    """Grains nés à des instants différents qui croissent en anneaux jusqu'à se rencontrer en frontières courbes ;
+    le plus ancien à l'accent : nucléation, croissance cristalline, solidification, cinétique d'Avrami."""
+    germes = [(r.uniform(8, 192), r.uniform(8, 192), r.uniform(0, 70)) for _ in range(r.randint(10, 18))]
+    w = r.uniform(5, 7.5)
+    ia = min(range(len(germes)), key=lambda i: germes[i][2])
+    classes = defaultdict(list)
+    for x, y in semis_dans(lambda x, y: True, 3.4, 8, 8, 192, 192):
+        g = min(range(len(germes)), key=lambda i: germes[i][2] + math.hypot(x - germes[i][0], y - germes[i][1]))
+        rho = math.hypot(x - germes[g][0], y - germes[g][1])
+        if int(rho / w) % 2 == 0:
+            classes[ACC if g == ia else ENCRE].append((x, y))
+    return [points(p, 2.2, c) for c, p in classes.items()] + [points([(x, y) for x, y, _ in germes], 4.4, ENCRE)]
+
+
+def multiplets(r, d):
+    """Arbres de dédoublement : chaque raie se divise en paires, en triplets, puis tombe en barres d'intensités
+    binomiales ; un multiplet à l'accent : résonance magnétique nucléaire, couplage spin-spin, déplacement chimique."""
+    k = r.randint(3, 5)
+    ka = r.randrange(k)
+    out = []
+    largeur = 184 / k
+    for i in range(k):
+        xc = 8 + (i + .5) * largeur
+        niveaux = [r.choice((1, 1, 2, 3)) for _ in range(r.randint(2, 3))]
+        J = largeur * .5 / sum(niveaux)
+        pos = [(xc, 1.0)]
+        y, pas = 26.0, 110 / (len(niveaux) + 1)
+        col = ACC if i == ka else ENCRE
+        traits_ = [f"M{n(xc)} 14V{n(y)}"]
+        for nn in niveaux:
+            nouv = []
+            for x, inten in pos:
+                for q in range(nn + 1):
+                    x2 = x + (q - nn / 2) * J
+                    nouv.append((x2, inten * math.comb(nn, q) / 2 ** nn))
+                    traits_.append(f"M{n(x)} {n(y)}L{n(x2)} {n(y + pas * .7)}V{n(y + pas)}")
+            pos, y = nouv, y + pas
+        out.append(f'<path d="{"".join(traits_)}" stroke="{col}" stroke-width="{1.2 if col == ACC else .8}"/>')
+        imax = max(p[1] for p in pos)
+        barres = "".join(f"M{n(x)} 188V{n(188 - (188 - y - 8) * inten / imax)}" for x, inten in pos)
+        out.append(f'<path d="{barres}" stroke="{col}" stroke-width="2.4" stroke-linecap="butt"/>')
+    return out
+
+
+def agregat(r, d):
+    """Amas branchu de particules collées les unes aux autres, qui pousse dans toutes les directions par ses pointes,
+    comme par agrégation limitée par la diffusion ; les dernières arrivées à l'accent : colloïdes, agrégation,
+    nanoparticules, croissance fractale."""
+    rad, secteurs = 1.75, 90
+    parts = [(100.0, 100.0)]
+    case_ = defaultdict(list)
+    case_[(100 // 6, 100 // 6)].append(0)
+    pointes = [[] for _ in range(secteurs)]
+    nb = r.randint(650, 900)
+    for _ in range(nb * 10):
+        if len(parts) >= nb:
+            break
+        th = r.uniform(0, 2 * math.pi)
+        s0 = int(th / (2 * math.pi) * secteurs)
+        cand = [k for q in (-1, 0, 1) for k in pointes[(s0 + q) % secteurs]] or [0]
+        i = max(cand, key=lambda k: math.hypot(parts[k][0] - 100, parts[k][1] - 100) + r.uniform(0, 9))
+        px, py = parts[i]
+        a = th + r.gauss(0, .9)
+        x, y = px + 2 * rad * math.cos(a), py + 2 * rad * math.sin(a)
+        if not (10 < x < 190 and 10 < y < 190):
+            continue
+        cx, cy = int(x // 6), int(y // 6)
+        voisins = [k for dx in (-1, 0, 1) for dy in (-1, 0, 1) for k in case_[(cx + dx, cy + dy)] if k != i]
+        if all(math.hypot(x - parts[k][0], y - parts[k][1]) > 2 * rad * .96 for k in voisins):
+            n_ = len(parts)
+            case_[(cx, cy)].append(n_)
+            parts.append((x, y))
+            sb = int((math.atan2(y - 100, x - 100) % (2 * math.pi)) / (2 * math.pi) * secteurs) % secteurs
+            pointes[sb] = sorted(pointes[sb] + [n_], key=lambda k: -math.hypot(parts[k][0] - 100, parts[k][1] - 100))[:6]
+    seuil = int(len(parts) * .92)
+    return [points(parts[:seuil], 2 * rad, ENCRE), points(parts[seuil:], 2 * rad + .6, ACC), points([parts[0]], 6, ENCRE)]
+
+def osmose(r, d):
+    """Une paroi en tirets sépare un semis fin (le solvant seul) d'un mélange où se logent de gros points d'accent ;
+    le niveau monte du côté chargé : osmose, pression osmotique, membranes, propriétés colligatives."""
+    xm = 100 + r.uniform(-12, 12)
+    gauche_solvant = r.random() < .5
+    haut_s, haut_m = r.uniform(40, 60), r.uniform(18, 34)
+    solvant, solute, fin = [], [], []
+    for x, y in semis_dans(lambda x, y: True, 5.6, 10, 10, 190, 190):
+        x, y = x + r.uniform(-1.6, 1.6), y + r.uniform(-1.6, 1.6)
+        cote_solvant = (x < xm) == gauche_solvant
+        if abs(x - xm) < 3:
+            continue
+        if y < (haut_s if cote_solvant else haut_m):
+            continue
+        if cote_solvant:
+            solvant.append((x, y))
+        elif r.random() < .14:
+            solute.append((x, y))
+        elif r.random() < .75:
+            fin.append((x, y))
+    return [trait([(xm, 10), (xm, 190)], ENCRE, 2, ' stroke-dasharray="6 4"'), points(solvant, 2, ENCRE), points(fin, 2, ENCRE),
+            points(solute, 6, ACC), trait([(10, haut_s - 4), (xm - 4, haut_s - 4)] if gauche_solvant else [(xm + 4, haut_s - 4), (190, haut_s - 4)], DOUX, 1),
+            trait([(xm + 4, haut_m - 4), (190, haut_m - 4)] if gauche_solvant else [(10, haut_m - 4), (xm - 4, haut_m - 4)], ACC, 1.4)]
+
+
+def zeolithe(r, d):
+    """Réseau d'hexagones (une charpente en nid d'abeilles), quelques cavités en trame douce ou à l'accent, des
+    sommets manquants : zéolithes, matériaux poreux, catalyse hétérogène, adsorption."""
+    a = r.uniform(9, 13)
+    rot = r.uniform(0, math.pi / 3)
+    w, h = math.sqrt(3) * a, 1.5 * a
+    aretes, cavites, acc, sommets = [], [], [], set()
+    for j in range(-14, 15):
+        for i in range(-14, 15):
+            cx, cy = i * w + (j % 2) * w / 2, j * h
+            cx, cy = 100 + cx * math.cos(rot) - cy * math.sin(rot), 100 + cx * math.sin(rot) + cy * math.cos(rot)
+            pts = [(cx + a * math.cos(math.pi / 6 + math.pi / 3 * k + rot), cy + a * math.sin(math.pi / 6 + math.pi / 3 * k + rot)) for k in range(6)]
+            if not all(8 < x < 192 and 8 < y < 192 for x, y in pts):
+                continue
+            q = r.random()
+            if q < .04:
+                acc.append(trace(retrecit(pts, .7)) + "Z")
+            elif q < .14:
+                cavites.append(trace(retrecit(pts, .7)) + "Z")
+            aretes.append(trace(pts) + "Z")
+            sommets |= {(round(x, 1), round(y, 1)) for x, y in pts}
+    sommets = [s_ for s_ in sommets if r.random() > .06]
+    return [f'<path d="{"".join(cavites)}" fill="{DOUX}"/>', f'<path d="{"".join(acc)}" fill="{ACC}"/>',
+            f'<path d="{"".join(aretes)}" stroke="{ENCRE}" stroke-width="1.1"/>', points(sommets, 3, ENCRE)]
+
+
 # ---------- catalogue ----------
 # Par domaine : motif → (dessin, mots du sujet qui l'appellent). Un mot finissant par « * » vaut pour tous les mots
 # qui commencent ainsi (« régul* » : régulation, réguler…) ; sinon le mot entier, au singulier ou au pluriel. Accents et
@@ -1270,6 +3213,89 @@ CATALOGUE = {
         "panache": ("nuage de points qui naît d'un coin et s'élargit", "panache*, dispersion atmosphérique, rejet*, toxique*, pollution, cheminée*, nuage*, gaussien*, émission*, plume"),
         "carreaux": ("grille de carrés qui grandissent vers un coin", "criticit*, matrice de risque*, fréquence-gravité, gravité, apr, amdec, fmea, farmer, maîtrise des risques, prévention, risque*, sécurité, risk*"),
     },
+    # sciences exactes : physique et astronomie, Terre et climat, mathématiques, chimie générale
+    "Physique et astronomie": {
+        "interference": ("champ de points en franges d'interférence, la frange centrale à l'accent", "interférence*, diffraction*, optique ondulatoire, physique des ondes, ondes lumineuses, fentes d'young, franges, cohérence, holograph*, interferen*, wave optics, fringes, young's experiment, coherence, double slit"),
+        "geodesiques": ("quadrillage creusé par une ou deux masses", "relativité, relativiste*, espace-temps, gravitation*, géodésique*, einstein, trou noir, trous noirs, ondes gravitationnelles, relativity, relativistic, spacetime, space-time, gravit*, geodesic*, black hole*, gravitational waves"),
+        "ising": ("réseau de spins en domaines, parois à l'accent", "physique statistique, mécanique statistique, ising, transition de phase, transitions de phase, magnétisme, ferromagnét*, spins, entropie, statistical physics, statistical mechanics, phase transition*, magnetism, ferromagnet*, entropy, monte carlo"),
+        "galaxie": ("spirale de points inclinée, bulbe dense, quelques étoiles à l'accent", "galax*, astrophysi*, étoile*, stellaire*, voie lactée, nébuleuse*, astronomie, télescope*, astrophysics, stars, stellar, milky way, nebula*, astronomy, telescope*"),
+        "cosmique": ("toile de filaments entre des nœuds denses", "cosmolog*, univers, big bang, matière noire, énergie noire, grandes structures, fond diffus cosmologique, inflation cosmique, expansion de l'univers, cosmology, universe, dark matter, dark energy, large-scale structure, cosmic web, cosmic microwave background, cmb"),
+        # suite
+        "dipole": ("lignes de champ entre des charges", "électrostatique, champ électrique, lignes de champ, charges électriques, charge électrique, électromagnétisme, électromagnétique*, électricité, coulomb, electrostatic*, electric field, field lines, electric charge*, electromagnetism, electromagnetic, electricity"),
+        "limaille": ("tirets alignés sur le champ de deux pôles", "champ magnétique, aimant*, induction magnétique, magnétostatique, limaille, bobine*, solénoïde*, magnetic field, magnets, magnetic induction, magnetostatic*, solenoid*, coil*"),
+        "kepler": ("ellipses de foyer commun et rosace", "mécanique céleste, orbite*, kepler, planétaire*, système solaire, satellite*, problème à deux corps, celestial mechanics, orbital mechanics, planetary, solar system, two-body problem"),
+        "lissajous": ("table de figures de Lissajous", "oscillat*, oscillateur*, lissajous, harmonique*, pendule*, mouvement harmonique, oscilloscope*, oscillation*, oscillator*, harmonic*, pendulum*, simple harmonic motion"),
+        "chladni": ("sable rassemblé sur les lignes nodales", "chladni, modes propres, mode propre, ondes stationnaires, plaque vibrante, vibrations mécaniques, résonance*, cymatique, standing wave*, normal mode*, eigenmode*, resonance*, vibrating plate*, cymatics"),
+        "collision": ("traces en pointillés depuis un vertex", "physique des particules, particules élémentaires, collisionneur*, accélérateur de particules, accélérateurs de particules, chambre à bulles, boson*, quark*, lhc, cern, particle physics, elementary particles, collider*, particle accelerator*, bubble chamber, hadron*"),
+        "brillouin": ("zones alternées autour d'une zone centrale", "physique du solide, état solide, brillouin, réseau réciproque, structure de bandes, bandes d'énergie, semi-conducteur*, phonon*, matière condensée, solid state physics, solid-state, reciprocal lattice, band structure, energy bands, semiconductor*, condensed matter"),
+        "chirikov": ("îlots et mer chaotique d'une section de Poincaré", "plasma*, fusion nucléaire, tokamak*, confinement magnétique, chaos hamiltonien, application standard, section de poincaré, nuclear fusion, magnetic confinement, hamiltonian chaos, standard map, poincaré section, poincare section"),
+        "hertzsprung": ("nuage d'étoiles en bande diagonale", "évolution stellaire, hertzsprung, séquence principale, géante rouge, géantes rouges, naine blanche, naines blanches, diagramme hr, populations stellaires, stellar evolution, main sequence, red giant*, white dwarf*, hr diagram, stellar populations"),
+        "circumpolaire": ("arcs concentriques autour d'un pôle", "ciel nocturne, voûte céleste, étoile polaire, rotation de la terre, observation astronomique, astrophotographie, star trail*, night sky, celestial sphere, pole star, polaris, earth's rotation, observational astronomy, astrophotography"),
+        "lentille": ("réseau de points ouvert en anneau", "lentille gravitationnelle, lentilles gravitationnelles, anneau d'einstein, mirage gravitationnel, cisaillement gravitationnel, gravitational lens*, einstein ring, weak lensing, strong lensing"),
+        "paquets": ("rangées ondulantes dans une enveloppe qui s'élargit", "paquet d'ondes, paquets d'ondes, schrödinger, équation de schrödinger, dualité onde-corpuscule, mécanique ondulatoire, wave packet*, schrödinger equation, wave-particle duality, dispersion relation"),
+        "abrikosov": ("réseau triangulaire de petits tourbillons", "supraconduct*, superconduct*, superfluid*, vortex quantiques, abrikosov, effet meissner, hélium superfluide, meissner effect, quantum vortices, type-ii superconductor*"),
+    },
+    "Terre et climat": {
+        "plissement": ("couches plissées en bandes, rejetées par une faille", "géologie, géologique*, strate*, stratigraph*, sédiment*, tectonique*, plis, faille*, roche*, minéralog*, geology, geological, stratigraphy, sediment*, tectonic*, folds, faults, rocks, mineralog*"),
+        "sismogramme": ("traces secouées par deux arrivées alignées sur une hyperbole", "sismolog*, séisme*, sismique*, tremblement de terre, tremblements de terre, ondes sismiques, géophysique, sismographe*, seismolog*, earthquake*, seismic, geophysic*, seismograph*"),
+        "gyres": ("cellules de circulation, lignes de courant fermées en tirets", "océanograph*, océan*, courants marins, courant marin, courants océaniques, circulation océanique, marée*, gyre*, tourbillon*, oceanograph*, ocean*, ocean currents, ocean circulation, tides, eddies, eddy, vortex, vortices"),
+        "isobares": ("lignes de niveau serrées autour de creux et de bosses", "météorolog*, météorologie dynamique, météo, pression atmosphérique, isobare*, dépression atmosphérique, anticyclone*, cyclone*, front froid, fronts froids, vent, vents, prévision météorologique, meteorolog*, weather, atmospheric pressure, isobar*, wind, winds, weather forecast*, dynamic meteorology"),
+        "rechauffement": ("bandes verticales froides puis chaudes", "climat*, réchauffement, changement climatique, températures mondiales, anomalies climatiques, giec, gaz à effet de serre, effet de serre, climate, global warming, climate change, global temperature*, ipcc, greenhouse gas*, greenhouse effect, warming stripes"),
+        # suite
+        "hachures": ("relief en hachures dans le sens de la pente", "cartographie, carte topographique, géomorphologie, relief*, montagne*, modèle numérique de terrain, cartography, topographic map*, geomorphology, terrain, mountain*, hillshade, digital elevation model"),
+        "orgues": ("cellules presque hexagonales, prismes vus d'en haut", "basalte*, volcan*, volcanolog*, magma*, lave*, orgues basaltiques, roches volcaniques, basalt*, volcano*, magma, lava, columnar jointing, igneous rock*"),
+        "banquise": ("plaques claires sur une eau sombre", "banquise, glace de mer, arctique, antarctique, cryosphère, glacier*, calotte glaciaire, calottes glaciaires, iceberg*, régions polaires, sea ice, arctic, antarctic*, cryosphere, ice sheet*, polar regions"),
+        "affluents": ("réseau de rivières qui se ramifie", "hydrolog*, bassin versant, bassins versants, rivière*, fleuve*, cours d'eau, réseau hydrographique, drainage, érosion, hydrology, watershed*, river*, stream network, drainage basin*, catchment*, erosion"),
+        "rossby": ("anneaux qui ondulent autour d'un pôle", "circulation atmosphérique, courant-jet, courant jet, jet-stream, ondes de rossby, rossby, vortex polaire, dynamique de l'atmosphère, atmospheric circulation, jet stream, rossby waves, polar vortex, atmospheric dynamics"),
+        "averse": ("tirets obliques en cellules de pluie", "précipitation*, pluie*, averse*, orage*, mousson*, cycle de l'eau, hydrométéorolog*, precipitation, rain*, rainfall, storm*, thunderstorm*, monsoon*, water cycle"),
+        "carottes": ("colonnes de couches minces, une couche repère", "paléoclimat*, carotte glaciaire, carottes glaciaires, carottes de glace, carottage*, varve*, archives climatiques, quaternaire, glaciation*, paleoclimat*, ice core*, sediment core*, varves, quaternary"),
+        "dorsale": ("bandes symétriques autour d'un axe, failles transversales", "tectonique des plaques, dorsale*, expansion océanique, paléomagnétisme, inversions magnétiques, plaques tectoniques, géodynamique, plate tectonics, mid-ocean ridge*, seafloor spreading, paleomagnetism, magnetic reversals, geodynamics"),
+        "dunes": ("crêtes sinueuses ourlées d'ombre", "dune*, désert*, sable*, éolien*, transport sédimentaire, désertification, desert*, sand*, aeolian, eolian, sediment transport, desertification"),
+        "nebulosite": ("trame de points en couverture nuageuse", "nébulosité, couverture nuageuse, physique des nuages, formation des nuages, télédétection, imagerie satellite, aérosol*, clouds, cloud cover, cloud physics, remote sensing, satellite imagery, aerosol*"),
+        "poreux": ("grains serrés et un chemin qui les traverse", "milieux poreux, milieu poreux, porosité, perméabilité, hydrogéolog*, aquifère*, eaux souterraines, percolation, darcy, porous media, porous medium, porosity, permeability, hydrogeolog*, aquifer*, groundwater"),
+        "epicentres": ("points très inégaux le long de frontières", "aléa sismique, risque sismique, épicentre*, magnitude*, gutenberg, failles actives, sismicité, seismic hazard, epicent*, seismicity, active faults, earthquake catalog*"),
+    },
+    "Mathématiques": {
+        "isoclines": ("champ de pentes en tirets, courbes intégrales", "équations différentielles, équation différentielle, edo, champ de pentes, isocline*, analyse mathématique, analyse réelle, intégrale*, dérivée*, calcul différentiel, differential equation*, ode, odes, slope field, calculus, integral*, derivative*, real analysis"),
+        "attracteur": ("nuage d'un attracteur étrange", "systèmes dynamiques, système dynamique, chaos, chaotique*, attracteur*, bifurcation*, lorenz, dynamical system*, chaos theory, chaotic, attractor*, strange attractor"),
+        "modulo": ("cordes d'une table modulo sur un cercle", "algèbre, algébrique*, théorie des groupes, groupes finis, arithmétique modulaire, modulo, congruence*, corps finis, cyclique*, algebra*, group theory, finite groups, modular arithmetic, finite field*, cyclic"),
+        "galton": ("clous en quinconce, billes en cloche", "probabilit*, aléatoire*, hasard, loi binomiale, loi normale, variable aléatoire, variables aléatoires, processus stochastique*, galton, probability, probabilities, randomness, binomial*, normal distribution, random variable*, stochastic*"),
+        "entrelacs": ("nœud torique en ruban, passages dessus-dessous", "topolog*, théorie des nœuds, entrelacs, tresse*, tore, homotopie, homologie, invariant*, variétés, knot theory, knots, braid*, torus, homotopy, homology, manifold*"),
+        "ulam": ("spirale d'Ulam : les nombres premiers en points", "théorie des nombres, nombre premier, nombres premiers, arithmétique, nombres entiers, crible, ulam, riemann, number theory, prime number*, primes, integers, sieve, primality"),
+        # suite
+        "mandelbrot": ("l'ensemble de Mandelbrot en trame", "ensemble de mandelbrot, mandelbrot, ensemble de julia, géométrie fractale, objets fractals, dimension fractale, auto-similarité, mandelbrot set, julia set*, fractal geometry, fractal dimension, self-similar*"),
+        "hilbert": ("courbe de Hilbert qui remplit le carré", "courbe de hilbert, courbe de peano, courbes remplissantes, hilbert, peano, espace de hilbert, espaces de hilbert, récursivité, space-filling curve*, hilbert curve, peano curve, hilbert space*, recursion"),
+        "penrose": ("losanges fins et épais sans période", "pavage apériodique, pavages apériodiques, penrose, quasicristal*, quasi-cristal*, symétrie d'ordre cinq, aperiodic tiling*, penrose tiling*, quasicrystal*, fivefold symmetry"),
+        "apollonius": ("cercles tangents qui remplissent les interstices", "apollonius, baderne d'apollonius, cercles tangents, empilement de cercles, théorème de descartes, inversion, géométrie du cercle, apollonian gasket, tangent circles, circle packing, descartes theorem, inversive geometry"),
+        "angledor": ("points posés à l'angle d'or", "nombre d'or, angle d'or, fibonacci, suite de fibonacci, phyllotaxie, spirale de vogel, proportion dorée, golden ratio, golden angle, fibonacci sequence, phyllotaxis, golden section"),
+        "collatz": ("corail des suites de Syracuse", "conjecture de syracuse, syracuse, collatz, suites récurrentes, suite récurrente, problème 3n+1, conjecture*, collatz conjecture, 3n+1, recurrence relation*"),
+        "quatrecouleurs": ("carte en quatre tons sans voisines semblables", "théorème des quatre couleurs, quatre couleurs, coloration de graphes, coloriage, graphes planaires, graphe planaire, théorie des graphes, four color theorem, graph coloring, graph colouring, planar graph*, graph theory"),
+        "epicycles": ("chaîne de cercles et la courbe qu'elle trace", "séries de fourier, série de fourier, transformée de fourier, fourier, analyse harmonique, épicycle*, fourier series, fourier transform, harmonic analysis, epicycle*"),
+        "hyperbolique": ("géodésiques du disque de Poincaré", "géométrie hyperbolique, géométries non euclidiennes, non euclidien*, non-euclidien*, disque de poincaré, plan hyperbolique, géométrie riemannienne, hyperbolic geometry, non-euclidean geometry, non-euclidean, poincaré disk, poincare disk, hyperbolic plane, riemannian geometry"),
+        "young": ("diagramme de Young en escalier", "tableaux de young, tableau de young, diagramme de young, diagrammes de young, partitions d'entiers, partition d'un entier, combinatoire algébrique, théorie des représentations, young tableau*, young diagram*, integer partition*, algebraic combinatorics, representation theory"),
+        "complexe": ("lignes d'égal module et d'égal argument", "analyse complexe, nombres complexes, nombre complexe, fonctions holomorphes, holomorphe*, théorème des résidus, plan complexe, complex analysis, complex numbers, holomorphic, residue theorem, complex plane"),
+        "spirographe": ("courbes de spirographe superposées", "spirographe, courbes paramétrées, courbe paramétrée, roulette*, hypotrochoïde*, épicycloïde*, cycloïde*, courbes planes, spirograph, parametric curve*, hypotrochoid*, epicycloid*, cycloid*, plane curves"),
+        "tesseract": ("hypercube projeté et ses sillages", "quatrième dimension, hypercube*, tesseract, géométrie en dimension n, polytope*, grande dimension, algèbre linéaire, espaces vectoriels, fourth dimension, four dimensions, polytopes, high-dimensional, linear algebra, vector space*"),
+    },
+    "Chimie générale": {
+        "raies": ("bandes de raies qui se resserrent vers une limite", "spectroscop*, spectre*, raie*, émission, absorption atomique, infrarouge, uv-visible, raman, fluorescence, spectroscopy, spectrum, spectra, spectral line*, emission spectrum, infrared"),
+        "electrode": ("couche serrée contre une paroi, mélange au loin", "électrochim*, électrode*, électrolyse, électrolyte*, pile à combustible, batterie*, accumulateur*, corrosion, oxydoréduction, redox, voltammétrie, double couche, electrochem*, electrode*, electrolysis, electrolyte*, battery, batteries, fuel cell*, voltammetry"),
+        "orbitales": ("nuage en lobes d'une densité orbitale", "chimie quantique, orbitale*, mécanique quantique, physique quantique, quantique*, fonction d'onde, liaison chimique, liaisons chimiques, atome*, électron*, quantum chemistry, quantum mechanics, quantum, orbital*, wave function, wavefunction, chemical bond*, atom*, electron*"),
+        "chromato": ("pistes de pics, un composé à l'accent", "chimie analytique, chromatograph*, hplc, chromatographie en phase gazeuse, dosage*, titrage*, analyte*, spectrométrie de masse, analytical chemistry, gas chromatography, liquid chromatography, assay*, titration*, mass spectrometry"),
+        # suite
+        "laue": ("taches de diffraction symétriques autour du faisceau", "cristallographie, cristallographie aux rayons x, diffraction des rayons x, rayons x, laue, bragg, structure cristalline, réseau cristallin, maille cristalline, crystallography, x-ray crystallography, x-ray diffraction, x-rays, crystal structure, crystal lattice, unit cell*"),
+        "mendeleiev": ("silhouette du tableau périodique", "tableau périodique, classification périodique, mendeleïev, mendeleiev, éléments chimiques, périodicité, chimie générale, chimie inorganique, periodic table, chemical elements, periodicity, general chemistry, inorganic chemistry"),
+        "belousov": ("ondes chimiques en spirales et en cibles", "réaction oscillante, réactions oscillantes, belousov, zhabotinsky, réaction-diffusion, ondes chimiques, autocatalyse, oscillating reaction*, belousov-zhabotinsky, reaction-diffusion, chemical waves, autocatalysis"),
+        "liesegang": ("anneaux de plus en plus espacés depuis un coin", "anneaux de liesegang, liesegang, précipitation périodique, précipité*, diffusion dans un gel, liesegang rings, periodic precipitation, precipitate*"),
+        "maxwell": ("molécules et traînées de vitesse dans une boîte", "théorie cinétique des gaz, gaz parfait, gaz parfaits, maxwell-boltzmann, distribution des vitesses, pression d'un gaz, kinetic theory of gases, ideal gas*, speed distribution, gas pressure"),
+        "solvatation": ("ions entourés de couronnes de solvant", "solvatation, solutions aqueuses, solution aqueuse, ions en solution, hydratation des ions, sphère de solvatation, solubilité, dissolution, chimie des solutions, solvation, aqueous solution*, solvation shell*, hydration shell*, solubility, ions in solution"),
+        "miroir": ("crochets et leurs images de part et d'autre d'un axe", "chiralité, chiral*, énantiomère*, stéréochimie, isomérie optique, activité optique, symétrie miroir, chirality, enantiomer*, stereochemistry, optical isomer*, optical activity, mirror symmetry"),
+        "nucleation": ("grains en anneaux qui se rencontrent", "nucléation, germination, croissance cristalline, cinétique de cristallisation, avrami, solidification, recristallisation, métallurgie, nucleation, crystal growth, crystallization kinetics, recrystallization, metallurgy"),
+        "multiplets": ("arbres de dédoublement et barres binomiales", "résonance magnétique nucléaire, rmn, spectroscopie rmn, couplage spin-spin, multiplet*, déplacement chimique, nuclear magnetic resonance, nmr, nmr spectroscopy, spin-spin coupling, chemical shift*, j-coupling"),
+        "agregat": ("amas branchu de particules", "agrégation, agrégats, colloïde*, agrégation limitée par la diffusion, croissance fractale, nanoparticule*, aggregation, aggregates, colloid*, diffusion-limited aggregation, nanoparticle*, fractal growth"),
+        "osmose": ("paroi en tirets entre solvant et mélange", "osmose, pression osmotique, membrane semi-perméable, membranes semi-perméables, dialyse, propriétés colligatives, osmosis, osmotic pressure, semipermeable membrane*, dialysis, colligative properties"),
+        "zeolithe": ("réseau d'hexagones et ses cavités", "zéolithe*, catalyse hétérogène, matériaux poreux, adsorption, charpentes métallo-organiques, silicates, zeolite*, heterogeneous catalysis, porous materials, metal-organic framework*"),
+    },
 }
 DOMAINE = {m: dom for dom, motifs in CATALOGUE.items() for m in motifs}
 MOTIFS = {m: globals()[m] for m in DOMAINE}
@@ -1283,6 +3309,18 @@ ALIAS = {"helix": "helice", "points": "semis", "onde": "semis", "spheres": "tram
          "elements": "maillage", "newton": "tangentes", "factoriel": "cube", "plans": "cube", "surface": "isoreponses",
          "feu": "braises", "incendie": "braises", "papillon": "eventails", "bowtie": "eventails", "noeud": "eventails",
          "rejet": "panache", "levenspiel": "mccabe", "escaliers": "mccabe", "criticite": "carreaux", "matrice": "carreaux", "carres": "carreaux", "triple": "phases"}
+# sciences exactes
+ALIAS.update({"interferences": "interference", "diffraction": "interference", "relativite": "geodesiques", "spins": "ising",
+              "galaxies": "galaxie", "cosmologie": "cosmique", "strates": "plissement", "geologie": "plissement",
+              "seisme": "sismogramme", "ocean": "gyres", "meteo": "isobares", "climat": "rechauffement", "pentes": "isoclines",
+              "chaos": "attracteur", "cardioide": "modulo", "binomiale": "galton", "knot": "entrelacs", "tore": "entrelacs",
+              "premiers": "ulam", "spectre": "raies", "electrochimie": "electrode", "orbitale": "orbitales",
+              "chromatographie": "chromato"})
+ALIAS.update({"magnetisme": "limaille", "aimant": "limaille", "orbites": "kepler", "particules": "collision", "plasma": "chirikov",
+              "etoiles": "hertzsprung", "relief": "hachures", "basalte": "orgues", "glace": "banquise", "rivieres": "affluents",
+              "jet": "rossby", "pluie": "averse", "tectonique": "dorsale", "nuages": "nebulosite", "fractale": "mandelbrot",
+              "fibonacci": "angledor", "syracuse": "collatz", "fourier": "epicycles", "hypercube": "tesseract",
+              "periodique": "mendeleiev", "gaz": "maxwell", "chiralite": "miroir", "rmn": "multiplets", "zeolite": "zeolithe"})
 
 
 def _motif_mot(mot):

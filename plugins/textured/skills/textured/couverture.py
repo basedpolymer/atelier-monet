@@ -390,6 +390,21 @@ COULEUR = {
     "trame": ("degrade", "d"), "rayures": ("degrade", "d"),
 }
 SEUIL_MULTI = 6
+# sciences exactes (physique et astronomie, Terre et climat, mathématiques, chimie générale)
+COULEUR.update({
+    # dessinés autour du centre du carré
+    **{m: ("degrade", "r", (100, 100)) for m in ("galaxie", "angledor", "hyperbolique", "spirographe", "modulo", "laue", "agregat",
+                                                 "brillouin", "entrelacs", "orbitales", "tesseract", "apollonius", "miroir")},
+    # centre tiré par le motif : il pose lui-même son dégradé rayonnant (motifs.degrade_centre), colorier n'y touche pas
+    **{m: ("uni",) for m in ("circumpolaire", "belousov", "liesegang", "collision", "kepler", "lentille", "rossby")},
+    # rangées empilées : une couleur par rangée
+    **{m: ("degrade", "v") for m in ("sismogramme", "paquets", "chromato", "raies", "isoclines")},
+    # colonnes, de gauche à droite
+    **{m: ("degrade", "h") for m in ("galton", "multiplets", "electrode", "ulam")},
+    # pavages et formes pleines : quatre encres, même quand les formes sont peu nombreuses
+    **{m: ("multi",) for m in ("ising", "penrose", "quatrecouleurs", "orgues", "carottes", "mendeleiev", "plissement", "dunes",
+                               "dorsale")},
+})
 FORMES = re.compile(r'<(path|circle|rect|ellipse|polygon|polyline|line)\b[^>]*>')
 SENS = {"h": (10, 100, 190, 100), "v": (100, 10, 100, 190), "d": (10, 190, 190, 10)}
 _degrades = [0]
@@ -520,15 +535,22 @@ def preparer(meta, corps, plan_, lang, avis, brut=None):
 
 
 def choisis(choix):
-    """« tout », un domaine (ou son début), ou des noms de motifs séparés par des virgules → [(domaine, [motifs])]."""
+    """« tout », ou des domaines (ou leur début) et des noms de motifs séparés par des virgules → [(domaine, [motifs])] :
+    chaque domaine nommé, puis les motifs nommés un à un, rangés sous leur domaine."""
     choix = sans_accents((choix or "tout").strip().lower())
     if choix in ("", "tout", "tous", "oui", "all"):
         return [(dom, list(ms)) for dom, ms in CATALOGUE.items()]
-    for dom, ms in CATALOGUE.items():
-        if sans_accents(dom.lower()).startswith(choix) or choix in sans_accents(dom.lower()).split():
-            return [(dom, list(ms))]
-    noms = [ALIAS.get(m.strip(), m.strip()) for m in re.split(r"[\s,;]+", choix) if m.strip()]
-    return [("Choix", [m for m in noms if m in MOTIFS])]
+    groupes, noms = [], []
+    for mot in (m.strip() for m in re.split(r"[,;]+", choix) if m.strip()):
+        dom = next((d for d in CATALOGUE if sans_accents(d.lower()).startswith(mot) or mot in sans_accents(d.lower()).split()), None)
+        if dom and mot not in MOTIFS:
+            groupes.append((dom, list(CATALOGUE[dom])))
+        else:
+            noms += [ALIAS.get(m, m) for m in mot.split()]
+    noms = [m for m in noms if m in MOTIFS]
+    # les motifs nommés un à un, rangés sous leur domaine, dans l'ordre du catalogue
+    groupes += [(dom, [m for m in ms if m in noms]) for dom, ms in CATALOGUE.items() if any(m in noms for m in ms)]
+    return groupes
 
 
 def planche(meta, corps, plan_, lang, avis, brut=None, choix=None):

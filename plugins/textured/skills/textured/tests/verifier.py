@@ -94,6 +94,102 @@ def motifs_et_glyphes():
           f"{'erreur' if any(x.startswith(('motif', 'glyphe')) for x in echecs) else 'ok'}")
 
 
+# Le sujet d'un document (en français et en anglais) doit désigner son motif, seul en tête de --motifs ; un bloc par
+# domaine.
+CHOIX = {}
+# sciences exactes : physique et astronomie, Terre et climat, mathématiques, chimie générale
+CHOIX.update({
+    "Interférences et diffraction de la lumière": "interference", "Wave optics and interference": "interference",
+    "Relativité générale et trous noirs": "geodesiques", "General relativity and spacetime": "geodesiques",
+    "Physique statistique : le modèle d'Ising": "ising", "Statistical mechanics of magnetism": "ising",
+    "Formation des galaxies": "galaxie", "Stellar astrophysics": "galaxie",
+    "Introduction à la cosmologie": "cosmique", "Dark matter and the cosmic web": "cosmique",
+    "Géologie structurale : plis et failles": "plissement", "Sedimentary geology": "plissement",
+    "Sismologie et ondes sismiques": "sismogramme", "Earthquake seismology": "sismogramme",
+    "Océanographie physique": "gyres", "Ocean circulation and eddies": "gyres",
+    "Météorologie dynamique": "isobares", "Weather forecasting": "isobares",
+    "Le changement climatique": "rechauffement", "Climate change and global warming": "rechauffement",
+    "Équations différentielles ordinaires": "isoclines", "Ordinary differential equations": "isoclines",
+    "Systèmes dynamiques et chaos": "attracteur", "Chaos theory and strange attractors": "attracteur",
+    "Algèbre : théorie des groupes": "modulo", "Modular arithmetic": "modulo",
+    "Probabilités et variables aléatoires": "galton", "Probability theory": "galton",
+    "Théorie des nœuds": "entrelacs", "Knot theory and braids": "entrelacs",
+    "Théorie des nombres : les nombres premiers": "ulam", "Prime numbers": "ulam",
+    "Spectroscopie infrarouge et RMN": "raies", "Infrared spectroscopy": "raies",
+    "Électrochimie et corrosion": "electrode", "Batteries and electrochemistry": "electrode",
+    "Chimie quantique : orbitales moléculaires": "orbitales", "Quantum chemistry": "orbitales",
+    "Chimie analytique : chromatographie": "chromato", "Gas chromatography": "chromato",
+})
+# sciences exactes, suite
+CHOIX.update({
+    "Électrostatique et champ électrique": "dipole", "Electric fields and charges": "dipole",
+    "Champ magnétique et aimants": "limaille", "Magnetic fields and solenoids": "limaille",
+    "Mécanique céleste": "kepler", "Orbital mechanics": "kepler",
+    "Oscillateurs harmoniques": "lissajous", "Harmonic oscillators and pendulums": "lissajous",
+    "Modes propres et ondes stationnaires": "chladni", "Standing waves and normal modes": "chladni",
+    "Physique des particules": "collision", "Particle physics at the LHC": "collision",
+    "Physique du solide": "brillouin", "Solid state physics and band structure": "brillouin",
+    "Physique des plasmas et fusion nucléaire": "chirikov", "Hamiltonian chaos and the standard map": "chirikov",
+    "Évolution stellaire": "hertzsprung", "Stellar evolution and the main sequence": "hertzsprung",
+    "Observer le ciel nocturne": "circumpolaire", "Astrophotography of the night sky": "circumpolaire",
+    "Lentilles gravitationnelles": "lentille", "Strong and weak lensing": "lentille",
+    "Paquets d'ondes et équation de Schrödinger": "paquets", "Wave packets and dispersion": "paquets",
+    "Supraconductivité": "abrikosov", "Superconductors and quantum vortices": "abrikosov",
+    "Cartographie et géomorphologie": "hachures", "Terrain and hillshade": "hachures",
+    "Volcanologie": "orgues", "Basalt and columnar jointing": "orgues",
+    "La banquise arctique": "banquise", "Sea ice and the cryosphere": "banquise",
+    "Hydrologie des bassins versants": "affluents", "River networks and watersheds": "affluents",
+    "Circulation atmosphérique et courant-jet": "rossby", "The jet stream and Rossby waves": "rossby",
+    "Précipitations et orages": "averse", "Rainfall and monsoons": "averse",
+    "Paléoclimat et carottes glaciaires": "carottes", "Ice cores and paleoclimate": "carottes",
+    "Tectonique des plaques": "dorsale", "Plate tectonics and seafloor spreading": "dorsale",
+    "Les dunes du désert": "dunes", "Aeolian sand transport": "dunes",
+    "Physique des nuages": "nebulosite", "Cloud cover from satellite imagery": "nebulosite",
+    "Hydrogéologie des milieux poreux": "poreux", "Groundwater and aquifers": "poreux",
+    "Aléa sismique": "epicentres", "Seismicity and active faults": "epicentres",
+    "L'ensemble de Mandelbrot": "mandelbrot", "Fractal geometry": "mandelbrot",
+    "Courbes de Hilbert et de Peano": "hilbert", "Space-filling curves": "hilbert",
+    "Pavages apériodiques": "penrose", "Penrose tilings and quasicrystals": "penrose",
+    "La baderne d'Apollonius": "apollonius", "Circle packing": "apollonius",
+    "Le nombre d'or": "angledor", "The golden ratio and Fibonacci": "angledor",
+    "La conjecture de Syracuse": "collatz", "The Collatz conjecture": "collatz",
+    "Théorie des graphes et coloration": "quatrecouleurs", "Graph coloring": "quatrecouleurs",
+    "Séries de Fourier": "epicycles", "Fourier series and harmonic analysis": "epicycles",
+    "Géométrie hyperbolique": "hyperbolique", "Non-Euclidean geometry": "hyperbolique",
+    "Tableaux de Young": "young", "Integer partitions": "young",
+    "Analyse complexe": "complexe", "Complex analysis": "complexe",
+    "Courbes paramétrées": "spirographe", "Spirograph curves": "spirographe",
+    "Algèbre linéaire": "tesseract", "The fourth dimension": "tesseract",
+    "Cristallographie et diffraction des rayons X": "laue", "X-ray crystallography": "laue",
+    "Le tableau périodique": "mendeleiev", "The periodic table of elements": "mendeleiev",
+    "Réactions oscillantes": "belousov", "The Belousov-Zhabotinsky reaction": "belousov",
+    "Anneaux de Liesegang": "liesegang", "Periodic precipitation": "liesegang",
+    "Théorie cinétique des gaz": "maxwell", "Kinetic theory of gases": "maxwell",
+    "Chimie des solutions": "solvatation", "Solvation and solubility": "solvatation",
+    "Chiralité et stéréochimie": "miroir", "Chirality and enantiomers": "miroir",
+    "Nucléation et croissance cristalline": "nucleation", "Crystal growth and nucleation": "nucleation",
+    "Spectroscopie RMN": "multiplets", "NMR spectroscopy": "multiplets",
+    "Agrégation des colloïdes": "agregat", "Colloid aggregation": "agregat",
+    "Osmose et pression osmotique": "osmose", "Osmosis": "osmose",
+    "Zéolithes et catalyse hétérogène": "zeolithe", "Zeolites and porous materials": "zeolithe",
+})
+
+
+def choix_par_sujet():
+    """Chaque sujet de CHOIX désigne son motif, seul en tête ; chaque motif a sa marque de favicon."""
+    faux = []
+    for sujet, attendu in CHOIX.items():
+        p = couverture.proposer(sujet, 4)
+        tete = [m for m, sc in p if p and sc == p[0][1]]
+        if tete != [attendu]:
+            faux.append(f"« {sujet} » → {', '.join(tete) or 'rien'} (attendu : {attendu})")
+    echecs.extend("choix du motif : " + f for f in faux)
+    sans_marque = [m for m in motifs.MOTIFS if m not in icone.MARQUE_DE]
+    if sans_marque:
+        echecs.append("motifs sans marque de favicon : " + ", ".join(sans_marque))
+    print(f"  {len(CHOIX)} sujets → motif : {'erreur' if faux or sans_marque else 'ok'}")
+
+
 def favicons(tmp):
     """Le même favicon sur tout le cours, titres d'onglet, clés icone: et onglet:, dessins sur mesure."""
     pages = {f.name: f.read_text(encoding="utf-8") for f in (tmp / "cours").glob("*.html")}
@@ -165,6 +261,7 @@ def main():
             echecs.append("exemple.pdf absent")
         lancer([str(RACINE / "exemples" / "cours"), "-o", str(tmp / "cours")])
         motifs_et_glyphes()
+        choix_par_sujet()
         favicons(tmp)
         # couverture sur un chapitre (encre et densité héritées de l'accueil) et planche de tous les motifs
         chap = RACINE / "exemples" / "cours" / "01-flory-huggins.md"

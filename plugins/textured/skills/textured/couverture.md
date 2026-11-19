@@ -49,6 +49,32 @@ plat puis en pente.
 **Risques** : `braises` triangles chauffés · `eventails` deux éventails convergents · `panache` nuage qui s'élargit ·
 `carreaux` carrés croissants.
 
+**Physique, astronomie** : `interference` franges de points · `geodesiques` quadrillage creusé · `ising` domaines de
+spins · `galaxie` spirale de points · `cosmique` toile de filaments · `dipole` lignes de champ · `limaille` tirets
+alignés · `kepler` ellipses confocales · `lissajous` table de figures · `chladni` sable nodal · `collision` traces en
+pointillés · `brillouin` zones alternées · `chirikov` îlots et chaos · `hertzsprung` nuage d'étoiles · `circumpolaire`
+arcs autour d'un pôle · `lentille` réseau ouvert en anneau · `paquets` ondes localisées · `abrikosov` réseau de
+tourbillons.
+
+**Terre, climat** : `plissement` couches plissées · `sismogramme` traces secouées · `gyres` cellules de courant ·
+`isobares` lignes de niveau serrées · `rechauffement` bandes froides puis chaudes · `hachures` relief · `orgues`
+prismes · `banquise` plaques sur l'eau · `affluents` réseau ramifié · `rossby` anneaux ondulants · `averse` tirets
+obliques · `carottes` colonnes de couches · `dorsale` bandes symétriques · `dunes` crêtes ombrées · `nebulosite` trame
+nuageuse · `poreux` grains et chemin · `epicentres` points inégaux.
+
+**Mathématiques** : `isoclines` champ de pentes · `attracteur` nuage chaotique · `modulo` cordes sur un cercle ·
+`galton` billes en cloche · `entrelacs` nœud en ruban · `ulam` spirale des premiers · `mandelbrot` ensemble en trame ·
+`hilbert` courbe remplissante · `penrose` losanges apériodiques · `apollonius` cercles tangents · `angledor` spirale
+de Vogel · `collatz` corail · `quatrecouleurs` carte en quatre tons · `epicycles` cercles en chaîne · `hyperbolique`
+disque de Poincaré · `young` cases en escalier · `complexe` module et argument · `spirographe` roulettes ·
+`tesseract` hypercube.
+
+**Chimie générale** : `raies` bandes de raies · `electrode` couche contre une paroi · `orbitales` lobes de points ·
+`chromato` pistes de pics · `laue` taches de diffraction · `mendeleiev` silhouette périodique · `belousov` ondes en
+spirale · `liesegang` anneaux espacés · `maxwell` molécules et vitesses · `solvatation` ions et couronnes · `miroir`
+paires symétriques · `nucleation` grains en anneaux · `multiplets` arbres de dédoublement · `agregat` amas branchu ·
+`osmose` paroi et mélange · `zeolithe` nid d'abeilles.
+
 Détail (dessins et mots du sujet) : `textured.py --motifs` sans sujet.
 
 ## Dessin sur mesure
