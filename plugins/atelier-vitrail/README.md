@@ -15,7 +15,7 @@ Thème pour Claude Code, dans l'esprit LaTeX et ASCII : plâtre d'atelier le jou
 
 </details>
 
-Le fond est un seul SVG fait de caractères, animé en CSS par des transformations et des changements d'opacité, que le compositeur prend en charge sans redessiner le texte. Il s'immobilise si le système demande moins d'animations ; en portrait, seules les pelotes et le réacteur restent.
+Le fond est un seul SVG fait de caractères, animé en CSS par des transformations et des changements d'opacité, que le compositeur prend en charge sans les redessiner. Ces caractères sont des formes, pas du texte : chaque lettre est le contour d'un caractère de Latin Modern Mono (`glyphes.py` les écrit dans `hooks/scene.ts`), si bien que rien ne se sélectionne, ne se copie ni ne se lit à voix haute. Il s'immobilise si le système demande moins d'animations ; en portrait, seules les pelotes et le réacteur restent.
 
 ## Installation
 
