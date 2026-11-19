@@ -47,6 +47,21 @@ plat puis en pente.
 **Risques** : `braises` triangles chauffés · `eventails` deux éventails convergents · `panache` nuage qui s'élargit ·
 `carreaux` carrés croissants.
 
+**Vivant** : `phylogenie` arbre en éventail · `division` disque refendu en galets · `proies` orbites en pointillé ·
+`influx` tirets en salves · `clones` anneaux ouverts vers un point.
+
+**Médecine** : `contagion` propagation de proche en proche · `depistage` points et anneaux de part et d'autre d'un
+seuil · `sinogramme` sinusoïdes tressées.
+
+**Informatique, IA** : `couches` colonnes reliées en faisceaux · `grappes` nuages tirés vers leurs centres · `brassage`
+anneaux de bits brassés · `tri` fils croisés qui se rangent.
+
+**Ingénierie** : `pistes` pistes à 45 degrés · `harmoniques` ondes en hachures et leur somme · `rubans` ruban de fils
+qui se divise · `poses` chaîne articulée, pose après pose.
+
+**Sciences humaines** : `volatilite` faisceau de marches aléatoires · `schelling` points et anneaux en plaques ·
+`pyramide` pyramide des âges en points · `frise` traits en couloirs.
+
 Détail (dessins et mots du sujet) : `textured.py --motifs` sans sujet.
 
 ## Dessin sur mesure

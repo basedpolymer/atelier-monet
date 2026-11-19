@@ -1204,6 +1204,718 @@ def carreaux(r, d):
     return out
 
 
+# ---------- sciences du vivant ----------
+
+def rond(x, y, rayon):
+    """Sous-chemin d'un cercle, pour en réunir beaucoup dans un seul <path>."""
+    return f"M{n(x - rayon)} {n(y)}a{n(rayon)} {n(rayon)} 0 1 0 {n(2 * rayon)} 0a{n(rayon)} {n(rayon)} 0 1 0 {n(-2 * rayon)} 0"
+
+
+def phylogenie(r, d):
+    """Arbre binaire en éventail : chaque nœud se partage en deux le long d'un arc, les feuilles en points au
+    pourtour, un clade à l'accent : évolution, phylogénie, spéciation."""
+    nf, R = r.randint(26, 40), 84
+    trou, debut = math.radians(r.uniform(30, 70)), r.uniform(0, 2 * math.pi)
+    angle = lambda i: debut + trou / 2 + (2 * math.pi - trou) * (i + .5) / nf
+    P = lambda a, rho: f"{n(100 + rho * math.cos(a))} {n(100 + rho * math.sin(a))}"
+    segs, internes = [], []
+
+    def pousse(lo, hi, rho):
+        if hi - lo == 1:
+            return angle(lo)
+        k, angs = r.randint(lo + 1, hi - 1), []
+        for a, b in ((lo, k), (k, hi)):
+            rc = R if b - a == 1 else rho + (R - rho) * r.uniform(.1, .42)
+            s0 = len(segs)
+            ac = pousse(a, b, rc)
+            segs.append((f"M{P(ac, rho)}L{P(ac, rc)}", rho))
+            if b - a > 1:
+                internes.append((b - a, s0, len(segs), a, b))
+            angs.append(ac)
+        segs.append((f"M{P(angs[0], rho)}A{n(rho)} {n(rho)} 0 {int(angs[1] - angs[0] > math.pi)} 1 {P(angs[1], rho)}", rho))
+        return (angs[0] + angs[1]) / 2
+
+    pousse(0, nf, r.uniform(5, 9))
+    choix = [x for x in internes if 4 <= x[0] <= max(6, nf // 3)] or internes
+    _, s0, s1, fa, fb = r.choice(choix)
+    traits = defaultdict(list)
+    for i, (chemin, rho) in enumerate(segs):
+        w = round((1 + 1.6 * (1 - rho / R)) * 2) / 2
+        traits[(ACC, w + .6) if s0 <= i < s1 else (ENCRE, w)].append(chemin)
+    feuilles = defaultdict(list)
+    for i in range(nf):
+        a = angle(i)
+        feuilles[(ACC, 4.6) if fa <= i < fb else (ENCRE, r.choice((2.4, 3.2, 4.2)))].append((100 + (R + 3) * math.cos(a), 100 + (R + 3) * math.sin(a)))
+    return ([f'<path d="{"".join(v)}" stroke="{c}" stroke-width="{n(w)}"/>' for (c, w), v in sorted(traits.items(), key=lambda x: x[0][0] == ACC)]
+            + [points(v, t, c) for (c, t), v in feuilles.items()] + [points([(100, 100)], 5, ENCRE)])
+
+
+def division(r, d):
+    """Un disque fendu en travers de son grand axe, chaque moitié fendue à son tour, les fentes de plus en plus fines,
+    les morceaux arrondis en galets ; la plupart pleins, d'autres en contour, un à l'accent : division cellulaire,
+    mitose, prolifération, partage."""
+    def tranche(poly, f):
+        out = []
+        for i, p in enumerate(poly):
+            q = poly[(i + 1) % len(poly)]
+            fp, fq = f(p), f(q)
+            if fp >= 0:
+                out.append(p)
+            if (fp >= 0) != (fq >= 0):
+                t = fp / (fp - fq)
+                out.append((p[0] + t * (q[0] - p[0]), p[1] + t * (q[1] - p[1])))
+        return out
+
+    def centre(poly):
+        a = cx = cy = 0.0
+        for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+            c = x0 * y1 - x1 * y0
+            a, cx, cy = a + c, cx + (x0 + x1) * c, cy + (y0 + y1) * c
+        return (cx / (3 * a), cy / (3 * a), abs(a) / 2) if a else (poly[0][0], poly[0][1], 0)
+
+    def retrait(poly, e):
+        """Le polygone convexe rentré de e de chaque côté."""
+        cx, cy, _ = centre(poly)
+        out = poly
+        for p, q in zip(poly, poly[1:] + poly[:1]):
+            lg = math.dist(p, q)
+            if lg < 1e-6 or len(out) < 3:
+                continue
+            nx, ny = (p[1] - q[1]) / lg, (q[0] - p[0]) / lg
+            if (cx - p[0]) * nx + (cy - p[1]) * ny < 0:
+                nx, ny = -nx, -ny
+            out = tranche(out, lambda z: (z[0] - p[0]) * nx + (z[1] - p[1]) * ny - e)
+        return out
+
+    pieces, fin = [], r.choice((5, 6, 6))
+
+    def coupe(poly, prof):
+        cx, cy, aire = centre(poly)
+        if prof >= fin or (prof >= 3 and r.random() < .16) or aire < 40:
+            pieces.append((poly, aire))
+            return
+        etendue = lambda a: max((p[0] - cx) * math.cos(a) + (p[1] - cy) * math.sin(a) for p in poly) \
+            - min((p[0] - cx) * math.cos(a) + (p[1] - cy) * math.sin(a) for p in poly)
+        a = max((k * math.pi / 12 for k in range(12)), key=etendue) + r.gauss(0, .15)
+        ux, uy = math.cos(a), math.sin(a)
+        off, g = r.gauss(0, .05) * etendue(a), 4.4 * .66 ** prof
+        for s in (1, -1):
+            moitie = tranche(poly, lambda p: s * ((p[0] - cx) * ux + (p[1] - cy) * uy - off))
+            if len(moitie) >= 3:
+                coupe([(x + s * g * ux, y + s * g * uy) for x, y in moitie], prof + 1)
+
+    coupe([(100 + 80 * math.cos(2 * math.pi * k / 120), 100 + 80 * math.sin(2 * math.pi * k / 120)) for k in range(120)], 0)
+    grands = sorted(range(len(pieces)), key=lambda i: -pieces[i][1])[:max(1, len(pieces) // 3)]
+    ia, classes = r.choice(grands), defaultdict(list)
+    for i, (poly, aire) in enumerate(pieces):
+        rond_ = min(2.6, .3 + math.sqrt(aire) * .09)
+        p = retrait(poly, rond_)
+        if len(p) < 3:
+            continue
+        tirage = r.random()
+        cle = "a" if i == ia else "p" if tirage < .72 or aire < 160 else "c" if tirage < .9 else "d"
+        classes[(cle, round(rond_ * 2, 1))].append(trace(p) + "Z")
+        creux = retrait(p, 1.5) if cle == "c" else []
+        if len(creux) >= 3:
+            classes[("f", round(rond_ * 2, 1))].append(trace(creux) + "Z")
+    couleurs = {"p": ENCRE, "c": ENCRE, "f": FOND, "d": DOUX, "a": ACC}
+    return [f'<path d="{"".join(v)}" fill="{couleurs[k]}" stroke="{couleurs[k]}" stroke-width="{n(w)}"/>'
+            for (k, w), v in sorted(classes.items(), key=lambda x: "pcdfa".index(x[0][0]))]
+
+
+def proies(r, d):
+    """Orbites fermées en pointillé autour d'un point fixe, les points serrés là où le temps ralentit, une orbite à
+    l'accent : proies et prédateurs, cycles de populations, écologie."""
+    b, c, e = r.uniform(.7, 1.3), r.uniform(.7, 1.3), r.uniform(.6, 1.2)
+    xe, ye = e / c, 1 / b
+    f = lambda x, y: (x - b * x * y, c * x * y - e * y)
+
+    def pas(x, y, h=.02):
+        k1 = f(x, y)
+        k2 = f(x + h / 2 * k1[0], y + h / 2 * k1[1])
+        k3 = f(x + h / 2 * k2[0], y + h / 2 * k2[1])
+        k4 = f(x + h * k3[0], y + h * k3[1])
+        return x + h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]), y + h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])
+
+    orbites = []
+    for i in range(r.randint(6, 9)):
+        x, y = xe * (1 + .28 * (i + 1) ** 1.35), ye
+        pts, tour, prec = [(x, y)], 0.0, 0.0
+        while tour < 2 * math.pi and len(pts) < 3000:
+            for _ in range(4):
+                x, y = pas(x, y)
+            a = math.atan2(y - ye, x - xe)
+            tour, prec = tour + abs(math.remainder(a - prec, 2 * math.pi)), a
+            pts.append((x, y))
+        orbites.append(pts)
+    xs, ys = [p[0] for o in orbites for p in o], [p[1] for o in orbites for p in o]
+    sx, sy = r.choice((1, -1)), r.choice((1, -1))
+    X = lambda x: 100 + sx * (176 * (x - min(xs)) / (max(xs) - min(xs)) - 88)
+    Y = lambda y: 100 - sy * (176 * (y - min(ys)) / (max(ys) - min(ys)) - 88)
+    ka, out = r.randrange(len(orbites) // 2, len(orbites)), []
+    for k, o in enumerate(orbites):
+        garde = []
+        for x, y in o:
+            p = (X(x), Y(y))
+            if not garde or math.dist(p, garde[-1]) > 1.3:
+                garde.append(p)
+        out.append(points(garde, 3.4 if k == ka else 2.1, ACC if k == ka else ENCRE))
+    return out + [disque(X(xe), Y(ye), 4.2, ACC)]
+
+
+def influx(r, d):
+    """Rangées de tirets brefs, plus serrés par vagues ; une salve traverse les rangées en biais, à l'accent :
+    neurones, potentiels d'action, influx nerveux, neurosciences."""
+    k = r.randint(22, 32)
+    pas = 184 / k
+    h = pas * .32
+    om, ph = r.uniform(.03, .07), r.uniform(0, 2 * math.pi)
+    vagues = [(r.uniform(16, 184), r.uniform(3, 8)) for _ in range(r.randint(2, 4))]
+    xa, pente = r.uniform(50, 150), r.uniform(-2.4, 2.4) * pas / 7
+    encre, accent = [], []
+    for i in range(k):
+        y = 8 + pas * (i + .5)
+        taux, part = r.uniform(.02, .09), [r.random() < .65 for _ in vagues]
+        xi = xa + pente * (i - k / 2) + r.gauss(0, .7)
+        accent.append(f"M{n(xi)} {n(y - h)}v{n(2 * h)}")
+        x, dernier = 8.0, -9.0
+        while x < 192:
+            lam = taux * (1 + .75 * math.sin(om * x + ph)) + sum(.55 * math.exp(-((x - cv) / w) ** 2) for (cv, w), p in zip(vagues, part) if p)
+            if x - dernier > 2.6 and abs(x - xi) > 3 and r.random() < lam * .5:
+                encre.append(f"M{n(x)} {n(y - h)}v{n(2 * h)}")
+                dernier = x
+            x += .5
+    return [f'<path d="{"".join(encre)}" stroke="{ENCRE}" stroke-width="1.25"/>',
+            f'<path d="{"".join(accent)}" stroke="{ACC}" stroke-width="1.9"/>']
+
+
+def clones(r, d):
+    """Trame d'anneaux ouverts dans tous les sens ; autour d'un point, des anneaux à l'accent tournent tous leur
+    ouverture vers lui : immunologie, sélection clonale, anticorps, reconnaissance."""
+    s = r.uniform(15, 19)
+    rho, ouv = s * .33, math.radians(r.uniform(60, 85))
+    pos, j = [], 0
+    while 8 + s * .5 + j * s * .866 <= 192 - s * .45:
+        x = 8 + s * .5 + (s / 2 if j % 2 else 0)
+        while x <= 192 - s * .45:
+            pos.append((x, 8 + s * .5 + j * s * .866))
+            x += s
+        j += 1
+    dx, dy = 100 - (min(p[0] for p in pos) + max(p[0] for p in pos)) / 2, 100 - (min(p[1] for p in pos) + max(p[1] for p in pos)) / 2
+    pos = [(x + dx, y + dy) for x, y in pos]
+    ia = r.choice([i for i, p in enumerate(pos) if math.dist(p, (100, 100)) < 52])
+    ax, ay = pos[ia]
+    rc = r.uniform(30, 46)
+    P = lambda x, y, a: f"{n(x + rho * math.cos(a))} {n(y + rho * math.sin(a))}"
+    encre, accent, vides = [], [], []
+    for i, (x, y) in enumerate(pos):
+        if i == ia:
+            continue
+        if r.random() < math.exp(-(math.dist((x, y), (ax, ay)) / rc) ** 2):
+            g, cible = math.atan2(ay - y, ax - x), accent
+        elif r.random() < .06:
+            vides.append((x, y))
+            continue
+        else:
+            g, cible = r.randrange(8) * math.pi / 4, encre
+        cible.append(f"M{P(x, y, g + ouv / 2)}A{n(rho)} {n(rho)} 0 1 1 {P(x, y, g + 2 * math.pi - ouv / 2)}")
+    return [f'<path d="{"".join(encre)}" stroke="{ENCRE}" stroke-width="1.6"/>', points(vides, 2, DOUX),
+            f'<path d="{"".join(accent)}" stroke="{ACC}" stroke-width="2.6"/>', disque(ax, ay, rho * .62, ACC)]
+
+
+# ---------- médecine et épidémiologie ----------
+
+def contagion(r, d):
+    """Semis de points où une contagion avance de proche en proche : le front à l'accent, derrière lui les points
+    touchés et les liens de transmission, devant eux les points encore intacts : épidémie, propagation, infection."""
+    pas = r.uniform(7.8, 9.2)
+    noeuds = [(x + r.uniform(-1.5, 1.5), y + r.uniform(-1.5, 1.5)) for x, y in semis_dans(lambda x, y: True, pas, 10, 10, 190, 190)]
+    m = len(noeuds)
+    voisins = [[] for _ in range(m)]
+    for i in range(m):
+        for j in range(i + 1, m):
+            if math.dist(noeuds[i], noeuds[j]) < pas * 1.45:
+                voisins[i].append(j)
+                voisins[j].append(i)
+    beta, cible = r.uniform(.24, .4), r.uniform(.35, .55) * m
+    for _ in range(8):
+        gx, gy = r.uniform(45, 155), r.uniform(45, 155)
+        graine = min(range(m), key=lambda i: math.dist(noeuds[i], (gx, gy)))
+        quand, source, malades = {graine: 0}, {}, {graine: 3}
+        t = 0
+        while malades and len(quand) < cible:
+            t += 1
+            nouveaux = {}
+            for i in malades:
+                for j in voisins[i]:
+                    if j not in quand and j not in nouveaux and r.random() < beta:
+                        nouveaux[j] = i
+            malades = {i: v - 1 for i, v in malades.items() if v > 1}
+            for j, i in nouveaux.items():
+                quand[j], source[j], malades[j] = t, i, r.randint(2, 4)
+        if len(quand) > cible * .8:
+            break
+    liens, front = [], []
+    for j, i in source.items():
+        (front if j in malades else liens).append(f"M{n(noeuds[i][0])} {n(noeuds[i][1])}L{n(noeuds[j][0])} {n(noeuds[j][1])}")
+    return [points([p for i, p in enumerate(noeuds) if i not in quand], 1.7, DOUX),
+            f'<path d="{"".join(liens)}" stroke="{ENCRE}" stroke-width="0.8"/>',
+            f'<path d="{"".join(front)}" stroke="{ACC}" stroke-width="1.2"/>',
+            points([noeuds[i] for i in quand if i not in malades], 2.8, ENCRE),
+            points([noeuds[i] for i in malades], 4.6, ACC), disque(*noeuds[graine], 4.2, ENCRE), disque(*noeuds[graine], 1.8, FOND)]
+
+
+def sinogramme(r, d):
+    """Bandes sinueuses de toutes amplitudes, de même période, qui se croisent et se tressent ; une bande à l'accent :
+    imagerie médicale, tomographie, scanner, reconstruction."""
+    k, tours = r.randint(9, 14), r.choice((1, 1.5, 2))
+    ka, out = r.randrange(k), []
+    for i in range(k):
+        rho, phi = 74 * math.sqrt(r.uniform(.04, 1)), r.uniform(0, 2 * math.pi)
+        brins = r.choice((1, 1, 2, 3, 4))
+        acc = i == ka
+        if acc:
+            brins = max(brins, 3)
+        d_ = "".join(trace([(8 + 184 * t / 120, 100 + rho * math.cos(2 * math.pi * tours * t / 120 - phi) + (j - (brins - 1) / 2) * 2.6)
+                            for t in range(121)]) for j in range(brins))
+        out.append((acc, f'<path d="{d_}" stroke="{ACC if acc else ENCRE}" stroke-width="{1.5 if acc else 1.05}"/>'))
+    return [x for _, x in sorted(out, key=lambda x: x[0])]
+
+
+def depistage(r, d):
+    """Champ de points pleins et d'anneaux séparés par une fente courbe, le seuil ; près d'elle, ceux qui sont du
+    mauvais côté à l'accent : dépistage, diagnostic, biomarqueurs, sensibilité et spécificité, médecine."""
+    a = r.uniform(0, 2 * math.pi)
+    ux, uy, vx, vy = math.cos(a), math.sin(a), -math.sin(a), math.cos(a)
+    courbe, recouvre, seuil = r.uniform(-.007, .007), r.uniform(8, 14), r.uniform(-16, 16)
+    score = lambda x, y: (x - 100) * ux + (y - 100) * uy + courbe * ((x - 100) * vx + (y - 100) * vy) ** 2
+    pas = r.uniform(6.8, 7.8)
+    sains, malades, faux_pos, faux_neg = [], [], [], []
+    for x, y in semis_dans(lambda x, y: True, pas, 10, 10, 190, 190):
+        x, y = x + r.uniform(-.8, .8), y + r.uniform(-.8, .8)
+        s = score(x, y)
+        if abs(s - seuil) < pas * .75:
+            continue
+        malade = r.random() < 1 / (1 + math.exp(-(s - seuil) / recouvre))
+        if malade:
+            (malades if s > seuil else faux_neg).append((x, y))
+        else:
+            (faux_pos if s > seuil else sains).append((x, y))
+    return [points(sains, pas * .4, ENCRE), f'<path d="{"".join(rond(x, y, pas * .23) for x, y in malades)}" stroke="{ENCRE}" stroke-width="1.2"/>',
+            points(faux_pos, pas * .5, ACC), f'<path d="{"".join(rond(x, y, pas * .26) for x, y in faux_neg)}" stroke="{ACC}" stroke-width="1.7"/>']
+
+
+# ---------- informatique et IA ----------
+
+def couches(r, d):
+    """Colonnes de points reliées de l'une à l'autre par des faisceaux de courbes fines, quelques liens plus forts et
+    un chemin à l'accent : réseaux de neurones, apprentissage profond, intelligence artificielle."""
+    L = r.randint(4, 6)
+    tailles = [r.randint(4, 7)] + [r.randint(7, 11) for _ in range(L - 2)] + [r.randint(2, 4)]
+    X = lambda l: 16 + 168 * l / (L - 1)
+    noeuds = []
+    for l, m in enumerate(tailles):
+        e = min(17, 168 / max(1, m - 1))
+        noeuds.append([(X(l), 100 + (j - (m - 1) / 2) * e) for j in range(m)])
+    chemin = [r.randrange(m) for m in tailles]
+    doux, forts, acc = [], [], []
+    for l in range(L - 1):
+        for i, (x1, y1) in enumerate(noeuds[l]):
+            for j, (x2, y2) in enumerate(noeuds[l + 1]):
+                c = (x2 - x1) * .5
+                p = f"M{n(x1)} {n(y1)}C{n(x1 + c)} {n(y1)} {n(x2 - c)} {n(y2)} {n(x2)} {n(y2)}"
+                (acc if chemin[l] == i and chemin[l + 1] == j else forts if r.random() < .08 else doux).append(p)
+    out = [f'<path d="{"".join(doux)}" stroke="{DOUX}" stroke-width="0.55"/>', f'<path d="{"".join(forts)}" stroke="{ENCRE}" stroke-width="1.1"/>',
+           f'<path d="{"".join(acc)}" stroke="{ACC}" stroke-width="2.4"/>']
+    for l, couche in enumerate(noeuds):
+        for j, (x, y) in enumerate(couche):
+            if chemin[l] == j:
+                out.append(disque(x, y, 5.2, ACC))
+            else:
+                a = r.random()
+                out.append(disque(x, y, 2.6 + 2.4 * a, ENCRE if a > .5 else FOND, None if a > .5 else ENCRE, 1.3))
+    if r.random() < .5:
+        out = ['<g transform="rotate(90 100 100)">'] + out + ["</g>"]
+    return out
+
+
+def grappes(r, d):
+    """Nuages de points, chacun relié par des traits fins à son centre ; les centres à l'accent, avec le chemin
+    qu'ils ont suivi pour s'y poser : apprentissage automatique, classification, partitionnement, données."""
+    centres, essais = [], 0
+    k = r.randint(5, 7)
+    while len(centres) < k and essais < 800:
+        essais += 1
+        c = (r.uniform(30, 170), r.uniform(30, 170))
+        if all(math.dist(c, q) > 48 for q in centres):
+            centres.append(c)
+    pts = []
+    for cx, cy in centres:
+        sx, sy, a = r.uniform(12, 22), r.uniform(7, 14), r.uniform(0, math.pi)
+        for _ in range(r.randint(32, 56)):
+            u, v = r.gauss(0, sx), r.gauss(0, sy)
+            x, y = cx + u * math.cos(a) - v * math.sin(a), cy + u * math.sin(a) + v * math.cos(a)
+            if 12 < x < 188 and 12 < y < 188:
+                pts.append((x, y))
+    cents = r.sample(pts, len(centres))
+    traces = [[c] for c in cents]
+    for _ in range(14):
+        groupes = [[] for _ in cents]
+        for p in pts:
+            groupes[min(range(len(cents)), key=lambda i: math.dist(p, cents[i]))].append(p)
+        cents = [(sum(p[0] for p in g) / len(g), sum(p[1] for p in g) / len(g)) if g else c for g, c in zip(groupes, cents)]
+        for t, c in zip(traces, cents):
+            if math.dist(t[-1], c) > .6:
+                t.append(c)
+    liens = "".join(f"M{n(p[0])} {n(p[1])}L{n(c[0])} {n(c[1])}" for g, c in zip(groupes, cents) for p in g)
+    return ([f'<path d="{liens}" stroke="{DOUX}" stroke-width="0.7"/>', points(pts, 2.8, ENCRE)]
+            + [f'<path d="{trace(t)}" stroke="{ACC}" stroke-width="1.2" stroke-dasharray="0 3.4"/>' for t in traces if len(t) > 1]
+            + [points([p for t in traces for p in t[:-1]], 2.6, ACC)]
+            + [x for c in cents for x in (disque(c[0], c[1], 6, ACC), disque(c[0], c[1], 2.2, FOND))])
+
+
+def brassage(r, d):
+    """Anneaux de bits brassés tour après tour ; un seul bit changé au centre gagne peu à peu, en spirale, une part
+    de l'anneau, à l'accent : cryptographie, chiffrement, hachage, diffusion."""
+    W, tours = r.choice((40, 48, 56)), r.randint(13, 17)
+    r0, r1 = 18, 90
+    pas, rot = (r1 - r0) / tours, r.choice((1, 2, 3, 5))
+    cles = [[r.random() < .5 for _ in range(W)] for _ in range(tours)]
+    bloc = r.choice((2, 3, 4))
+    a = [(i // bloc) % 2 == 0 for i in range(W)]
+    b = a[:]
+    b[r.randrange(W)] ^= True
+
+    def tour(x, k):
+        y = [x[i] ^ (x[i - 1] and not x[(i + 1) % W]) for i in range(W)]
+        y = y[-rot:] + y[:-rot]
+        return [u ^ v for u, v in zip(y, cles[k])]
+
+    dec, g = r.uniform(0, 2 * math.pi), .2 * math.pi / W
+    P = lambda t, rr: f"{n(100 + rr * math.cos(t))} {n(100 + rr * math.sin(t))}"
+    encre, accent = [], []
+    for t in range(tours + 1):
+        rr = r0 + t * pas
+        for i in range(W):
+            t0, t1 = dec + 2 * math.pi * i / W + g, dec + 2 * math.pi * (i + 1) / W - g
+            arc_ = f"M{P(t0, rr)}A{n(rr)} {n(rr)} 0 0 1 {P(t1, rr)}"
+            if a[i] != b[i]:
+                accent.append(arc_)
+            elif a[i]:
+                encre.append(arc_)
+        if t < tours:
+            a, b = tour(a, t), tour(b, t)
+    w = n(pas * .64, 2)
+    return [f'<path d="{"".join(encre)}" stroke="{ENCRE}" stroke-width="{w}" stroke-linecap="butt"/>',
+            f'<path d="{"".join(accent)}" stroke="{ACC}" stroke-width="{w}" stroke-linecap="butt"/>']
+
+
+def tri(r, d):
+    """Fils qui se croisent tour après tour jusqu'à se ranger du plus fin au plus épais ; un fil à l'accent :
+    algorithmes, tri, permutations, ordre."""
+    nn = r.randint(12, 18)
+    perm = list(range(nn))
+    r.shuffle(perm)
+    etats, k = [perm[:]], 0
+    while perm != sorted(perm) or len(etats) < 6:
+        for i in range(k % 2, nn - 1, 2):
+            if perm[i] > perm[i + 1]:
+                perm[i], perm[i + 1] = perm[i + 1], perm[i]
+        etats.append(perm[:])
+        k += 1
+    T = len(etats) - 1
+    X, Y = (lambda p: 14 + 172 * p / (nn - 1)), (lambda t: 12 + 176 * t / T)
+    dy = 176 / T / 2
+    chemins = {}
+    for v in range(nn):
+        pos = [e.index(v) for e in etats]
+        chemins[v] = f"M{n(X(pos[0]))} {n(Y(0))}" + "".join(
+            f"C{n(X(pos[t]))} {n(Y(t) + dy)} {n(X(pos[t + 1]))} {n(Y(t + 1) - dy)} {n(X(pos[t + 1]))} {n(Y(t + 1))}" for t in range(T))
+    va = max(range(nn // 2, nn), key=lambda v: abs(etats[0].index(v) - v) + r.random())
+    out = []
+    for v in sorted(range(nn), key=lambda v: (v == va, -v)):
+        w = .7 + 3.3 * v / (nn - 1)
+        out += [f'<path d="{chemins[v]}" stroke="{FOND}" stroke-width="{n(w + 2.6, 2)}"/>',
+                f'<path d="{chemins[v]}" stroke="{ACC if v == va else ENCRE}" stroke-width="{n(w, 2)}"/>']
+    return out
+
+
+# ---------- ingénierie ----------
+
+def decale(chemin, o):
+    """Polyligne parallèle à une autre, à la distance o (à gauche du sens de parcours), sommets en onglet."""
+    normale = lambda p, q: ((p[1] - q[1]) / math.dist(p, q), (q[0] - p[0]) / math.dist(p, q))
+    out = []
+    for i, (x, y) in enumerate(chemin):
+        ns = ([normale(chemin[i - 1], chemin[i])] if i else []) + ([normale(chemin[i], chemin[i + 1])] if i < len(chemin) - 1 else [])
+        if len(ns) == 1:
+            (nx, ny), k = ns[0], 1
+        else:
+            nx, ny = ns[0][0] + ns[1][0], ns[0][1] + ns[1][1]
+            k = 1 / (1 + ns[0][0] * ns[1][0] + ns[0][1] * ns[1][1])
+        out.append((x + o * nx * k, y + o * ny * k))
+    return out
+
+
+def pistes(r, d):
+    """Bandes de pistes parallèles parties de pastilles en escalier, qui obliquent à 45 degrés, sur une trame de
+    points ; une piste à l'accent : électronique, circuits, semi-conducteurs."""
+    K = r.choice((3, 3, 4))
+    bande, sp = 184 / K, 4.4
+    encre, accent, pastilles, pa = [], [], [], []
+    ka = r.randrange(K)
+    for b in range(K):
+        m = r.randint(max(6, int((bande - 18) / sp) - 3), max(6, min(12, int((bande - 18) / sp))))
+        demi = (m - 1) * sp / 2
+        haut, bas = 8 + b * bande + demi + 4, 8 + (b + 1) * bande - demi - 4
+        y = r.uniform(haut, bas)
+        x0 = r.uniform(12, 40) + (m - 1) * 2.6
+        chemin, x = [(x0, y)], x0 + 30 + r.uniform(4, 24)
+        for _ in range(r.randint(1, 3)):
+            y2 = r.uniform(haut, bas)
+            if abs(y2 - y) < 6 or x + abs(y2 - y) > 178:
+                continue
+            chemin += [(x, y), (x + abs(y2 - y), y2)]
+            x, y = x + abs(y2 - y) + r.uniform(8, 28), y2
+        chemin.append((192, y))
+        miroir, sens = r.random() < .5, r.choice((1, -1))
+        ja = r.randrange(m) if b == ka else -1
+        for j in range(m):
+            ligne = decale(chemin, (j - (m - 1) / 2) * sp)
+            ligne[0] = (x0 + sens * (j - (m - 1) / 2) * 5.2, ligne[0][1])
+            if miroir:
+                ligne = [(200 - x_, y_) for x_, y_ in ligne]
+            (accent if j == ja else encre).append(trace(ligne))
+            (pa if j == ja else pastilles).append(ligne[0])
+    fond = [(x, y) for x in range(12, 190, 8) for y in range(12, 190, 8)]
+    return ([points(fond, 1.2, DOUX), f'<path d="{"".join(encre)}" stroke="{ENCRE}" stroke-width="1.5"/>',
+             f'<path d="{"".join(accent)}" stroke="{ACC}" stroke-width="2.2"/>']
+            + [disque(x, y, 2.4, FOND, ENCRE, 1.4) for x, y in pastilles] + [disque(x, y, 3.2, ACC) for x, y in pa])
+
+
+def harmoniques(r, d):
+    """Rangées d'ondes en hachures, de la fondamentale aux harmoniques de plus en plus fines, et au bout leur somme à
+    l'accent : traitement du signal, séries de Fourier, filtrage, spectre."""
+    sorte = r.choice(("carre", "scie", "triangle"))
+    rangs = {"carre": [1, 3, 5, 7, 9, 11, 13], "scie": [1, 2, 3, 4, 5, 6, 7], "triangle": [1, 3, 5, 7, 9, 11]}[sorte]
+    rangs = rangs[:r.randint(5, len(rangs))]
+    coef = lambda k: (1 / k ** 2 if sorte == "triangle" else 1 / k) * (-1 if (sorte == "scie" and k % 2 == 0) or (sorte == "triangle" and k % 4 == 3) else 1)
+    cycles, ph = r.choice((1.5, 2, 2.5)), r.uniform(0, 2 * math.pi)
+    K = len(rangs)
+    pas = 184 / (K + 1.7)
+    xs = [8 + 2.3 * i for i in range(int(184 / 2.3) + 1)]
+    u = lambda x: 2 * math.pi * cycles * (x - 8) / 184 + ph
+    somme = [sum(coef(k) * math.sin(k * u(x)) for k in rangs) for x in xs]
+    smax = max(abs(s) for s in somme)
+    haut = r.random() < .5
+    out = []
+    for i, k in enumerate(rangs):
+        y0 = 8 + pas * (i + .5) + (pas * 1.7 if haut else 0)
+        a = pas * .46 * abs(coef(k)) ** .45
+        out.append("".join(f"M{n(x)} {n(y0)}V{n(y0 - a * math.copysign(1, coef(k)) * math.sin(k * u(x)))}" for x in xs))
+    y0 = 8 + pas * .85 if haut else 8 + pas * (K + .85)
+    acc = "".join(f"M{n(x)} {n(y0)}V{n(y0 - pas * .8 * s / smax)}" for x, s in zip(xs, somme))
+    return [f'<path d="{"".join(out)}" stroke="{ENCRE}" stroke-width="1.1"/>', f'<path d="{acc}" stroke="{ACC}" stroke-width="1.3"/>']
+
+
+def rubans(r, d):
+    """Fils parallèles venus de quelques sources, réunis en un ruban dont des faisceaux se détachent en quarts de
+    cercle ; ce qui reste va au bout, à l'accent : énergie, rendement, pertes, bilans."""
+    N, sp = r.randint(30, 42), 2.8
+    H = (N - 1) * sp
+    yb = max(16.0, min(184 - H, r.uniform(84, 112) - H / 2))
+    S = r.randint(2, 4)
+    coupes = sorted(r.sample(range(3, N - 3), S - 1))
+    tailles = [b - a for a, b in zip([0] + coupes, coupes + [N])]
+    reste = 176 - (N - S) * sp
+    ecarts = [r.uniform(.5, 1.5) for _ in range(S - 1)]
+    ysrc, y = [], 12.0
+    for g, t in enumerate(tailles):
+        ysrc += [y + q * sp for q in range(t)]
+        y += (t - 1) * sp + (reste * ecarts[g] / sum(ecarts) if g < S - 1 else 0)
+    xm = r.uniform(46, 66)
+    yband = [yb + j * sp for j in range(N)]
+    debut = [f"M8 {n(ysrc[j])}C{n((8 + xm) / 2)} {n(ysrc[j])} {n((8 + xm) / 2)} {n(yband[j])} {n(xm)} {n(yband[j])}" for j in range(N)]
+    lo, hi, x, fins = 0, N, xm + r.uniform(8, 24), {}
+    while hi - lo > N * .3 and x < 168:
+        np_ = r.randint(3, max(3, (hi - lo) // 4))
+        rmin = r.uniform(5, 10)
+        if r.random() < .5:
+            cy = yband[hi - 1] + rmin
+            for j in range(hi - np_, hi):
+                rho = cy - yband[j]
+                fins[j] = f"L{n(x)} {n(yband[j])}A{n(rho)} {n(rho)} 0 0 1 {n(x + rho)} {n(cy)}V192"
+            hi -= np_
+        else:
+            cy = yband[lo] - rmin
+            for j in range(lo, lo + np_):
+                rho = yband[j] - cy
+                fins[j] = f"L{n(x)} {n(yband[j])}A{n(rho)} {n(rho)} 0 0 0 {n(x + rho)} {n(cy)}V8"
+            lo += np_
+        x += rmin + (np_ - 1) * sp + r.uniform(8, 26)
+    encre = "".join(debut[j] + fins[j] for j in fins)
+    accent = "".join(debut[j] + "H192" for j in range(N) if j not in fins)
+    return [f'<path d="{encre}" stroke="{ENCRE}" stroke-width="1.1"/>', f'<path d="{accent}" stroke="{ACC}" stroke-width="1.3"/>']
+
+
+def poses(r, d):
+    """Une chaîne de segments articulés saisie à intervalles réguliers, comme en chronophotographie ; la dernière
+    pose à l'accent, le chemin du bout en pointillé : robotique, cinématique, bras manipulateur."""
+    for _ in range(12):
+        nl = r.choice((3, 4))
+        L = sorted((r.uniform(.55, 1) for _ in range(nl)), reverse=True)
+        th0 = [r.uniform(-math.pi, math.pi)] + [r.uniform(-1.1, 1.1) for _ in range(nl - 1)]
+        A = [r.uniform(.4, .9)] + [r.uniform(.5, 1.2) for _ in range(nl - 1)]
+        f, ph = [r.choice((.5, 1, 1)) for _ in range(nl)], [r.uniform(0, 2 * math.pi) for _ in range(nl)]
+
+        def pose(t):
+            x = y = a = 0.0
+            pts = [(0.0, 0.0)]
+            for i in range(nl):
+                a += th0[i] + A[i] * math.sin(2 * math.pi * f[i] * t + ph[i])
+                x, y = x + L[i] * math.cos(a), y + L[i] * math.sin(a)
+                pts.append((x, y))
+            return pts
+
+        chemin = [pose(.55 * u / 200)[-1] for u in range(201)]
+        if sum(math.dist(p, q) for p, q in zip(chemin, chemin[1:])) > 1.3 * sum(L):
+            break
+    F = r.randint(13, 20)
+    cadres = [pose(.55 * i / (F - 1)) for i in range(F)]
+    tout = [p for c in cadres for p in c] + chemin
+    xs, ys = [p[0] for p in tout], [p[1] for p in tout]
+    e = 168 / max(max(xs) - min(xs), max(ys) - min(ys))
+    cx, cy = (min(xs) + max(xs)) / 2, (min(ys) + max(ys)) / 2
+    M = lambda p: (100 + (p[0] - cx) * e, 100 + (p[1] - cy) * e)
+    cadres = [[M(p) for p in c] for c in cadres]
+    return ([f'<path d="{trace([M(p) for p in chemin])}" stroke="{DOUX}" stroke-width="1.4" stroke-dasharray="0 3.4"/>',
+             f'<path d="{"".join(trace(c) for c in cadres[:-1])}" stroke="{ENCRE}" stroke-width="0.9"/>',
+             points([p for c in cadres[:-1] for p in c[1:]], 2.6, ENCRE), trait(cadres[-1], ACC, 2.6)]
+            + [disque(x, y, 3, FOND, ACC, 1.8) for x, y in cadres[-1][1:]] + [disque(*cadres[0][0], 6, ENCRE)])
+
+
+# ---------- sciences humaines et sociales ----------
+
+def volatilite(r, d):
+    """Faisceau de marches aléatoires parties d'un même point, qui s'évase vers la droite entre deux tirets ; un
+    chemin à l'accent : économie, finance, marchés, prévision, incertitude."""
+    y0, mu, sig = r.uniform(84, 116), r.uniform(-.16, .16), r.uniform(2.6, 3.3)
+    doux, encre, bouts, chemins = [], [], [], []
+    for _ in range(r.randint(26, 38)):
+        y, pts = y0, [(8, y0)]
+        for x in range(10, 193, 2):
+            y += -mu * 2 + r.gauss(0, sig * math.sqrt(2))
+            if not 8 < y < 192:
+                break
+            pts.append((x, y))
+        chemins.append(pts)
+    finis = [c for c in chemins if c[-1][0] >= 192]
+    ca = r.choice(finis) if finis else max(chemins, key=len)
+    for c in chemins:
+        if c is not ca:
+            (encre if r.random() < .3 else doux).append(trace(c))
+            if c[-1][0] >= 192:
+                bouts.append(c[-1])
+    env = [[(x, y0 - mu * (x - 8) + s * 1.7 * sig * math.sqrt(x - 8)) for x in range(8, 193, 2)] for s in (-1, 1)]
+    return ([f'<path d="{"".join(doux)}" stroke="{DOUX}" stroke-width="0.8"/>', f'<path d="{"".join(encre)}" stroke="{ENCRE}" stroke-width="1"/>']
+            + [f'<path d="{morceaux(e)}" stroke="{ENCRE}" stroke-width="1.2" stroke-dasharray="3 2.6"/>' for e in env]
+            + [points(bouts, 2.8, ENCRE), trait(ca, ACC, 2.2), points([ca[-1]], 6, ACC), points([(8, y0)], 6, ENCRE)])
+
+
+def schelling(r, d):
+    """Grille de points pleins et d'anneaux qui, chacun cherchant assez de voisins pareils, se regroupent en plaques ;
+    les derniers à bouger à l'accent : sociologie, ségrégation, quartiers, voisinage."""
+    c = r.randint(17, 23)
+    s, tol = 184 / c, r.uniform(.4, .62)
+    cases = [r.choices((1, 2, 0), (.45, .45, .1))[0] for _ in range(c * c)]
+    vois = [[(i + di) * c + j + dj for di in (-1, 0, 1) for dj in (-1, 0, 1) if (di or dj) and 0 <= i + di < c and 0 <= j + dj < c]
+            for i in range(c) for j in range(c)]
+
+    def content(i):
+        v = [cases[j] for j in vois[i] if cases[j]]
+        return not v or sum(x == cases[i] for x in v) / len(v) >= tol
+
+    vides, derniers = [i for i in range(c * c) if not cases[i]], []
+    for _ in range(80):
+        mecontents = [i for i in range(c * c) if cases[i] and not content(i)]
+        if not mecontents:
+            break
+        r.shuffle(mecontents)
+        derniers = []
+        for i in mecontents:
+            if not cases[i] or content(i):
+                continue
+            k = r.randrange(len(vides))
+            j = vides[k]
+            cases[j], cases[i], vides[k] = cases[i], 0, i
+            derniers.append(j)
+    acc = set(derniers[:6]) if derniers else set(r.sample([i for i in range(c * c) if cases[i]], 3))
+    P = lambda i: (8 + s * (i % c + .5), 8 + s * (i // c + .5))
+    return [points([P(i) for i in range(c * c) if cases[i] == 1 and i not in acc], s * .62, ENCRE),
+            f'<path d="{"".join(rond(*P(i), s * .24) for i in range(c * c) if cases[i] == 2 and i not in acc)}" stroke="{ENCRE}" stroke-width="{n(s * .13, 2)}"/>',
+            points([P(i) for i in acc], s * .62, ACC)]
+
+
+def pyramide(r, d):
+    """Rangées de points de part et d'autre d'un axe vide, plus longues ou plus courtes selon les générations, qui
+    s'amenuisent vers le haut ; une génération à l'accent : démographie, population, pyramide des âges."""
+    k = r.randint(28, 36)
+    p = 184 / k
+    bosses = [(r.uniform(10, 85), r.uniform(3, 9), r.uniform(-.35, .4)) for _ in range(r.randint(2, 4))]
+    tendance, forme = r.uniform(-.5, .7), r.uniform(4, 7)
+    naiss = lambda a: max(.15, 1 - tendance * (.5 - a / 100) + sum(h * math.exp(-((a - c) / w) ** 2) for c, w, h in bosses))
+    vals = [(naiss(a) * math.exp(-(a / 80) ** forme), naiss(a) * math.exp(-(a / 86) ** forme)) for a in (100 * (i + .5) / k for i in range(k))]
+    vmax = max(max(v) for v in vals)
+    ia = max(range(2, k - 6), key=lambda i: sum(vals[i]) + r.uniform(0, .3))
+    classes = defaultdict(list)
+    for i, (h, f) in enumerate(vals):
+        y = 192 - p * (i + .5)
+        for cote, v in ((-1, h), (1, f)):
+            nb = 84 * v / vmax / p
+            for j in range(int(nb) + 1):
+                t = min(1.0, nb - j)
+                if t > .2:
+                    classes[(ACC if i == ia else ENCRE, round(p * .66 * (1 if t >= 1 else .4 + .6 * t), 1))].append((100 + cote * (2.6 + p * (j + .5)), y))
+    return [points(v, t, c) for (c, t), v in classes.items()]
+
+
+def frise(r, d):
+    """Couloirs de traits de toutes longueurs, comme des vies sur une frise, plus serrés à certaines époques et
+    prolongés de pointillés quand leurs bouts sont incertains ; un trait à l'accent : histoire, chronologie."""
+    nv = r.randint(14, 20)
+    pas = 176 / (nv - 1)
+    epoques = [(r.uniform(.12, .88), r.uniform(.07, .16)) for _ in range(r.randint(1, 3))]
+    dense = lambda u: .15 + sum(math.exp(-((u - c) / w) ** 2) for c, w in epoques)
+    spans = []
+    for v in range(nv):
+        u = r.uniform(-.1, .3)
+        while u < .97:
+            l = min(.5, r.lognormvariate(math.log(.12), .55))
+            if min(1.0, u + l) - max(0.0, u) > .025:
+                spans.append((v, max(0.0, u), min(1.0, u + l)))
+            u += l + r.uniform(.02, .08) / dense(u + l)
+    ia = max(range(len(spans)), key=lambda i: spans[i][2] - spans[i][1] + r.uniform(0, .08))
+    X = lambda u: 12 + 176 * u
+    debuts, epais, minces, pointilles = [], [], [], []
+    for i, (v, s, e) in enumerate(spans):
+        if i == ia:
+            continue
+        y = 12 + v * pas
+        (epais if r.random() < .16 else minces).append(f"M{n(X(s))} {n(y)}H{n(X(e))}")
+        if r.random() < .25 and e < .96:
+            pointilles.append(f"M{n(X(e) + 3)} {n(y)}h{n(r.uniform(5, 12))}")
+        if r.random() < .2 and s > .04:
+            pointilles.append(f"M{n(X(s) - 3)} {n(y)}h{n(-r.uniform(5, 12))}")
+        if s > 0:
+            debuts.append((X(s), y))
+    v, s, e = spans[ia]
+    ya = 12 + v * pas
+    return [f'<path d="{"".join(pointilles)}" stroke="{DOUX}" stroke-width="1.6" stroke-dasharray="0 3"/>',
+            f'<path d="{"".join(minces)}" stroke="{ENCRE}" stroke-width="1.5"/>',
+            f'<path d="{"".join(epais)}" stroke="{ENCRE}" stroke-width="3.6"/>', points(debuts, 3.6, ENCRE),
+            trait([(X(s), ya), (X(e), ya)], ACC, 3.8), points([(X(s), ya), (X(e), ya)], 6.6, ACC)]
+
+
 # ---------- catalogue ----------
 # Par domaine : motif → (dessin, mots du sujet qui l'appellent). Un mot finissant par « * » vaut pour tous les mots
 # qui commencent ainsi (« régul* » : régulation, réguler…) ; sinon le mot entier, au singulier ou au pluriel. Accents et
@@ -1266,6 +1978,37 @@ CATALOGUE = {
         "panache": ("nuage de points qui naît d'un coin et s'élargit", "panache*, dispersion atmosphérique, rejet*, toxique*, pollution, cheminée*, nuage*, gaussien*, émission*, plume"),
         "carreaux": ("grille de carrés qui grandissent vers un coin", "criticit*, matrice de risque*, fréquence-gravité, gravité, apr, amdec, fmea, farmer, maîtrise des risques, prévention, risque*, sécurité, risk*"),
     },
+    # ---------- sciences du vivant, médecine, informatique, ingénierie, sciences humaines ----------
+    "Sciences du vivant": {
+        "phylogenie": ("arbre binaire en éventail, un clade à l'accent", "phylogén*, évolution des espèces, évolution biologique, theory of evolution, evolutionary, évolutionn*, spéciation, speciation, cladisti*, cladogram*, clade*, taxonomi*, darwin*, sélection naturelle, natural selection, ancêtre commun, common ancestor, arbre du vivant, tree of life, paléontolog*, paleontolog*, génétique des populations, population genetics"),
+        "division": ("disque fendu et refendu en galets", "division cellulaire, cell division, mitose, mitosis, méiose, meiosis, cycle cellulaire, cell cycle, prolifération, proliferation, biologie cellulaire, cell biology, cytolog*, embryo*, développement embryonnaire, cellule souche, cellules souches, stem cell*, cancer*, tumeur*, tumor*, tumour*, oncolog*, cancérolog*"),
+        "proies": ("orbites fermées en pointillé autour d'un point", "proie*, prey, prédat*, lotka, volterra, lotka-volterra, dynamique des populations, population dynamics, écologie des populations, population ecology, écosystème*, ecosystem*, chaîne alimentaire, chaînes alimentaires, food web*, food chain*, réseau trophique, réseaux trophiques, trophique*, trophic, compétition interspécifique, interspecific competition"),
+        "influx": ("rangées de tirets brefs, une salve en biais", "neuro*, synap*, potentiel d'action, potentiels d'action, action potential*, spike*, influx nerveux, nerve impulse*, système nerveux, nervous system, cortex, cortical, cerveau, brain, électrophysiolog*, eeg, plasticité synaptique, synaptic plasticity"),
+        "clones": ("anneaux ouverts, tournés vers un point", "immun*, anticorps, antibod*, antigen*, lymphocyte*, vaccin*, sélection clonale, clonal selection, clonal*, inflammat*, allerg*, pathogène*, pathogen*, globules blancs, white blood cell*, auto-immun*, autoimmun*"),
+    },
+    "Médecine et épidémiologie": {
+        "contagion": ("semis où une contagion avance de proche en proche", "épidémi*, contagi*, infecti*, pandémi*, modèle sir, sir model, seir, r0, virus, viral, virale*, transmission virale, chaîne de transmission, disease transmission, outbreak*, santé publique, public health, covid*, grippe, influenza, quarantaine, quarantine"),
+        "depistage": ("points et anneaux de part et d'autre d'une fente", "dépistage*, screening, diagnos*, biomarqueur*, biomarker*, spécificité, specificity, sensibilité et spécificité, sensitivity and specificity, faux positif*, faux négatif*, false positive*, false negative*, courbe roc, roc curve, test diagnostique, tests diagnostiques, médecine, medicine, médical*, clinique*, clinic*, patient*, santé, health, hôpita*, hospital*, épidémiologie clinique, clinical epidemiology"),
+        "sinogramme": ("bandes sinueuses qui se tressent", "imagerie médicale, medical imaging, imagerie par résonance, irm, mri, scanner*, tomograph*, tomodensitom*, ct scan*, radiolog*, radiograph*, échograph*, ultrasound, ultrason*, transformée de radon, radon transform, reconstruction tomographique, tomographic reconstruction, rétroprojection, backprojection"),
+    },
+    "Informatique et IA": {
+        "couches": ("colonnes de points reliées par des faisceaux", "réseau de neurones, réseaux de neurones, neural net*, deep learning, apprentissage profond, perceptron*, couches cachées, hidden layer*, intelligence artificielle, artificial intelligence, ia, llm*, grands modèles de langage, large language model*, rétropropagation, backpropagation, descente de gradient, gradient descent, réseau convolutif, réseaux convolutifs, convolutional, transformer architecture"),
+        "grappes": ("nuages de points tirés vers leurs centres", "apprentissage automatique, machine learning, apprentissage statistique, statistical learning, apprentissage supervisé, apprentissage non supervisé, supervised learning, unsupervised learning, clustering, k-means, k-moyennes, partitionnement, classifieur*, classifier*, classification supervisée, fouille de données, data mining, science des données, data science, big data, mégadonnées, données massives, regroupement*"),
+        "brassage": ("anneaux de bits, un écart qui gagne en spirale", "cryptograph*, cryptolog*, cryptanaly*, chiffrement*, encrypt*, déchiffr*, decrypt*, cipher*, hachage, hash*, aes, rsa, clé publique, clés publiques, public key*, cybersécurité, cybersecurity, sécurité informatique, computer security, blockchain*, signature numérique, digital signature*, cryptomonnaie*, cryptocurrenc*"),
+        "tri": ("fils croisés qui se rangent du fin à l'épais", "algorithmique, algorithme de tri, algorithmes de tri, sorting, tri, tri rapide, quicksort, tri fusion, merge sort, complexité algorithmique, computational complexity, structures de données, structure de données, data structure*, ordonnancement, scheduling, récursi*"),
+    },
+    "Ingénierie": {
+        "pistes": ("bandes de pistes à 45 degrés, pastilles en escalier", "électronique numérique, électronique analogique, électronique de puissance, power electronics, electronics, composants électroniques, electronic components, circuits électroniques, electronic circuit*, systèmes embarqués, embedded system*, circuit*, circuit imprimé, circuits imprimés, printed circuit*, pcb, transistor*, semi-conducteur*, semiconductor*, microcontrôleur*, microcontroller*, microprocesseur*, microprocessor*, puce*, chip*, vlsi, fpga, cmos, hardware, digital electronics, conception de circuits, circuit design"),
+        "harmoniques": ("rangées d'ondes en hachures et leur somme", "traitement du signal, signal processing, série de fourier, séries de fourier, fourier series, analyse de fourier, fourier analysis, transformée de fourier, fourier transform, fft, harmoniques, harmonics, filtrage, filtering, filtre numérique, filtres numériques, digital filter*, filtre passe-bas, low-pass, convolution*, ondelette*, wavelet*, échantillonnage, sampling, nyquist, modulation*, analyse spectrale, spectral analysis, audio"),
+        "rubans": ("fils réunis en ruban, des faisceaux qui s'en détachent", "énergétique*, systèmes énergétiques, energy systems, efficacité énergétique, rendement énergétique, energy efficiency, sankey, bilan énergétique, bilans énergétiques, energy balance, transition énergétique, energy transition, mix énergétique, energy mix, réseau électrique, power grid, production d'électricité, electricity generation, énergies renouvelables, énergie renouvelable, stockage de l'énergie, energy storage, renouvelable*, renewable*, centrale électrique, centrales électriques, power plant*, cogénération, cogeneration, photovolta*, éolien*, wind power, énergie solaire, solar energy, solar power"),
+        "poses": ("chaîne articulée saisie pose après pose", "robot*, cinématique des robots, cinématique inverse, inverse kinematics, chaîne cinématique, kinematic chain*, bras manipulateur, bras robotisé, robot arm*, manipulateur*, manipulator*, mécatronique, mechatronic*, actionneur*, actuator*, degrés de liberté, degrees of freedom, cobot*, drone*, automatisme*, locomotion, biomécanique, biomechanic*, mouvement humain, human motion"),
+    },
+    "Sciences humaines et sociales": {
+        "volatilite": ("faisceau de marches aléatoires qui s'évase", "économi*, economy, finance*, financi*, bourse*, stock market*, marchés financiers, marché financier, financial market*, volatilité des marchés, volatilité financière, market volatility, spéculat*, speculat*, cours de bourse, taux d'inflation, inflation rate, monnaie*, monétaire*, monetary, crise financière, financial crisis, macroéconomi*, microéconomi*, investissement*, investment*, trading"),
+        "schelling": ("points et anneaux qui se regroupent en plaques", "sociolog*, ségrégation spatiale, ségrégation urbaine, ségrégation sociale, ségrégation résidentielle, residential segregation, racial segregation, schelling, mixité sociale, social mix, quartier*, urbain*, urban*, ville*, city, cities, inégalités sociales, social inequalit*, inégalités de revenu, income inequalit*, societ*, communaut*, communit*, sciences sociales, social science*, discrimination*, ghetto*, gentrification, sciences politiques, political science, élection*, vote*, opinion*"),
+        "pyramide": ("rangées de points de part et d'autre d'un axe", "démograph*, population*, pyramide des âges, age pyramid*, population pyramid*, natalité, birth rate*, mortalité, mortality, fécondité, fertility, vieillissement de la population, vieillissement démographique, population ageing, population aging, cohort*, recensement*, census, espérance de vie, life expectancy, générations, baby-boom, baby boom, transition démographique, demographic transition"),
+        "frise": ("couloirs de traits comme des vies sur une frise", "histoire, history, histori*, chronolog*, frise*, timeline*, siècle*, century, centuries, époque moderne, époque contemporaine, early modern, dynasti*, dynasty, reign*, archive*, antiquité, antiquity, moyen âge, moyen-âge, middle ages, médiéval*, medieval, renaissance, révolution française, french revolution, révolution industrielle, industrial revolution, guerre*, war, empire*, généalog*, genealog*, biograph*, mémoire collective"),
+    },
 }
 DOMAINE = {m: dom for dom, motifs in CATALOGUE.items() for m in motifs}
 MOTIFS = {m: globals()[m] for m in DOMAINE}
@@ -1279,6 +2022,14 @@ ALIAS = {"helix": "helice", "points": "semis", "onde": "semis", "spheres": "tram
          "elements": "maillage", "newton": "tangentes", "factoriel": "cube", "plans": "cube", "surface": "isoreponses",
          "feu": "braises", "incendie": "braises", "papillon": "eventails", "bowtie": "eventails", "noeud": "eventails",
          "rejet": "panache", "levenspiel": "mccabe", "escaliers": "mccabe", "criticite": "carreaux", "matrice": "carreaux", "carres": "carreaux", "triple": "phases"}
+# sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+ALIAS.update({"phylogenetique": "phylogenie", "mitose": "division", "lotka": "proies", "predateurs": "proies", "neurones": "influx",
+              "raster": "influx", "immunite": "clones", "anticorps": "clones", "epidemie": "contagion", "sir": "contagion",
+              "diagnostic": "depistage", "tomographie": "sinogramme", "irm": "sinogramme", "perceptron": "couches", "kmeans": "grappes",
+              "clusters": "grappes", "chiffrement": "brassage", "crypto": "brassage", "permutation": "tri", "circuits": "pistes",
+              "electronique": "pistes", "fourier": "harmoniques", "sankey": "rubans", "energie": "rubans", "robot": "poses",
+              "robotique": "poses", "bourse": "volatilite", "finance": "volatilite", "segregation": "schelling",
+              "demographie": "pyramide", "ages": "pyramide", "chronologie": "frise", "histoire": "frise"})
 
 
 def _motif_mot(mot):

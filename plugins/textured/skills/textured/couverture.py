@@ -170,6 +170,7 @@ PLACES = {"haut": "haut", "top": "haut", "bas": "bas", "bottom": "bas", "plein":
 TEXTURES = {"semis", "automate", "pavage", "trajectoires", "taches", "pixels", "anneaux", "pelote", "spherolites", "nodules",
             "fibres", "maillage", "blobs", "phases", "binodale", "braises", "carreaux", "amortie", "isoreponses", "panache",
             "eventails", "tangentes"}
+TEXTURES |= {"influx", "clones", "contagion", "depistage", "sinogramme", "tri", "pistes", "harmoniques", "schelling", "frise"}
 # poids des champs de l'en-tête quand le motif est tiré du sujet
 POIDS = (("titre", 3), ("court", 3), ("soustitre", 2), ("surtitre", 2), ("cours", 1.5), ("description", 1))
 

@@ -102,6 +102,42 @@ def _marques():
     G["tirets"] = [T([(6, 13), (13, 6)], 3.2), T([(8, 24), (24, 8)], 3.2, "a"), T([(19, 26), (26, 19)], 3.2)]
     G["croix"] = [T([(16, 5), (16, 27)], 3.6), T([(5, 16), (27, 16)], 3.6, "a")]
     G["lune"] = [D(16, 16, 11), D(20.5, 11.5, 8, "f"), D(23, 23, 3, "a")]
+    # sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+    G["fourche"] = [T([(16, 28), (16, 18.5)], 3.2), T([(6.5, 9), (16, 18.5), (25.5, 9)], 3.2), D(6.5, 8, 3.4), D(25.5, 8, 3.4, "a")]
+    G["scission"] = [F(arc(14.5, 16, 11, 90, 270, 18)),
+                     F([(17.5, 14.6)] + arc(17.5, 14.6, 11, -90, 0, 9)), F([(17.5, 17.4)] + arc(17.5, 17.4, 11, 0, 90, 9), "a")]
+    orbites = []
+    for x0 in (2.5, 1.55):
+        lv, u, v, tour = [], math.log(x0), 0.0, 0.0
+        while tour < 2 * math.pi:
+            lv.append((math.exp(u), math.exp(v)))
+            a0 = math.atan2(v, u)
+            u += .02 * (1 - math.exp(v))
+            v += .02 * (math.exp(u) - 1)
+            tour += abs(math.remainder(math.atan2(v, u) - a0, 2 * math.pi))
+        orbites.append(lv[::5] + lv[:1])
+    xs, ys = [p[0] for p in orbites[0]], [p[1] for p in orbites[0]]
+    cadre = lambda p: (5 + 22 * (p[0] - min(xs)) / (max(xs) - min(xs)), 27 - 22 * (p[1] - min(ys)) / (max(ys) - min(ys)))
+    G["orbite"] = [T([cadre(p) for p in orbites[0]], 3), T([cadre(p) for p in orbites[1]], 3, "a")]
+    G["impulsions"] = [T([(x, 5), (x, 12.5)], 3) for x in (7, 14, 25)] + [T([(10.5, 19.5), (10.5, 27)], 3), T([(19.5, 19.5), (19.5, 27)], 3, "a"),
+                                                                           T([(25.5, 19.5), (25.5, 27)], 3)]
+    G["entaille"] = [T(arc(13.5, 16, 9.5, 40, 320), 3.4), D(25.5, 16, 3.6, "a")]
+    G["foyer"] = [D(16 + 11 * math.cos(math.radians(60 * k + 30)), 16 + 11 * math.sin(math.radians(60 * k + 30)), 2.7) for k in range(6)] + [D(16, 16, 4.6, "a")]
+    G["seuil"] = [D(8, 16, 4.6), T([(16, 5), (16, 27)], 2.8), C(24, 16, 4, 2.8, "a")]
+    G["tresse"] = [T(courbe(lambda x: 16 + 8 * math.sin((x - 5) / 22 * 2 * math.pi), 5, 27), 3),
+                   T(courbe(lambda x: 16 - 8 * math.sin((x - 5) / 22 * 2 * math.pi), 5, 27), 3, "a")]
+    G["liens"] = [T([(7, 9), (25, 9)], 2.8), T([(7, 9), (25, 23)], 2.8), T([(7, 23), (25, 9)], 2.8), T([(7, 23), (25, 23)], 2.8),
+                  D(7, 9, 3.4), D(7, 23, 3.4), D(25, 9, 3.4), D(25, 23, 3.8, "a")]
+    G["noyau"] = [T([(6.5, 8), (16, 16), (26, 10)], 2.8), T([(8, 25.5), (16, 16), (25, 25)], 2.8)] + [D(x, y, 2.8) for x, y in ((6.5, 8), (26, 10), (8, 25.5), (25, 25))] + [D(16, 16, 4.8, "a")]
+    G["secteurs"] = [T(arc(16, 16, 11.5, a0, a1, 10), 3.2) for a0, a1 in ((-160, -70), (-40, 50), (80, 170))] + [T(arc(16, 16, 5, -110, 50, 12), 3.2, "a")]
+    G["rangs"] = [T([(7, 5), (7, 27)], 2.8), T([(14.5, 5), (14.5, 27)], 4.2), T([(23.5, 5), (23.5, 27)], 6.4, "a")]
+    G["coude"] = [T([(4, 9), (14, 9), (23, 18), (23, 23)], 3), T([(4, 15.5), (11.3, 15.5), (16.5, 20.7), (16.5, 23)], 3),
+                  D(23, 25.5, 3.2, "a"), D(16.5, 25.5, 3.2)]
+    G["delta"] = [T([(4, 9), (28, 9)], 3, "a"), T([(4, 15.5), (12, 15.5)] + arc(12, 24.5, 9, -90, 0, 12) + [(21, 28)], 3)]
+    G["articule"] = [T([(6, 26.5), (10.5, 14), (21, 8), (27, 17)], 3), D(6, 26.5, 3.6), D(10.5, 14, 2.4), D(21, 8, 2.4), D(27, 17, 3.4, "a")]
+    G["pions"] = [D(9.5, 9.5, 5), C(22.5, 9.5, 4.2, 2.8), C(9.5, 22.5, 4.2, 2.8), D(22.5, 22.5, 5, "a")]
+    G["etages"] = [rect(4.5, 21.5, 23, 5), rect(7.5, 13.5, 17, 5, "a"), rect(11, 5.5, 10, 5)]
+    G["periodes"] = [T([(4.5, 7.5), (19, 7.5)], 2.8), T([(11, 16), (27.5, 16)], 5.4, "a"), T([(6, 24.5), (15, 24.5)], 3.8)]
     return G
 
 
@@ -117,6 +153,13 @@ MARQUE_DE = {
     "maillage": "triangle", "tangentes": "quarts", "cube": "hexagone", "isoreponses": "anneaux", "pareto": "barres",
     "braises": "triangle", "eventails": "sablier", "panache": "disques", "carreaux": "grille",
 }
+# sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+MARQUE_DE.update({
+    "phylogenie": "fourche", "division": "scission", "proies": "orbite", "influx": "impulsions", "clones": "entaille",
+    "contagion": "foyer", "depistage": "seuil", "sinogramme": "tresse", "couches": "liens", "grappes": "noyau", "brassage": "secteurs",
+    "tri": "rangs", "pistes": "coude", "harmoniques": "ondes", "rubans": "delta", "poses": "articule", "volatilite": "eventail",
+    "schelling": "pions", "pyramide": "etages", "frise": "periodes",
+})
 FORMES = {"carre": "carre", "carree": "carre", "square": "carre", "rond": "rond", "ronde": "rond", "round": "rond", "disque": "rond",
           "nu": "nu", "nue": "nu", "seul": "nu", "bare": "nu"}
 POLICE_LETTRE = "system-ui,-apple-system,Segoe UI,Helvetica,Arial,sans-serif"

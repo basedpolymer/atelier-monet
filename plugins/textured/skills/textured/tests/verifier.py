@@ -63,6 +63,58 @@ Encore du texte.
 """
 
 
+# Sujets, en français et en anglais : chacun doit désigner son motif (premier ex aequo admis) ; à droite de « ≠ »,
+# un sujet d'un autre domaine qui ne doit pas tomber sur ce motif.
+SUJETS = {
+    # sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+    "Phylogénie des primates": "phylogenie", "Natural selection and speciation": "phylogenie",
+    "Mitose et cycle cellulaire": "division", "Stem cells and cancer": "division",
+    "Proies et prédateurs": "proies", "Ecosystems and food webs": "proies",
+    "Neurosciences cognitives": "influx", "Synaptic plasticity": "influx",
+    "Immunologie des vaccins": "clones", "Antibodies and antigens": "clones",
+    "Épidémiologie des maladies infectieuses": "contagion", "Epidemic modelling": "contagion",
+    "Dépistage et biomarqueurs": "depistage", "Clinical medicine": "depistage",
+    "Imagerie médicale": "sinogramme", "Medical imaging: MRI and CT": "sinogramme",
+    "Réseaux de neurones": "couches", "Artificial intelligence": "couches",
+    "Apprentissage automatique": "grappes", "Machine learning": "grappes",
+    "Cryptographie": "brassage", "Hash functions and encryption": "brassage",
+    "Algorithmes de tri": "tri", "Data structures": "tri",
+    "Électronique numérique": "pistes", "Semiconductor devices": "pistes",
+    "Traitement du signal": "harmoniques", "Fourier analysis": "harmoniques",
+    "Transition énergétique": "rubans", "Renewable energy": "rubans",
+    "Robotique": "poses", "Robot kinematics": "poses",
+    "Macroéconomie": "volatilite", "Economics of financial markets": "volatilite",
+    "Sociologie urbaine": "schelling", "Residential segregation": "schelling",
+    "Démographie": "pyramide", "Population ageing": "pyramide",
+    "Histoire contemporaine": "frise", "Medieval history": "frise",
+}
+HORS_SUJET = {
+    # sciences du vivant, médecine, informatique, ingénierie, sciences humaines
+    "Microscopie électronique à balayage": "pistes", "Vieillissement des polymères": "pyramide", "Volatilité relative": "volatilite",
+    "Inégalités de Cauchy-Schwarz": "schelling", "Période d'un pendule": "frise", "Énergie libre de mélange": "rubans",
+    "Électricité et magnétisme": "rubans", "Cinématique du point": "poses", "Loi de Fourier et conduction thermique": "harmoniques",
+    "Harmonic oscillator": "harmoniques", "Diffraction des rayons X": "sinogramme", "Espèces endémiques": "contagion",
+}
+
+
+def sujets():
+    """Les mots du sujet désignent le bon motif, en français et en anglais, sans prendre ceux d'un autre domaine ;
+    chaque motif a sa marque de favicon."""
+    avant = len(echecs)
+    for sujet, attendu in SUJETS.items():
+        sc = couverture.proposer(sujet)
+        if attendu not in [m for m, s in sc if s == sc[0][1]]:
+            echecs.append(f"sujet « {sujet} » : {attendu} attendu, {', '.join(m for m, _ in sc[:3]) or 'aucun motif'}")
+    for sujet, exclu in HORS_SUJET.items():
+        sc = couverture.proposer(sujet)
+        if exclu in [m for m, s in sc if s == sc[0][1]]:
+            echecs.append(f"sujet « {sujet} » : {exclu} ne devrait pas venir")
+    sans_marque = [m for m in motifs.MOTIFS if not icone.marque(m)]
+    if sans_marque:
+        echecs.append("motifs sans marque de favicon : " + ", ".join(sans_marque))
+    print(f"  {len(SUJETS)} sujets, {len(HORS_SUJET)} hors sujet, marques des motifs : {'erreur' if len(echecs) > avant else 'ok'}")
+
+
 def balise(page, motif):
     m = re.search(motif, page)
     return m.group(0) if m else ""
@@ -165,6 +217,7 @@ def main():
             echecs.append("exemple.pdf absent")
         lancer([str(RACINE / "exemples" / "cours"), "-o", str(tmp / "cours")])
         motifs_et_glyphes()
+        sujets()
         favicons(tmp)
         # couverture sur un chapitre (encre et densité héritées de l'accueil) et planche de tous les motifs
         chap = RACINE / "exemples" / "cours" / "01-flory-huggins.md"
