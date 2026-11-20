@@ -6,7 +6,7 @@ arcs, trames. Le sujet n'en donne que la structure, jamais un objet dessiné, un
 
 ## Poser
 
-Une ligne d'en-tête, chaque mot facultatif : `couverture: motif teinte place nombre`.
+Une ligne d'en-tête, chaque mot facultatif : `couverture: motif teinte place nombre corps`.
 
 ```
 court: Démixtion
@@ -19,12 +19,37 @@ couverture: binodale encre bas
   une teinte presque opposée à l'encre ; un motif en traits passe en dégradé, un motif en formes pleines alterne
   quatre encres (traitement déclaré par motif dans `COULEUR`, `couverture.py`) ; un mot le force : `multi`, `uni`,
   `degrade`, `horizontal`, `vertical`, `diagonal`, `radial` ; `mono` : une encre. `encre` : une.
-- **place** : `haut` (titre, illustration cadrée, fiche) · `bas` (illustration puis titre au tiers bas) · `plein`
-  (illustration à fond perdu) · `fond` (motif sur toute la couverture, titre en cartouche).
+- **place** : `garde` (page de titre de rapport, ci-dessous) · `haut` (titre, illustration cadrée, fiche) · `bas` (illustration puis titre au tiers bas) · `plein`
+  (illustration à fond perdu) · `fond` (motif sur toute la couverture, titre en cartouche) · `nu` (le motif seul sur
+  toute la couverture : ni titre, ni fiche, ni pied ; une texture la couvre à fond perdu, un schéma y est centré).
 - **nombre** : un autre tirage du même motif (`couverture: reseau 2`). Même titre, même couverture.
+- **corps** : la couverture reste dans la colonne du texte, en haut à droite à côté du titre, à toutes les largeurs ;
+  sans ce mot, elle passe dans la marge de droite sur grand écran. Sur un téléphone, elle est au-dessus du titre ;
+  sommaire ouvert sur très grand écran, dans la colonne libre à droite ; sur papier, en page de garde dans tous les cas.
+
+Motif seul, à côté du titre (article de site) : `couverture: anneaux sombre nu corps` ; un dessin sur mesure sans texte
+se fait en couverture entière (bloc ci-dessous en 200 × 300, sans `<text>`), avec `couverture: sombre corps`.
 
 Le titre de la couverture est `court:`, sinon `titre:`, en capitales : **un ou deux mots**. `soustitre:` court,
 `surtitre:`, `auteur:` et l'année y figurent ; l'encre est celle de la page.
+
+## Page de garde
+
+`couverture: garde` : la page de titre d'un rapport au gabarit LaTeX TeXtured, sans motif, sur papier blanc, en pleine
+page A4 dans le PDF (le titre n'est alors pas répété en tête de la page suivante) et en vignette à l'écran. Clés lues :
+
+```
+etablissement: Université de Lisière · Master de chimie | UE 4C210 · Génie des procédés | Projet 2026-2027
+accroche: Quelles barrières pour une colonne d'absorption en marche dégradée ?
+mentions: Encadrants : A. Martin, B. Durand | Rapport remis le *date à compléter*
+lettrine: R
+```
+
+`etablissement:` (lignes séparées par « | », sinon le surtitre) en haut sur un filet ; `titre:` et `soustitre:` ;
+`accroche:` en italique sur un filet de l'encre ; en bas `auteur:`, puis `mentions:` (« | » entre les lignes, `*…*` en
+italique) et la date. `lettrine:` : la lettre pâle derrière le titre (par défaut, la première du titre ; elle sert aussi
+au titre de la page). Avec `plan: pdf` et `entete: oui`, le PDF suit le rapport LaTeX : garde, sommaire, pages à titre
+courant.
 
 ## Catalogue
 

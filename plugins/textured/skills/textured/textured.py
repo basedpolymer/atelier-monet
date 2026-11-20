@@ -757,8 +757,10 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     # plan
     # sommaire affiché par défaut dès deux titres (sections ou sous-sections) ; « plan: non » l'ôte, « plan: oui » le force
     voulu = meta.get("plan", "auto").strip().lower()
+    # « plan: pdf » : comme « oui », et le sommaire s'imprime aussi (sinon il est masqué sur papier)
+    papier = voulu in ("pdf", "papier", "imprime", "imprimé", "print")
     nav = ""
-    if voulu in ("oui", "yes") or (voulu not in ("non", "no") and len(plan) >= 2):
+    if voulu in ("oui", "yes") or papier or (voulu not in ("non", "no") and len(plan) >= 2):
         lignes, ouvert = [], False
         for niveau, ident, texte in plan:
             texte = re.sub(r"<a\b[^>]*>(.*?)</a>", r"\1", texte, flags=re.S)
@@ -770,7 +772,7 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
                 ouvert = True
         if lignes:
             lignes.append("</ol></li>" if ouvert else "</li>")
-            nav = (f'<nav class="plan" id="plan" aria-labelledby="plan-titre"><p class="plan-titre" id="plan-titre">{T["plan"]}</p>'
+            nav = (f'<nav class="plan{" papier" if papier else ""}" id="plan" aria-labelledby="plan-titre"><p class="plan-titre" id="plan-titre">{T["plan"]}</p>'
                    f'<ol>{"".join(lignes)}</ol></nav>\n')
 
     # bloc de titre
@@ -819,7 +821,22 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
         texte = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", e(avertissement))
         bandeau = (f'<aside class="avertissement" aria-label="{T["avert"]}"><div class="avert-corps"><p>{texte}</p></div>'
                    f'<button type="button" class="avert-ok">{T["compris"]}</button></aside>\n')
+    # « entete: oui » (ou un texte) : titre courant à gauche et numéro à droite en haut des pages imprimées, sur un
+    # filet, comme \pagestyle{headings} ; ni l'un ni l'autre sur la couverture. La marge sous les boîtes de marge
+    # sépare le filet du texte (sans elle, il touche la première ligne)
+    entete_pdf = ""
+    valeur_entete = meta.get("entete", "").strip()
+    if valeur_entete and valeur_entete.lower() not in ("non", "no", "false"):
+        texte = (meta.get("court") or titre_nu) if valeur_entete.lower() in ("oui", "yes", "true") else valeur_entete
+        texte = texte.replace("\\", "\\\\").replace('"', '\\"').replace("<", "\\3c ")
+        boite = ('font:400 8.5pt "TX Sans","Latin Modern Sans",Arial,sans-serif;color:#595959;vertical-align:bottom;'
+                 'padding-bottom:1.6mm;border-bottom:.5pt solid #b5b5b5;margin-bottom:5mm')
+        entete_pdf = (f'<style>@page{{@top-left{{content:"{texte}";{boite}}}@top-center{{content:"";{boite}}}'
+                      f'@top-right{{content:counter(page);{boite}}}@bottom-center{{content:none}}}}'
+                      '@page couverture{@top-left{content:none;border:0}@top-center{content:none;border:0}'
+                      '@top-right{content:none;border:0}}</style>\n')
     page = (
+        entete_pdf +
         f'<a class="evite" href="#contenu">{T["evite"]}</a>\n'
         + bandeau +
         f'<div class="page{" a-plan" if nav else ""}">\n'
@@ -839,8 +856,9 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     # styles, polices, scripts
     assets = (options.assets or meta.get("assets") or "").rstrip("/")
     mode = options.polices or meta.get("polices") or "embarquees"
-    utiles = (set(TOUJOURS) | controle.polices | ({"texgyrechorus-mediumitalic"} if lettrine else set())
-              | ({"lmroman10-italic"} if 'class="couv-sous"' in page or "couv-entiere" in page else set()))
+    garde_couv = "couv-garde" in page
+    utiles = (set(TOUJOURS) | controle.polices | ({"texgyrechorus-mediumitalic"} if lettrine or garde_couv else set())
+              | ({"lmroman10-italic"} if 'class="couv-sous"' in page or "couv-entiere" in page or garde_couv else set()))
     motifs = sans_code(page)
     js = scripts(motifs)
     amorce = ('try{var t=localStorage.getItem("tx-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;'

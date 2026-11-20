@@ -36,14 +36,17 @@ tirage: #00a95c
 La page en tire ses pastels (lettrine, numéros, surlignages, losanges, jouets). Sans elle, une encre tirée du titre ;
 `tirage: non` : page grise.
 
-Facultatif : `lang: en` · `plan: non` (pas de sommaire ; sinon, dès deux titres, il est replié et le bouton de l'en-tête l'ouvre) · `numeros: non` ·
+Facultatif : `lang: en` · `plan: non` (pas de sommaire ; sinon, dès deux titres, il est replié et le bouton de l'en-tête l'ouvre ;
+`plan: pdf` : imprimé aussi, seul sur sa page) · `entete: oui` (titre courant et numéro en haut des pages imprimées) · `numeros: non` ·
 `densite: compacte` · `lettrine: 3|non` · `court:` (titre courant et onglet) · `pied:` · `prive: oui` (noindex) ·
 `avertissement: **Gras.** Texte` (bandeau en haut jusqu'à « J'ai compris ») · `langues: fr=URL, en=URL` ·
 `url:`, `image:` (page publiée) · `csp: non`.
 
 **Favicon et titre d'onglet** : posés d'office (marque géométrique à l'encre de la page) ; ne les changer que sur
 demande (`icone:`, `onglet:`, voir la fin de `couverture.md`). **Couverture** : seulement sur demande ; choisir le
-motif par `python3 <skill>/textured.py --motifs "sujet"`, puis `couverture: motif` dans l'en-tête (`couverture.md`).
+motif par `python3 <skill>/textured.py --motifs "sujet"`, puis `couverture: motif` dans l'en-tête (`couverture.md`) ;
+`nu` : motif seul, sans texte ; `corps` : à côté du titre, jamais dans la marge ; `garde` : page de titre d'un rapport
+LaTeX (établissement, lettrine, accroche, mentions), sans motif.
 
 ## Écrire le corps
 
@@ -59,7 +62,7 @@ identifiant). Pas de `#` : le titre vient de l'en-tête.
 | Tableau | tableau Markdown, puis `: Légende. {#tab-id}` |
 | Image | `![Légende](fichier.png){#fig-id}` seule dans son paragraphe (embarquée) |
 | Schéma | `<figure id="fig-id"><svg viewBox="…" role="img" aria-label="…">…</svg><figcaption>Légende.</figcaption></figure>` |
-| Bloc large | `::: large` … `:::` (grande figure, grand tableau) |
+| Bloc large | `::: large` … `:::` (grande figure, grand tableau) ; `::: paysage` : de même, et sur ses propres pages en paysage dans le PDF |
 | Bouton | `[Texte](url){.bouton}` (`.bouton .second`) ; `---` : filet à losange |
 
 Blocs : `::: classe Titre facultatif {attributs}`, contenu, `:::` seul sur sa ligne ; ils s'emboîtent. `chapeau` ·

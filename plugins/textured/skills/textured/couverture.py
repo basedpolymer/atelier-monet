@@ -5,10 +5,11 @@ italique, illustration générative liée au document, fiche de laboratoire remp
 « AUTEUR · ANNÉE  /  N MOTS ». Le même objet sert partout, ses tailles étant en cqi : vignette à côté du titre (avec une
 épaisseur de pages proportionnelle à la longueur), première page du PDF à fond perdu, image de partage (--apercu).
 
-Les motifs (dessins génératifs, rangés par domaine avec les mots du sujet qui les appellent) sont dans motifs.py. Quatre
+Les motifs (dessins génératifs, rangés par domaine avec les mots du sujet qui les appellent) sont dans motifs.py. Cinq
 places : haut (titre, illustration cadrée, fiche), bas (illustration, puis titre au tiers bas), plein (illustration à
-fond perdu sur le haut, titre dessous), fond (motif sur toute la couverture, titre dans un cartouche). Un bloc
-« ::: couverture » remplace l'illustration (SVG carré) ou la couverture entière (SVG 200 × 300).
+fond perdu sur le haut, titre dessous), fond (motif sur toute la couverture, titre dans un cartouche), nu (le motif
+seul, sans texte). Le mot « corps » garde la couverture à côté du titre, dans la colonne du texte, au lieu de la marge
+sur grand écran. Un bloc « ::: couverture » remplace l'illustration (SVG carré) ou la couverture entière (SVG 200 × 300).
 
     python3 couverture.py --catalogue [--court]  # le catalogue des motifs, en Markdown (--court : pour couverture.md)
     python3 couverture.py "sujet du document"  # les motifs qui conviennent, du meilleur au moins bon
@@ -211,7 +212,12 @@ def mesurer(corps, plan, titre, brut=None):
 TEINTES = {"claire": "claire", "clair": "claire", "light": "claire", "encre": "encre", "pleine": "encre", "ink": "encre",
            "sombre": "sombre", "nuit": "sombre", "dark": "sombre"}
 PLACES = {"haut": "haut", "top": "haut", "bas": "bas", "bottom": "bas", "plein": "plein", "perdu": "plein", "bleed": "plein",
-          "fond": "fond", "cartouche": "fond", "poster": "fond"}
+          "fond": "fond", "cartouche": "fond", "poster": "fond",
+          "garde": "garde", "latex": "garde",
+          "nu": "nu", "seul": "nu", "muet": "nu", "sanstexte": "nu", "sans-texte": "nu", "bare": "nu", "notext": "nu"}
+# où la couverture se pose à l'écran : par défaut, dans la marge de droite sur grand écran ; « corps » la garde dans la
+# colonne du texte, en haut à droite à côté du titre, à toutes les largeurs (sauf sur un téléphone : au-dessus)
+POSITIONS = {"corps", "inline"}
 # motifs qui font de bonnes textures : quand la place n'est pas dite, ils passent parfois à fond perdu ou en fond
 TEXTURES = {"semis", "automate", "pavage", "trajectoires", "taches", "pixels", "anneaux", "pelote", "spherolites", "nodules",
             "fibres", "maillage", "blobs", "phases", "binodale", "braises", "carreaux", "amortie", "isoreponses", "panache",
@@ -303,7 +309,7 @@ def lire_valeur(valeur, avis):
     motif = teinte = place = None
     variante = 0
     for mot in re.split(r"[\s,;]+", sans_accents(valeur.lower())):
-        if mot in ("", "oui", "yes", "auto", "true", "mono") or mot in TRAITEMENTS:
+        if mot in ("", "oui", "yes", "auto", "true", "mono") or mot in TRAITEMENTS or mot in POSITIONS:
             continue
         if mot in MOTIFS or mot in ALIAS:
             motif = ALIAS.get(mot, mot)
@@ -317,7 +323,7 @@ def lire_valeur(valeur, avis):
             proches = [m for m in MOTIFS if m.startswith(mot[:3])][:4]
             avis.append(f"couverture : « {mot} » inconnu ({'motifs proches : ' + ', '.join(proches) + ' ; ' if proches else ''}"
                         "liste : python3 couverture.py --catalogue ; teintes : claire, encre, sombre ; places : haut, bas, "
-                        "plein, fond ; un nombre pour un autre tirage)")
+                        "plein, fond, nu, garde ; corps : à côté du titre ; un nombre pour un autre tirage)")
     return motif, teinte, place, variante
 
 
@@ -499,10 +505,56 @@ def colorier(svg, couleurs, motif, graine, force=None):
     return defs + svg, " couv-degrade"
 
 
+MOIS = {"fr": "janvier février mars avril mai juin juillet août septembre octobre novembre décembre".split(),
+        "en": "January February March April May June July August September October November December".split()}
+
+
+def lignes(valeur):
+    """« a | b | c » → [a, b, c] ; *italique* gardé."""
+    return [re.sub(r"\*([^*]+)\*", r"<em>\1</em>", html.escape(x.strip()))
+            for x in re.split(r"\s+\|\s+", valeur or "") if x.strip()]
+
+
+def page_de_garde(meta, lang, tirage):
+    """Page de garde d'un rapport LaTeX (« couverture: garde ») : sur papier blanc, établissement en haut sur un filet
+    (« etablissement: a | b », sinon le surtitre), grande lettrine pâle derrière le titre, sous-titre gris, accroche en
+    italique sur un filet d'encre (« accroche: »), auteur, date et mentions en bas (« mentions: a | b »)."""
+    e = html.escape
+    titre = meta.get("titre", "").strip()
+    lettre = meta.get("lettrine", "").strip()
+    if lettre.lower() in ("non", "no", "false"):
+        lettre = ""
+    elif not lettre or len(lettre) > 2:
+        lettre = next((c for c in titre if c.isalnum()), "").upper()
+    haut = lignes(meta.get("etablissement") or meta.get("surtitre", ""))
+    bas = lignes(meta.get("mentions", ""))
+    m = re.fullmatch(r"(\d{4})-(\d{2})-(\d{2})", meta.get("date", "").strip())
+    if m:
+        a, mo, j = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        bas.append(f"{MOIS[lang][mo - 1]} {j}, {a}" if lang == "en" else f"{'1er' if j == 1 else j} {MOIS[lang][mo - 1]} {a}")
+    sous, accroche, auteur = (meta.get(k, "").strip() for k in ("soustitre", "accroche", "auteur"))
+    parties = [
+        '<div class="garde-haut">' + "".join(f"<p>{x}</p>" for x in haut) + "</div>",
+        '<div class="garde-milieu"><div class="garde-titre">'
+        + (f'<span class="garde-lettre">{e(lettre)}</span>' if lettre else "")
+        + f'<p class="garde-h">{e(titre)}</p></div>'
+        + (f'<p class="garde-sous">{e(sous)}</p>' if sous else "")
+        + (f'<div class="garde-accroche"><p>{e(accroche)}</p></div>' if accroche else "") + "</div>",
+        '<div class="garde-bas">' + (f'<p class="garde-auteur">{e(auteur)}</p>' if auteur else "")
+        + "".join(f"<p>{x}</p>" for x in bas) + "</div>",
+    ]
+    style = f"--cf:#fff;--ce:#161616;--cd:#666;--ca:{tirage};--ep:1px 1px 0 var(--tr2),2px 2px 0 var(--tr1),3px 3px 0 var(--tr3)"
+    return f'<div class="couverture couv-garde" aria-hidden="true" style="{style}"><div class="couv">{"".join(parties)}</div></div>\n'
+
+
 def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
     """HTML de la couverture."""
+    if place == "garde":
+        position = " couv-corps" if any(m in POSITIONS for m in re.split(r"[\s,;]+", sans_accents((meta.get("couverture") or "").lower()))) else ""
+        return page_de_garde(meta, lang, tirage).replace('class="couverture couv-garde"', f'class="couverture couv-garde{position}"', 1)
     mots_couv = re.split(r"[\s,;]+", sans_accents((meta.get("couverture") or "").lower()))
     mono = "mono" in mots_couv
+    position = " couv-corps" if any(m in POSITIONS for m in mots_couv) else ""
     force = max((TRAITEMENTS[m] for m in mots_couv if m in TRAITEMENTS), key=len, default=None)
     L, e, couleurs = TEXTES[lang], html.escape, palette(tirage, teinte, mono)
     titre, r = d["titre"], random.Random(graine + 7)
@@ -524,17 +576,19 @@ def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
                    "annee": annee, "mots": longueur}
         svg = nettoyer_svg(perso, 'aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid slice"')
         svg = re.sub(r"\{(titre|TITRE|soustitre|surtitre|auteur|annee|mots)\}", lambda m: e(valeurs[m.group(1)]), svg)
-        return (f'<div class="couverture couv-entiere couv-perso couv-{teinte}" aria-hidden="true" style="{style}">'
+        return (f'<div class="couverture couv-entiere couv-perso couv-{teinte}{position}" aria-hidden="true" style="{style}">'
                 f'<div class="couv">{svg}</div></div>\n')
-    # à fond perdu ou en fond, une texture est coupée par les bords ; un schéma garde toute sa largeur
+    # à fond perdu, en fond ou nu, une texture est coupée par les bords ; un schéma garde toute sa largeur
     tranche_vue, classe_couleur = "", ""
-    if place in ("plein", "fond"):
+    if place in ("plein", "fond", "nu"):
         tranche_vue = ' preserveAspectRatio="xMidYMid slice"' if motif in TEXTURES or place == "plein" else ' preserveAspectRatio="xMidYMid meet"' 
     if perso is not None:
         dessin = nettoyer_svg(perso, 'aria-hidden="true" focusable="false"' + tranche_vue)
     else:
         rm = random.Random(graine + sum(map(ord, motif)))
-        vue = "8 8 184 184" if place == "plein" or (place == "fond" and motif in TEXTURES) else "0 0 200 200"
+        # nu : une texture couvre tout ; un schéma, un peu de marge, centré sur la hauteur
+        vue = ("8 8 184 184" if place == "plein" or (place in ("fond", "nu") and motif in TEXTURES)
+               else "-14 -14 228 228" if place == "nu" else "0 0 200 200")
         corps_svg = "".join(x for x in MOTIFS[motif](rm, d) if x)
         if "g1" in couleurs:
             corps_svg, classe_couleur = colorier(corps_svg, couleurs, motif, graine, force)
@@ -566,9 +620,12 @@ def composer(meta, d, lang, motif, teinte, place, tirage, graine, perso=None):
                    f'<div class="couv-tete">{p_sous}{p_titre}</div>', pied]
     elif place == "plein":
         parties = [f'<div class="couv-image">{dessin}</div>', f'<div class="couv-tete">{p_sur}{p_titre}{p_sous}</div>', pied]
+    elif place == "nu":
+        # le motif seul, sur toute la couverture : ni titre, ni fiche, ni pied
+        parties = [dessin]
     else:
         parties = [f'<div class="couv-motif">{dessin}</div>', f'<div class="couv-tete">{p_sur}{p_titre}{p_sous}</div>', pied]
-    return (f'<div class="couverture couv-{place}{" couv-perso" if perso is not None else ""} couv-{teinte}{classe_couleur}" aria-hidden="true" style="{style}">'
+    return (f'<div class="couverture couv-{place}{" couv-perso" if perso is not None else ""} couv-{teinte}{classe_couleur}{position}" aria-hidden="true" style="{style}">'
             f'<div class="couv">{"".join(x for x in parties if x)}</div></div>\n')
 
 
@@ -587,8 +644,13 @@ def preparer(meta, corps, plan_, lang, avis, brut=None):
     titre = (meta.get("court") or meta.get("titre") or "Sans titre").strip()
     d = mesurer(corps, plan_, titre, brut)
     nom = "entière" if perso is not None and entiere(perso) else g["motif"]
+    resume = ["page de garde"] if g["place"] == "garde" else [nom, g["teinte"]]
+    if nom != "entière" and g["place"] != "garde":
+        resume.append("sans texte" if g["place"] == "nu" else f"titre en {g['place']}")
+    if any(m in POSITIONS for m in re.split(r"[\s,;]+", sans_accents(valeur.lower()))):
+        resume.append("à côté du titre")
     return {"corps": corps, "html": composer(meta, d, lang, g["motif"], g["teinte"], g["place"], g["tirage"], g["graine"], perso),
-            "resume": f"{nom}, {g['teinte']}, titre en {g['place']}, {mots(d['mots'], lang)}",
+            "resume": ", ".join(resume + [mots(d["mots"], lang)]),
             "motif": g["motif"], "teinte": g["teinte"], "tirage": g["tirage"]}
 
 

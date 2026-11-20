@@ -43,9 +43,26 @@
 .couv-fond .couv-tete, .couv-fond .couv-pied { position: relative; background: var(--cf); border: max(1px, .32cqi) solid; }
 .couv-fond .couv-tete { padding: 4.6cqi 5cqi 5.2cqi; }
 .couv-fond .couv-pied { margin-top: auto; padding: 1.7cqi 2.6cqi 1.5cqi; }
-/* couverture entière dessinée (bloc « ::: couverture » en 200 × 300) : le dessin est tout */
-.couv-entiere .couv { display: block; padding: 0; }
-.couv-entiere .couv > svg { display: block; width: 100%; height: 100%; max-width: none; }
+/* page de garde (« couverture: garde ») : la page de titre d'un rapport au gabarit LaTeX TeXtured, sur papier blanc :
+   établissement en haut sur un filet, grande lettrine pâle derrière le titre, sous-titre gris, accroche en italique sur
+   un filet d'encre, auteur et mentions en bas. Mesures en cqi, prises sur la page A4 du gabarit LaTeX (210 mm = 100cqi :
+   marges de 32,5 mm, titre en 26 pt). Sur papier, le titre du document n'est pas répété en tête de la page suivante. */
+.couv-garde .couv { display: flex; flex-direction: column; padding: 9.5cqi 15.5cqi 12.5cqi; }
+.garde-haut { font: 400 1.62cqi/1.45 var(--sans); color: var(--cd); padding-bottom: 1.2cqi; border-bottom: max(.5px, .12cqi) solid #c9c9c9; }
+.couv .garde-haut p, .couv .garde-bas p { margin: 0; }
+.garde-milieu { margin-top: 17cqi; }
+.garde-titre { position: relative; }
+.garde-lettre { position: absolute; left: -.8cqi; top: -6.4cqi; font: italic 400 19cqi/1 var(--chorus); color: color-mix(in oklab, var(--ca) 30%, #fff); }
+.couv .garde-h { position: relative; margin: 0; font: 700 4.35cqi/1.24 var(--sans); text-wrap: balance; }
+.couv .garde-sous { margin: 1.9cqi 0 0; font: 400 2.42cqi/1.3 var(--sans); color: var(--cd); }
+.garde-accroche { margin-top: 8.5cqi; padding-left: 2.6cqi; border-left: max(1px, .2cqi) solid var(--ca); }
+.couv .garde-accroche p { margin: 0; font: italic 400 2.42cqi/1.38 var(--texte); }
+.garde-bas { margin-top: auto; font: 400 1.62cqi/1.45 var(--sans); color: var(--cd); }
+.couv .garde-bas .garde-auteur { margin-bottom: 1.3cqi; font: 700 2.05cqi/1.3 var(--sans); color: var(--ce); }
+@media print { .couv-garde ~ header.titre { display: none; } .couv-garde .couv { padding: 9.5cqi 15.5cqi 12.5cqi; } }
+/* couverture entière dessinée (bloc « ::: couverture » en 200 × 300) et motif seul (place « nu ») : le dessin est tout */
+:is(.couv-entiere, .couv-nu) .couv { display: block; padding: 0; }
+:is(.couv-entiere, .couv-nu) .couv > svg { display: block; width: 100%; height: 100%; max-width: none; }
 /* dessin à soi (bloc « ::: couverture ») : sans remplissage par défaut, bouts ronds, texte à la couleur du texte */
 .couv-perso svg { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .couv-perso svg text { fill: currentColor; stroke: none; }
@@ -56,7 +73,8 @@
 .couv-fiche dd { margin: 0; font-size: 3.3cqi; font-variant-numeric: tabular-nums; }
 .couv-pied { display: flex; justify-content: space-between; gap: 3cqi; font-size: 2.5cqi; letter-spacing: .16em; text-transform: uppercase; }
 @media (max-width: 40em) { .couverture { float: none; width: min(12.5em, 62%); margin: 1.6em auto .4em; } }
-@media (min-width: 72rem) { .page:not(.a-plan) > .couverture, .sans-plan .couverture { margin: 2.3em -16.5em 1em 0; } }
+/* grand écran : dans la marge de droite, sauf « corps » (couv-corps), qui reste dans la colonne, à droite du titre */
+@media (min-width: 72rem) { .page:not(.a-plan) > .couverture:not(.couv-corps), .sans-plan .couverture:not(.couv-corps) { margin: 2.3em -16.5em 1em 0; } }
 @media (min-width: 78rem) {
   :root:not(.sans-plan) .a-plan > .couverture {
     grid-column: 3; grid-row: 2 / span 2; align-self: start; justify-self: start; float: none; width: min(13.5em, 100%); margin: 2.3em 0 0;
@@ -74,7 +92,7 @@
 .tx-apercu .couverture { position: absolute; z-index: 40; top: 1.45rem; right: 3.6rem; width: 15.6rem; margin: 0; float: none; }
 /* papier : page de garde A4 à fond perdu (page nommée sans marges ni numéro) ; le document reprend sur la suivante,
    numérotée 1 comme après \begin{titlepage} */
-@page couverture { margin: 0; counter-increment: page 0; @bottom-center { content: none; } }
+@page couverture { margin: 0 !important; counter-increment: page 0; @bottom-center { content: none; } }
 @media print {
   .couverture { page: couverture; float: none; width: 210mm; height: 297mm; margin: -2.6em calc((100% - 210mm) / 2) 0; border-radius: 0; box-shadow: none; break-after: page; }
   .couv { height: 100%; aspect-ratio: auto; border-radius: 0; padding: 9cqi 9cqi 7.5cqi; }

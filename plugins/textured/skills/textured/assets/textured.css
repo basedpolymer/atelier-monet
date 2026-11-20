@@ -154,7 +154,7 @@ main { padding-bottom: 3em; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .evite { position: absolute; left: -999em; top: 0; z-index: 50; padding: .6em 1em; background: var(--encre); color: var(--fond); font-family: var(--sans); }
 .evite:focus { left: 0; }
-.large, .exo.elargi { margin-inline: calc((min(100vw - 2 * var(--marge), var(--large)) - 100%) / -2); }
+.large, .paysage, .exo.elargi { margin-inline: calc((min(100vw - 2 * var(--marge), var(--large)) - 100%) / -2); }
 .centre { text-align: center !important; }
 .nw { white-space: nowrap; }
 .chapeau { font-size: 1.08em; color: var(--doux); }
@@ -230,10 +230,22 @@ footer.pied p { margin: .2em 0; }
   p, li, dd { orphans: 3; widows: 3; }
   h2, h3, h4, .bloc-titre { break-after: avoid; }
   figure, table, pre, img, .def, .res, .piege, .retenir, .exo, .qcm, .qnum, .carte { break-inside: avoid; }
-  :is(.large, .exo.elargi) { margin-inline: calc((100% - 174mm) / 2); }
+  :is(.large, .exo.elargi):not(.paysage) { margin-inline: calc((100% - 174mm) / 2); }
+  /* bloc en paysage (« ::: paysage ») : ses propres pages A4 en paysage, sur toute leur largeur (297 − 2 × 18 = 261 mm,
+     marges de @page paysage) ; la colonne garde sa largeur de portrait, le bloc s'en échappe, centré sur la page ; une
+     figure y tient sur une page. Comme \begin{landscape} : un grand schéma, un tableau de plusieurs pages. */
+  .paysage { page: paysage; break-before: page; width: 261mm; max-width: none; margin-inline: calc((100% - 261mm) / 2); }
+  .paysage :is(.large, .exo.elargi) { margin-inline: 0; }
+  .paysage figure :is(img, svg) { width: 100%; max-height: 150mm; object-fit: contain; }
+  /* un long tableau (6 lignes ou plus, ou en paysage) se coupe entre deux lignes, son en-tête répété, comme un longtable */
+  table:has(> tbody > tr:nth-child(6)), .paysage table { break-inside: auto; }
+  tr { break-inside: avoid; }
+  /* adresse écrite en clair (<https://…>) : pas répétée entre parenthèses */
+  main a.uri::after { content: none; }
 }
+@page paysage { size: A4 landscape; margin: 16mm 18mm 18mm !important; }
 
-/*@ plan | class="plan" */
+/*@ plan | class="plan\b */
 nav.plan { margin: 0 0 2em; font: 400 .9em/1.35 var(--sans); }
 nav.plan .plan-titre { margin: 0 0 .4em; font-weight: 700; font-size: 1em; }
 nav.plan ol { list-style: none; margin: 0; padding: 0; }
@@ -248,7 +260,7 @@ nav.plan .num { margin-right: .55em; }
   :root:not(.sans-plan) .page.a-plan { max-width: none; display: grid; grid-template-columns: minmax(15em, 1fr) minmax(0, var(--col)) minmax(0, 1fr); column-gap: 3em; }
   .a-plan > * { grid-column: 2; }
   /* à côté du plan, un bloc large ne déborde qu'à droite, dans la place libre */
-  :root:not(.sans-plan) .a-plan :is(.large, .exo.elargi) { margin-inline: 0 calc(-1 * max(0px, min(var(--large) - 100%, (100vw - 2 * var(--marge) - 100%) / 2))); }
+  :root:not(.sans-plan) .a-plan :is(.large, .paysage, .exo.elargi) { margin-inline: 0 calc(-1 * max(0px, min(var(--large) - 100%, (100vw - 2 * var(--marge) - 100%) / 2))); }
   .a-plan > nav.plan {
     grid-column: 1; grid-row: 2 / span 3; align-self: start; justify-self: end; width: 15em; position: sticky; top: calc(var(--avert-h, 0px) + var(--h-tete) + 1.2rem);
     max-height: calc(100dvh - var(--h-tete) - 2.4rem); overflow-y: auto; overscroll-behavior: contain; margin: 2.6em 0 0;
@@ -256,6 +268,12 @@ nav.plan .num { margin-right: .55em; }
 }
 /* replié par défaut, à l'écran comme dans le PDF ; ouvert au bouton de l'en-tête, il s'imprime aussi */
 .sans-plan nav.plan { display: none; }
+/* « plan: pdf » : le sommaire s'imprime aussi, seul sur sa page après le titre, comme \tableofcontents */
+@media print {
+  nav.plan.papier { display: block !important; break-after: page; margin: 1.4em 0 0; font-size: 8.8pt; line-height: 1.2; }
+  nav.plan.papier .plan-titre { font-size: 1.5em; margin-bottom: .7em; }
+  nav.plan.papier a { padding-block: .07em; }
+}
 /* sommaire : apparition et disparition en fondu, au bouton de l'en-tête. Rien si le visiteur préfère le calme, sauf si
    le site a rallumé les animations (<html data-tx-anim="on">) ; rien non plus s'il les a arrêtées (« off »). */
 @media (prefers-reduced-motion: no-preference) { :root:not([data-tx-anim="off"]) nav.plan { transition: opacity .26s ease, translate .26s ease; } }
@@ -298,6 +316,8 @@ table.plein { width: 100%; }
 figure { margin: 1.3em 0 1.5em; }
 figure :is(img, video, canvas), figure svg:not(:where(.katex svg)) { display: block; margin-inline: auto; height: auto; }
 figure img.cadre { border: 1px solid var(--trait); border-radius: 3px; }
+/* une image (schéma, courbe, dessin LaTeX) est souvent un trait noir sur fond transparent : en sombre, fond de papier */
+figure img { background: light-dark(transparent, #f4f1ea); border-radius: 2px; }
 figcaption { margin-top: .5em; font-size: .9em; line-height: 1.38; color: var(--doux); text-align: center; text-wrap: balance; }
 svg text { font-family: var(--sans); fill: currentColor; }
 .figures, .paire { display: grid; grid-template-columns: repeat(auto-fit, minmax(14em, 1fr)); gap: 1em 1.4em; align-items: start; margin: 1.2em 0; }
