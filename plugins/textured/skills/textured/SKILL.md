@@ -45,7 +45,7 @@ Facultatif : `lang: en` · `plan: non` (pas de sommaire ; sinon, dès deux titre
 **Favicon et titre d'onglet** : posés d'office (marque géométrique à l'encre de la page) ; ne les changer que sur
 demande (`icone:`, `onglet:`, voir la fin de `couverture.md`). **Couverture** : seulement sur demande ; choisir le
 motif par `python3 <skill>/textured.py --motifs "sujet"`, puis `couverture: motif` dans l'en-tête (`couverture.md`) ;
-`nu` : motif seul, sans texte ; `corps` : à côté du titre, jamais dans la marge ; `garde` : page de titre d'un rapport
+`nu` : motif seul, sans texte ; `corps` (seulement sur demande : par défaut, la couverture est hors du corps de la page, dans la marge) : à côté du titre ; `garde` : page de titre d'un rapport
 LaTeX (établissement, lettrine, accroche, mentions), sans motif.
 
 ## Écrire le corps

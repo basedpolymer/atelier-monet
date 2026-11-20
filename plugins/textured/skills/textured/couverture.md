@@ -23,12 +23,13 @@ couverture: binodale encre bas
   (illustration à fond perdu) · `fond` (motif sur toute la couverture, titre en cartouche) · `nu` (le motif seul sur
   toute la couverture : ni titre, ni fiche, ni pied ; une texture la couvre à fond perdu, un schéma y est centré).
 - **nombre** : un autre tirage du même motif (`couverture: reseau 2`). Même titre, même couverture.
-- **corps** : la couverture reste dans la colonne du texte, en haut à droite à côté du titre, à toutes les largeurs ;
+- **corps** (seulement sur demande ; par défaut, la couverture est hors du corps de la page) : la couverture reste dans la colonne du texte, en haut à droite à côté du titre, à toutes les largeurs ;
   sans ce mot, elle passe dans la marge de droite sur grand écran. Sur un téléphone, elle est au-dessus du titre ;
   sommaire ouvert sur très grand écran, dans la colonne libre à droite ; sur papier, en page de garde dans tous les cas.
 
-Motif seul, à côté du titre (article de site) : `couverture: anneaux sombre nu corps` ; un dessin sur mesure sans texte
-se fait en couverture entière (bloc ci-dessous en 200 × 300, sans `<text>`), avec `couverture: sombre corps`.
+Motif seul (article de site) : `couverture: anneaux sombre nu`, dans la marge ; un dessin sur mesure sans texte se fait
+en couverture entière (bloc ci-dessous en 200 × 300, sans `<text>`), avec `couverture: sombre`. `corps` ne s'ajoute que
+si l'utilisateur veut la couverture à côté du titre.
 
 Le titre de la couverture est `court:`, sinon `titre:`, en capitales : **un ou deux mots**. `soustitre:` court,
 `surtitre:`, `auteur:` et l'année y figurent ; l'encre est celle de la page.
