@@ -333,6 +333,9 @@ table.plein { width: 100%; }
 /*@ figures | <figure\b|class="(figures|paire|cote)\b */
 figure { margin: 1.3em 0 1.5em; }
 figure :is(img, video, canvas), figure svg:not(:where(.katex svg)) { display: block; margin-inline: auto; height: auto; }
+/* Un schéma en ligne tient dans la colonne ; sans largeur donnée, il la remplit (Safari l'afficherait sinon à la taille de sa viewBox). */
+figure svg:not(:where(.katex svg)) { max-width: 100%; }
+figure svg:not([width]):not(:where(.katex svg)) { width: 100%; }
 figure img.cadre { border: 1px solid var(--trait); border-radius: 3px; }
 /* une image (schéma, courbe, dessin LaTeX) est souvent un trait noir sur fond transparent : en sombre, fond de papier */
 figure img { background: light-dark(transparent, #f4f1ea); border-radius: 2px; }
