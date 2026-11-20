@@ -36,7 +36,7 @@ tirage: #00a95c
 La page en tire ses pastels (lettrine, numéros, surlignages, losanges, jouets). Sans elle, une encre tirée du titre ;
 `tirage: non` : page grise.
 
-Facultatif : `lang: en` · `plan: non` (pas de sommaire ; sinon, dès deux titres, il est replié et le bouton de l'en-tête l'ouvre ;
+Facultatif : `lang: en` · `plan: non` (pas de sommaire ; sinon, dès deux titres, il est replié et le bouton de l'en-tête l'ouvre, dans la marge de gauche ou, sur un écran plus étroit, en panneau par-dessus la page, sans rien déplacer ; un « # » au survol de chaque titre de section copie son adresse ;
 `plan: pdf` : imprimé aussi, seul sur sa page) · `entete: oui` (titre courant et numéro en haut des pages imprimées) · `numeros: non` ·
 `densite: compacte` · `lettrine: 3|non` · `court:` (titre courant et onglet) · `pied:` · `prive: oui` (noindex) ·
 `avertissement: **Gras.** Texte` (bandeau en haut jusqu'à « J'ai compris ») · `langues: fr=URL, en=URL` ·

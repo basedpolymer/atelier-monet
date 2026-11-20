@@ -52,9 +52,12 @@
     const fondu = () => nav && getComputedStyle(nav).transitionDuration.split(",").some(d => parseFloat(d) > 0);
     let sortie = 0;
     const finir = () => { clearTimeout(sortie); sortie = 0; racine.classList.add("sans-plan"); racine.classList.remove("plan-sortie"); dire(); };
+    // sur un écran étroit, le sommaire flotte au-dessus de la page (voir la feuille) : ouvert, il ne s'y rouvre pas seul
+    const flottant = () => nav && getComputedStyle(nav).position === "fixed";
+    const ouvert = () => !racine.classList.contains("sans-plan") && !sortie;
     bPlan.addEventListener("click", () => {
-      const cacher = !racine.classList.contains("sans-plan") && !sortie;
-      try { if (cacher) localStorage.removeItem("tx-plan"); else localStorage.setItem("tx-plan", "1"); } catch {}
+      const cacher = ouvert();
+      try { if (cacher) localStorage.removeItem("tx-plan"); else if (!flottant()) localStorage.setItem("tx-plan", "1"); } catch {}
       if (cacher && fondu()) {
         racine.classList.add("plan-sortie");
         sortie = setTimeout(finir, 400);
@@ -70,8 +73,32 @@
         dire();
       }
     });
+    if (nav) {
+      nav.addEventListener("click", e => { if (e.target.closest("a") && flottant() && ouvert()) bPlan.click(); });
+      document.addEventListener("click", e => { if (flottant() && ouvert() && !nav.contains(e.target) && !bPlan.contains(e.target)) bPlan.click(); });
+      addEventListener("keydown", e => { if (e.key === "Escape" && flottant() && ouvert()) { bPlan.click(); bPlan.focus(); } });
+    }
     dire();
   }
+
+  // ancres : au survol d'un titre de section, un « # » dont le clic copie l'adresse de la section (et la met dans la barre)
+  const EN = (racine.lang || "fr").slice(0, 2) === "en";
+  const DIRE = EN ? ["Copy the link to this section", "Link copied"] : ["Copier le lien vers cette section", "Lien copié"];
+  document.querySelectorAll("main :is(h2, h3)[id]").forEach(h => {
+    if (h.querySelector(":scope > .ancre")) return;
+    const a = document.createElement("a");
+    a.className = "ancre"; a.href = "#" + h.id; a.title = DIRE[0]; a.setAttribute("aria-label", DIRE[0]);
+    let delai = 0;
+    a.addEventListener("click", e => {
+      e.preventDefault();
+      const url = location.href.split("#")[0] + "#" + encodeURIComponent(h.id);
+      history.replaceState(history.state, "", "#" + encodeURIComponent(h.id));
+      const fait = () => { a.classList.add("copie"); a.title = DIRE[1]; clearTimeout(delai); delai = setTimeout(() => { a.classList.remove("copie"); a.title = DIRE[0]; }, 1600); };
+      const repli = () => { const t = document.createElement("textarea"); t.value = url; t.style.cssText = "position:fixed;opacity:0"; document.body.append(t); t.select(); try { if (document.execCommand("copy")) fait(); } catch {} t.remove(); };
+      if (navigator.clipboard && isSecureContext) navigator.clipboard.writeText(url).then(fait, repli); else repli();
+    });
+    h.append(a);
+  });
 
   // titre courant dans l'en-tête et repère du plan
   const tete = document.querySelector(".tete");

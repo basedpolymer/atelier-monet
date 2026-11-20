@@ -118,8 +118,14 @@ h4 { font-size: 1em; margin: 1.4em 0 .35em; }
 h2 + h3 { margin-top: .9em; }
 .num { margin-right: .7em; font-variant-numeric: tabular-nums; }
 :is(h2, h3) > .num { color: var(--pastel-encre); }
-:is(h2, h3, h4) > a.ancre { margin-left: .4em; color: var(--doux); text-decoration: none; opacity: 0; font-weight: 400; }
-:is(h2, h3, h4):hover > a.ancre, a.ancre:focus-visible { opacity: 1; }
+/* ancre au bout d'un titre de section (textured.js) : un clic copie l'adresse de la section ; le « # » est dessiné en
+   CSS pour ne pas entrer dans le texte du titre */
+:is(h2, h3, h4) > a.ancre { margin-left: .4em; color: var(--doux); text-decoration: none; opacity: 0; font-weight: 400; transition: opacity .15s; }
+:is(h2, h3, h4) > a.ancre::before { content: "#"; }
+:is(h2, h3, h4) > a.ancre.copie::before { content: "\2713"; color: var(--pastel-encre); }
+:is(h2, h3, h4):hover > a.ancre, a.ancre:focus-visible, a.ancre.copie { opacity: 1; }
+@media (hover: none) { :is(h2, h3, h4) > a.ancre { opacity: .45; } }
+@media print { a.ancre { display: none; } }
 
 /* listes (paralist) : (1) (a) (i), puces • – ∗ */
 ul, ol { margin: 0 0 .8em; padding-left: 1.9em; }
@@ -191,9 +197,9 @@ main { padding-bottom: 3em; }
   position: absolute; left: -.04em; top: -.42em; font: italic 400 clamp(5.4rem, 16vw, 7.4rem)/1 var(--chorus);
   color: var(--pastel); user-select: none; pointer-events: none;
 }
-.titre h1 { margin: 0; font-size: clamp(1.9rem, 1.2rem + 3.6vw, 2.7rem); line-height: 1.12; letter-spacing: -.005em; }
+.titre h1 { margin: 0; font-size: clamp(1.9rem, 1.2rem + 3.6vw, 2.7rem); line-height: 1.12; letter-spacing: -.005em; text-wrap: pretty; }
 .titre .surtitre { margin: 0 0 .35em; font: 400 .82em/1.3 var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--doux); }
-.titre .soustitre { margin: .7em 0 0; font: 400 1.08em/1.35 var(--sans); color: var(--doux); text-wrap: balance; }
+.titre .soustitre { margin: .7em 0 0; font: 400 1.08em/1.35 var(--sans); color: var(--doux); text-wrap: pretty; }
 .titre .meta { margin: .8em 0 0; font: 400 .88em/1.4 var(--sans); color: var(--doux); }
 .titre .surtitre a { color: inherit; text-decoration: none; }
 .titre .surtitre a:hover { color: var(--encre); text-decoration: underline; text-decoration-color: var(--pastel-trait); text-underline-offset: .2em; }
@@ -220,9 +226,12 @@ footer.pied p { margin: .2em 0; }
 }
 @media print {
   :root, :root[data-theme] { color-scheme: light; --corps: 10.5pt; --fond: #fff; }
-  .tete, .evite, .plan-bouton { display: none !important; }
-  /* la lettrine dépasse le haut du titre : la marge du haut lui laisse sa place sur la première page */
-  .page { max-width: var(--col); padding: 2.6em 0 0; }
+  /* sur papier, rien de ce qui ne sert qu'à l'écran : en-tête courant, boutons, liens-boutons (souvent relatifs, morts
+     dans un PDF) */
+  .tete, .evite, .plan-bouton, button.discret, .bouton { display: none !important; }
+  /* la lettrine dépasse un peu le haut du titre : juste assez de marge pour elle, le titre commence là où commence le
+     texte des autres pages */
+  .page { max-width: var(--col); padding: .9em 0 0; }
   .titre { margin-top: 0; }
   main { padding-bottom: 0; }
   main a[href] { background: none; box-shadow: none; padding: 0; }
@@ -264,6 +273,15 @@ nav.plan .num { margin-right: .55em; }
   .a-plan > nav.plan {
     grid-column: 1; grid-row: 2 / span 3; align-self: start; justify-self: end; width: 15em; position: sticky; top: calc(var(--avert-h, 0px) + var(--h-tete) + 1.2rem);
     max-height: calc(100dvh - var(--h-tete) - 2.4rem); overflow-y: auto; overscroll-behavior: contain; margin: 2.6em 0 0;
+  }
+}
+/* plus étroit : le sommaire ouvert flotte au-dessus de la page, à gauche, sous l'en-tête, sans rien déplacer ; un lien
+   suivi, un clic à côté ou Échap le referment (textured.js). Sans script il reste dans le fil, au-dessus du corps. */
+@media screen and (max-width: 77.99rem) {
+  .js nav.plan {
+    position: fixed; z-index: 29; top: calc(var(--avert-h, 0px) + var(--h-tete)); bottom: 0; left: 0; width: min(19em, 86vw);
+    margin: 0; padding: 1.1em 1em 1.6em var(--marge); overflow-y: auto; overscroll-behavior: contain;
+    background: var(--fond); border-right: 1.2px solid var(--trait); box-shadow: .5em 0 1.6em -1em rgb(0 0 0 / .35);
   }
 }
 /* replié par défaut, à l'écran comme dans le PDF ; ouvert au bouton de l'en-tête, il s'imprime aussi */
