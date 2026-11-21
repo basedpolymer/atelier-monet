@@ -1,7 +1,7 @@
 {
   "name": "atelier-vitrail",
-  "version": "0.2.0",
-  "description": "Thème LaTeX et ASCII : plâtre d'atelier le jour, nuit de vitrail le soir, avec des pelotes de polymère, un réacteur agité, une réponse indicielle et un nœud papillon en caractères, doucement animés.",
+  "version": "0.3.0",
+  "description": "Thème LaTeX et ASCII : plâtre d'atelier le jour, nuit de vitrail le soir, avec des pelotes de polymère, un réacteur agité, une réponse indicielle, une décomposition spinodale et un emballement thermique en caractères, doucement animés.",
   "author": {
     "name": "basedpolymer"
   }

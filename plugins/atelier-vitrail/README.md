@@ -1,6 +1,6 @@
 # atelier-vitrail
 
-Thème pour Claude Code, dans l'esprit LaTeX et ASCII : plâtre d'atelier le jour, nuit de vitrail le soir, avec des pelotes de polymère, un réacteur agité, une réponse indicielle et un nœud papillon en caractères, doucement animés.
+Thème pour Claude Code, dans l'esprit LaTeX et ASCII : plâtre d'atelier le jour, nuit de vitrail le soir, avec des pelotes de polymère, un réacteur agité, une réponse indicielle, une décomposition spinodale et un emballement thermique en caractères, doucement animés.
 
 ![L'app de bureau Claude avec le thème, de jour : le fond en caractères derrière la conversation](docs/app-jour.webp)
 
@@ -16,6 +16,8 @@ Thème pour Claude Code, dans l'esprit LaTeX et ASCII : plâtre d'atelier le jou
 </details>
 
 Le fond est un seul SVG fait de caractères, animé en CSS par des transformations et des changements d'opacité, que le compositeur prend en charge sans les redessiner. Ces caractères sont des formes, pas du texte : chaque lettre est le contour d'un caractère de Latin Modern Mono (`glyphes.py` les écrit dans `hooks/scene.ts`), si bien que rien ne se sélectionne, ne se copie ni ne se lit à voix haute. Il s'immobilise si le système demande moins d'animations ; en portrait, seules les pelotes et le réacteur restent.
+
+À gauche, deux scènes viennent des cours. En haut, une décomposition spinodale vue au microscope : le mélange homogène se module après la trempe, se sépare en deux phases entrelacées, puis les domaines grossissent (équation de Cahn-Hilliard, simulée par `spinodale.py`). Au milieu, un diagramme de Semenov : la température de paroi monte, la droite d'évacuation glisse vers l'exponentielle d'Arrhenius, les points stable et instable se rejoignent à la tangence, puis la température s'emballe et sort du cadre en gerbe.
 
 ## Installation
 

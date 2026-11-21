@@ -78,7 +78,7 @@ export const register: Register = on => {
     return (
       <Svg
         source={SCENE}
-        alt="Des pelotes de polymère, un réacteur agité, une réponse indicielle et un nœud papillon dessinés en caractères"
+        alt="Des pelotes de polymère, un réacteur agité, une réponse indicielle, une décomposition spinodale et un emballement thermique dessinés en caractères"
         isInteractive
       />
     )

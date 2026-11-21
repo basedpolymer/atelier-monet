@@ -5,9 +5,11 @@
 //
 //   en haut à droite : des pelotes de polymère qui oscillent et tournent,
 //                      leur rayon en pointillé, et le motif du PET dessous
-//   en bas à gauche  : un réacteur agité, sa surface, ses bulles, sa pale
 //   en bas à droite  : une réponse indicielle qui se trace, et sa boucle
-//   à gauche         : un nœud papillon, l'événement central au milieu
+//   à gauche, de haut en bas, décalés les uns des autres :
+//                      un réacteur agité, sa surface, ses bulles, sa pale ;
+//                      une décomposition spinodale vue au microscope, de la trempe au grossissement ;
+//                      un diagramme de Semenov, la droite d'évacuation glisse jusqu'à l'emballement
 
 // Couleurs de verre : lisibles sur le plâtre clair comme sur le fond sombre.
 const COBALT = '#3e6fc4'
@@ -143,6 +145,78 @@ function glyphs(row: string, x: number, y: number): string {
 
 function lines(rows: readonly string[], x: number, y: number, step: number): string {
   return rows.map((row, i) => glyphs(row, x, y + i * step)).join('')
+}
+
+// Une grille de caractères fixes. Les suites d'un même caractère, trois ou plus en ligne puis en colonne, deviennent un
+// rectangle rempli par le motif de ce caractère (un <pattern> calé sur la grille) ; les autres restent des <use>. Même
+// dessin, beaucoup moins d'éléments. La case du motif va de 12 px au-dessus de la ligne de base à step - 12 en dessous.
+const MOTIFS = new Map<string, string>()
+
+function motif(c: string, color: string, x: number, y: number, step: number): string {
+  const key = `${c} ${color} ${num(x % CHAR)} ${num(y % step)} ${step}`
+  let found = MOTIFS.get(key)
+  if (found === undefined) {
+    found = `m${MOTIFS.size}`
+    MOTIFS.set(key, found)
+    PATTERNS.push(
+      `<pattern id="${found}" patternUnits="userSpaceOnUse" x="${num(x)}" y="${num(y - 12)}" width="${CHAR}" height="${step}">` +
+        `${glyph(c, `y="12" fill="${color}"`)}</pattern>`,
+    )
+  }
+  return found
+}
+const PATTERNS: string[] = []
+
+function trame(rows: readonly string[], x: number, y: number, step: number, color: string): string {
+  const grid = rows.map(row => [...row])
+  const rects = new Map<string, string>()
+  const add = (c: string, j: number, i: number, w: number, h: number): void => {
+    const id = motif(c, color, x, y, step)
+    rects.set(id, `${rects.get(id) ?? ''}M${num(x + j * CHAR)} ${num(y + i * step - 12)}h${num(w * CHAR)}v${h * step}h${num(-w * CHAR)}z`)
+  }
+  grid.forEach((row, i) => {
+    for (let j = 0; j < row.length; ) {
+      const c = row[j]!
+      let k = j
+      while (row[k] === c) {
+        k += 1
+      }
+      if (c !== ' ' && k - j >= 3) {
+        add(c, j, i, k - j, 1)
+        row.fill(' ', j, k)
+      }
+      j = k
+    }
+  })
+  const width = Math.max(...grid.map(row => row.length))
+  for (let j = 0; j < width; j += 1) {
+    for (let i = 0; i < grid.length; ) {
+      const c = grid[i]![j]
+      if (c === undefined || c === ' ') {
+        i += 1
+        continue
+      }
+      let k = i
+      while (k < grid.length && grid[k]![j] === c) {
+        k += 1
+      }
+      if (k - i >= 3) {
+        add(c, j, i, 1, k - i)
+        for (let m = i; m < k; m += 1) {
+          grid[m]![j] = ' '
+        }
+      }
+      i = k
+    }
+  }
+  return (
+    `<g fill="${color}">${lines(
+      grid.map(row => row.join('')),
+      x,
+      y,
+      step,
+    )}</g>` + [...rects].map(([id, d]) => `<path fill="url(#${id})" d="${d}"/>`).join('')
+  )
 }
 
 // Ce que faisait <textPath> : chaque caractère a son milieu sur la courbe, à pitch de son voisin, et tourne avec sa
@@ -310,7 +384,7 @@ function reacteur(): string {
     )
     .join('')
 
-  return `<g class="reacteur"><g fill="${CRAIE}">${lines(vessel, 0, 0, 17)}</g>${surface}${shaft}${blades}${bubbles}</g>`
+  return `<g class="reacteur">${trame(vessel, 0, 0, 17, CRAIE)}${surface}${shaft}${blades}${bubbles}</g>`
 }
 
 function boucle(): string {
@@ -342,28 +416,499 @@ function boucle(): string {
   )
 }
 
-function papillon(): string {
-  const tie = [
-    'o--.                 .--o',
-    'o---\\               /---o',
-    'o----+-->       >--+----o',
-    'o---/               \\---o',
-    "o--'                 '--o",
-  ]
+// Les trajectoires calculées ont chacune leurs @keyframes, ajoutées à la feuille de style. Toutes en translate et en
+// opacité, avec une progression linéaire entre des points calculés : rien que le compositeur ne sache faire seul.
+const KEYFRAMES: string[] = []
+
+function keyframes(name: string, stops: ReadonlyArray<readonly [number, string]>): string {
+  KEYFRAMES.push(`@keyframes ${name}{${stops.map(([t, d]) => `${num(t * 100)}%{${d}}`).join('')}}`)
+  return name
+}
+
+// Un trait continu a l'épaisseur et les bouts arrondis du tiret de Latin Modern Mono : le même dessin qu'une file de
+// tirets qui se chevauchent, en un seul élément.
+const TRAIT = 'fill="none" stroke-width="1.12" stroke-linecap="round" stroke-linejoin="round"'
+const trace = (points: ReadonlyArray<readonly [number, number]>): string =>
+  `M${points.map(([x, y]) => `${num(x)} ${num(y)}`).join('L')}`
+
+const at = (x: number, y: number, opacity: number): string =>
+  `transform:translate(${num(x)}px,${num(y)}px);opacity:${opacity}`
+
+// spinodale : début (généré par spinodale.py, Cahn-Hilliard ; ne pas modifier à la main)
+const SPINODALE: ReadonlyArray<readonly [number, readonly string[]]> = [
+  [0, [
+    '             .......',
+    '         ...............',
+    '       ...................',
+    '     .......................',
+    '    .........................',
+    '   ...........................',
+    '  .............................',
+    '  .............................',
+    ' ...............................',
+    ' ...............................',
+    ' ...............................',
+    '.................................',
+    '.................................',
+    '.................................',
+    ' ...............................',
+    ' ...............................',
+    ' ...............................',
+    '  .............................',
+    '  .............................',
+    '   ...........................',
+    '    .........................',
+    '     .......................',
+    '       ...................',
+    '         ...............',
+    '             .......',
+  ]],
+  [3, [
+    '             ..a.bbb',
+    '         b..bb.a.bbbb..b',
+    '       .b...bb.aa.aaaa.b.a',
+    '     bb..aa....a............',
+    '    .bbaaa.......bbbbb...bBb.',
+    '   ...aaabb............aa.bb.a',
+    '  .......bb....aa......a....aab',
+    '  ........aa........b...bbb.a.b',
+    ' .................a...aa.bb..a..',
+    ' .b.......bb..a.b...b.aaaa......',
+    ' ......aa....aa.b...b...b.....bb',
+    'a......a......a...aa...bbb.......',
+    'a...a.bb...bb......aa......aaa..a',
+    '.bb.a.bb.aa.bb...bb...bb....bbb..',
+    ' bb......aaa...a.b.aa..bb.aa.bb.',
+    ' ..a.b........aa.b.aa....aaa...a',
+    ' b.aa.b...bbbb......bb...a......',
+    '  baa.b........b....bb....bb.a.',
+    '  ...bb...aaaa.bb....a....bb.aa',
+    '   .bb.....bb.a...aaa..bb..bb.',
+    '    bbaa..bbb.aa.b.a.........',
+    '     .aa.aaaa..a.bb.....aa..',
+    '       bb.aaa.b......bb...',
+    '         bb..bb...aaa...',
+    '             ......a',
+  ]],
+  [6, [
+    '             aaabBBB',
+    '         baaBB.A.BBBBbbB',
+    '       BBb.bBB.AAAaAAA.BbA',
+    '     BBbaAAAbBaAAbbaAA......',
+    '    BBbAAAAA.BBbBBBBBBbaaBBBa',
+    '   bbbAAaBBBbBBbaaa.BB.AAbBBAA',
+    '  ba..aabBBbaaaAAAAaBbAAAbBaAAB',
+    '  AA.BBbaAAAA..aaAA.BBaabBB.AAb',
+    ' Aaa.BBbaA.bBbBBBaAaBbAA.BBaAAaa',
+    ' bBbbBB.a.BBbAAbBB.bBbAAAaaAabBB',
+    ' bBbaaaAAAbBaAAaBBbbBb..BBBbbBBB',
+    'A.baAAaaAabB.AAA.aAAAA.BBBB.AAAAA',
+    'AbBaA.BBBbbBBBbbb.aAAA.b.AAAAAaAA',
+    '.BB.abBBbAAAbBbbBBB.AaBBbaA.BBBBa',
+    ' BBb.BBaAAAAaAAA.BBaAABBB.AAbBBb',
+    ' .aAAbbAAbBBB.AAabaAAabBbAAA.bbA',
+    ' BaAA.B..BBBBB.a..a.BBbaAAabbb.A',
+    '  bAA.BBaAAAabBBBb.bBB.AAaBB.Aa',
+    '  babBBbaAAAAAabBbAAaaa.bBBBaAA',
+    '   aBB.AaBBBB.AAbbAAAAbBBBBBBb',
+    '    BBAAAbBBBbAA.B.AAaBBaAAa.',
+    '     bAAAaAAAAAAbBBbbBBaAAAA',
+    '       BBbaAA.bbbbbbbBBbAA',
+    '         BBbbBBBaAAAAabb',
+    '             bb.aaAA',
+  ]],
+  [12, [
+    '             AAa.BBB',
+    '         aAab.AAaBBBBBBB',
+    '       BBb.BBBaAAAAAAabBbA',
+    '     BBbAAAaBBbaA..aAAAAAabB',
+    '    BBbAAAAaBBBBBBBBBBaAAbBB.',
+    '   BBbaAAbBBBBBbaAaBBB.AaBBBAA',
+    '  baAaAAabBBaAAAAAAaBBaAaBBbAAb',
+    '  AAaBBBaAAAAAAAAAAABBAA.BBaAA.',
+    ' AAaBBBBAAabBBBBbaA.BBAAAbbAAAaa',
+    ' .BBBBBbAAbBBbbBBBBBBBAAAaaa.BBB',
+    ' BBBaAAAAABBaAAAaBBBB.A.BBBBBBBB',
+    'aBBAAAAAA.BB.AAAAAAAAA.BBBBbAAAAA',
+    'ABBaAAbBBBBBBBBBBbAAAAbBB.AAAAAAA',
+    'ABBBBBBBbAAA.BBBBBbAAABBBAAA.BBbA',
+    ' bBBBBBaAAAAAAAabB.AAABBBAAABBBB',
+    ' aAAA.baA.BBbaAAAAAAA.BB.AAaBBBa',
+    ' bAAAaBBBBBBBBbaAaBBBBBaAAAbBbAA',
+    '  bAAbBBaAAAaBBBBBBBBB.AAAbBBAA',
+    '  .abBBbAAAAAAaBBBaAAAAbBBBBBaA',
+    '   ABBbAAbBBbAAabbAAAA.BBBBBBB',
+    '    BBAAA.BBbAAAbbAAAaBBaAAAa',
+    '     BAAAAAAAAAaBBBBBBBBAAAA',
+    '       BBbaAAabBBBBBBBBBaA',
+    '         BBBBBBBaAAAAAAb',
+    '             BBbaAAA',
+  ]],
+  [30, [
+    '             AAAAA.B',
+    '         AAAAAAAAA.BBBBB',
+    '       BAAAbBBbAAAAAA.BbAA',
+    '     BBBAAbBBBBbaAAAAAAAAAbB',
+    '    BBBaAABBBBBBBBBBbAAAAbBBB',
+    '   BBbAAAAbBBBBBBBBBBbAAaBBBBa',
+    '  B.AAAAAAAAAAAAAAaBBBAAAbBBaAA',
+    '  AAabB.AAAAAAAAAAABBBAAAAAAAAA',
+    ' AAaBBBbAAA.BBBBaA.BBBAAAAAAAAAA',
+    ' bBBBBbAAA.BBBBBBBBBBbAAA.BBBBBB',
+    ' BBB.AAAAaBBBBaAabBBbAA.BBBBBBBB',
+    'BBBBAAAAaBBBBBaAAAAAAAaBBBBbaAAAa',
+    'aBBBaAAaBBBBBBBBBaAAAAbBBBaAAAAAA',
+    'AbBBBBBBbAAAAbBBB.AAAaBBBaAAAbbAA',
+    ' abBBBBBaAAAAAAAAAAAAbBBbAAAbBBa',
+    ' AAAA.BBaabBbaAAAAAabBBbAAAaBBBA',
+    ' AAAA.BBBBBBBBB.AaBBBBbAAAABBB.A',
+    '  AAaBBBB.AabBBBBBBBBbAAAabBBBA',
+    '  AAbBBBaAAAAabBBBbaAAAAbBBBBB.',
+    '   ABBBaAAAAAAA.BBaAAAAbBBBBBB',
+    '    BBBaAAAAAAAaBBaAAabBbaAAA',
+    '     BBbAAAAAAaBBBBBBBBBAAAA',
+    '       BBB.AA.BBBBBBBBBBaA',
+    '         BBBBBBBBaAAAAAB',
+    '             BBbaAAA',
+  ]],
+  [80, [
+    '             AAAAAAA',
+    '         AAAAAAAAAAAAAbB',
+    '       BAAAAbBbaAAAAAAAAAA',
+    '     BBbAAAbBBBBbAAAAAAAAAAB',
+    '    BBBAAAAbBBBBBBBBbAAAAAbBB',
+    '   BBBaAAAAAbBBBBBBBBbAAAAbBBB',
+    '  BBBBAAAAAAAAAAbBBBBBAAAAabbAA',
+    '  BBBBAAAAAAAAAAbBBBBBAAAAAAAAA',
+    ' BBBBbAAAAAAbBBBBBBBBbAAAAAAAAAA',
+    ' BBBBaAAAAaBBBBBBBBBbAAAAbBBBBBB',
+    ' BBBBaAAAAbBBBBBBBbaAAAaBBBBBBBB',
+    'BBBBBbAAAAbBBBBBBaAAAAABBBBBBaAaB',
+    'bBBBBB.AAAAbBBB.AAAAAAbBBBBbAAAAA',
+    'AaBBBBBbAAAAAAAAAAAAAaBBBBaAAAAAA',
+    ' AABBBBBBaAAAAAAAAAAaBBBBaAAAAAA',
+    ' AAaBBBBBBBBbaAAAAAaBBBBaAAAAAAA',
+    ' AAAaBBBBBBBBBBBBBBBBBbAAAaBBBbA',
+    '  AAABBBBaAAaBBBBBBBaAAAAaBBBBB',
+    '  AA.BBBaAAAAAbBBBB.AAAAAbBBBBB',
+    '   AbBBBAAAAAAaBBBB.AAAAAaBBBB',
+    '    BBBBAAAAAAABBBBBaAAAAAAAa',
+    '     BBBaAAAAAaBBBBBBBBbaAAA',
+    '       BbaAAAaBBBBBBBBBBBb',
+    '         BBBBBBBbaAaBBBB',
+    '             BbaAAAA',
+  ]],
+  [240, [
+    '             AAAAAAA',
+    '         aAAAAAAAAAAAAAA',
+    '       BaAAAAAAAAAAAAAAAAa',
+    '     BBbAAAAAAAbBbaAAAAAAAAb',
+    '    BBBaAAAAAAbBBBBbAAAAAAAAA',
+    '   BBB.AAAAAAbBBBBBBbAAAAAAAAA',
+    '  BBBBAAAAAAaBBBBBBBBbAAAAAAAAA',
+    '  BBBBAAAAAAbBBBBBBBBBAAAAAAAAA',
+    ' BBBBBAAAAAABBBBBBBBB.AAAAAAAAA.',
+    ' BBBBBAAAAAAbBBBBBBBbAAAAbBBBBBB',
+    ' BBBBBaAAAAAABBBBBBaAAAAbBBBBBBB',
+    'BBBBBBbAAAAAAAbBBbAAAAAbBBBBBBBBB',
+    'bBBBBBBaAAAAAAAAAAAAAAbBBBBBbaAAa',
+    'AaBBBBBBaAAAAAAAAAAAAaBBBBbaAAAAA',
+    ' AaBBBBBBbaAAAAAAAAAaBBBBaAAAAAA',
+    ' AAaBBBBBBBBbaAAAAAaBBBbAAAAAAAA',
+    ' AAAaBBBBBBBBBBBBBBBBBbAAAAAAAAA',
+    '  AAABBBBBaAaBBBBBBBBBAAAAAAAAA',
+    '  AAaBBBBaAAAAbBBBBBBaAAAAAAabB',
+    '   A.BBBBAAAAAaBBBBBBaAAAAAbBB',
+    '    BBBBBAAAAAABBBBBBBaAAaBBB',
+    '     BBBBaAAAAaBBBBBBBBBBBBB',
+    '       BBBaAAaBBBBBBBBBBBB',
+    '         BBBBBBBBBBBBBBB',
+    '             baAAAAA',
+  ]],
+]
+// spinodale : fin
+
+// Une trempe sous la spinodale, vue au microscope. Le mélange homogène (des points) se module, la modulation se creuse en
+// deux phases entrelacées, hachurées comme sur un plan (# riche en A, = riche en B), puis les domaines grossissent,
+// toujours plus lentement (L ~ t^1/3). Chaque instant de la simulation apparaît puis s'efface ; le dernier se refond dans
+// le mélange homogène, comme si l'on réchauffait au-dessus de la binodale.
+const NIVEAUX: Readonly<Record<string, readonly [string, string]>> = {
+  A: ['#', COBALT],
+  a: ['+', COBALT],
+  '.': ['.', CRAIE],
+  b: ['-', RUBIS],
+  B: ['=', RUBIS],
+}
+
+// Les cases d'un niveau, rang par rang, en rectangles : une suite de cases voisines n'en fait qu'un. Les coordonnées
+// sont en cases (des entiers, deux fois plus courts à écrire) ; le groupe les remet à l'échelle.
+const TOP = 10 // une case va de 10 px au-dessus de la ligne de base à 1 px en dessous : tous les caractères y tiennent
+function cells(rows: readonly string[], level: string): string {
+  let d = ''
+  rows.forEach((row, i) => {
+    for (let j = 0; j < row.length; j += 1) {
+      if (row[j] !== level) {
+        continue
+      }
+      let k = j
+      while (row[k] === level) {
+        k += 1
+      }
+      d += `M${j} ${i}h${k - j}v1h${j - k}z`
+      j = k
+    }
+  })
+  return d
+}
+
+function spinodale(): string {
+  const step = 11
+  const center: readonly [number, number] = [16 * CHAR + CHAR / 2, 12 * step - 4.9]
+  const radius = 146
+  const holds = [9, 5.2, 5.2, 6, 8, 10, 16] // secondes à chaque instant : la croissance ralentit, on s'attarde
+  const fade = 2.8
+  const cycle = holds.reduce((a, b) => a + b, 0)
+  const still = 4 // l'instant montré quand le système demande moins d'animations
+
+  let start = 0
+  const frames = SPINODALE.map(([, rows], k) => {
+    const end = start + holds[k]!
+    const t = (s: number): number => s / cycle
+    const stops: Array<readonly [number, string]> =
+      k === 0
+        ? [
+            [0, 'opacity:1'],
+            [t(end - fade / 2), 'opacity:1'],
+            [t(end + fade / 2), 'opacity:0'],
+            [t(cycle - fade), 'opacity:0'],
+            [1, 'opacity:1'],
+          ]
+        : [
+            [0, 'opacity:0'],
+            [t(start - fade / 2), 'opacity:0'],
+            [t(start + fade / 2), 'opacity:1'],
+            ...(k === holds.length - 1
+              ? [[t(cycle - fade), 'opacity:1'] as const, [1, 'opacity:0'] as const]
+              : [[t(end - fade / 2), 'opacity:1'] as const, [t(end + fade / 2), 'opacity:0'] as const, [1, 'opacity:0'] as const]),
+          ]
+    start = end
+    const name = keyframes(`sp${k}`, stops)
+
+    // par niveau, un seul chemin : les suites de cases de ce niveau, remplies par son motif
+    const paths = Object.keys(NIVEAUX)
+      .map((level, n) => {
+        const d = cells(rows, level)
+        return d === '' ? '' : `<path fill="url(#sp-${n})" d="${d}"/>`
+      })
+      .join('')
+    return (
+      `<g style="opacity:${k === still ? 1 : 0};animation:${name} ${cycle}s linear infinite">` +
+      `<g transform="translate(0 ${-TOP}) scale(${CHAR} ${step})">${paths}</g></g>`
+    )
+  })
+
+  // Un motif par niveau : son caractère répété sur la grille, une case de CHAR sur step, de TOP au-dessus de la ligne de
+  // base, ramenée à l'unité (patternTransform) comme les chemins. Chaque instant ne dessine ainsi que cinq chemins au
+  // lieu de cinq cents caractères.
+  const patterns = Object.values(NIVEAUX)
+    .map(
+      ([c, color], n) =>
+        `<pattern id="sp-${n}" patternUnits="userSpaceOnUse" width="${CHAR}" height="${step}" ` +
+        `patternTransform="scale(${1 / CHAR} ${1 / step})">` +
+        `${glyph(c, `y="${TOP}" fill="${color}"`)}</pattern>`,
+    )
+    .join('')
 
   return (
-    `<g class="papillon"><g fill="${CRAIE}">${lines(tie, 0, 0, 17)}</g>` +
-    `<g fill="${RUBIS}" style="animation:respire 8s ease-in-out infinite">${glyphs('(ERC)', 10 * CHAR, 34)}</g></g>`
+    `<g class="spinodale">${patterns}` +
+    `<circle cx="${num(center[0])}" cy="${num(center[1])}" r="${radius}" ${TRAIT} stroke="${CRAIE}" opacity=".7"/>` +
+    frames.join('') +
+    `<g fill="${CRAIE}">${glyphs("dc/dt = M.lap( f'(c) - k.lap c )", center[0] - 15.5 * CHAR, center[1] + radius + 30)}` +
+    `${glyphs('L(t) ~ t^(1/3)', center[0] - 7 * CHAR, center[1] + radius + 54)}</g></g>`
+  )
+}
+
+// Le diagramme de Semenov d'un réacteur fermé. La puissance dégagée par la réaction, qg, croît en exponentielle
+// (Arrhenius) ; la puissance évacuée par la paroi, qe = US/V (T - Tc), est une droite qui coupe l'axe en Tc. Le point
+// stable (o) est l'intersection basse, l'instable (x) la haute. Tc monte : la droite glisse, les deux points se
+// rapprochent, se rejoignent à la tangence (le point de non-retour), puis il n'y a plus d'intersection : la température
+// s'emballe le long de l'exponentielle, d'abord lentement puis d'un coup, et sort du cadre en gerbe.
+function semenov(): string {
+  const W = 250
+  const H = 172
+  const a = 5
+  const beta = Math.log(H / a) / 0.85
+  const m = 1.3
+  const qg = (x: number): number => a * Math.exp((beta * x) / W)
+  const X0 = CHAR * 1.5
+  const Y0 = 11 * 17 - 4.9
+  const P = (x: number, y: number): readonly [number, number] => [X0 + x, Y0 - y]
+
+  const xStar = (W / beta) * Math.log((m * W) / (a * beta)) // tangence : qg' = m
+  const xcCrit = xStar - qg(xStar) / m
+  const xc0 = xcCrit - 46
+  const xcEnd = xcCrit + 9
+
+  // Les deux intersections pour un Tc donné, par dichotomie de part et d'autre de xStar (là où qg - qe est minimale).
+  const gap = (x: number, xc: number): number => qg(x) - m * (x - xc)
+  const bisect = (lo: number, hi: number, xc: number): number => {
+    const sign = Math.sign(gap(lo, xc))
+    for (let i = 0; i < 60; i += 1) {
+      const mid = (lo + hi) / 2
+      if (Math.sign(gap(mid, xc)) === sign) {
+        lo = mid
+      } else {
+        hi = mid
+      }
+    }
+    return (lo + hi) / 2
+  }
+
+  const cycle = 48
+  const SLIDE = [0.03, 0.5] as const // la droite glisse de xc0 à la tangence
+  const HOLD = 0.56
+  const RUN = [0.58, 0.72] as const // l'emballement
+  const OUT = [0.84, 0.88] as const
+  const IN = [0.94, 1] as const
+
+  const line: Array<readonly [number, string]> = [[0, at(0, 0, 1)]]
+  const stable: Array<readonly [number, string]> = []
+  const unstable: Array<readonly [number, string]> = []
+  const samples = 16
+  for (let i = 0; i <= samples; i += 1) {
+    const u = i / samples
+    const xc = xc0 + (xcCrit - xc0) * u
+    const time = SLIDE[0] + (SLIDE[1] - SLIDE[0]) * u
+    const lo = i === samples ? xStar : bisect(xc, xStar, xc)
+    const hi = i === samples ? xStar : bisect(xStar, W * 1.5, xc)
+    line.push([time, at(xc - xc0, 0, 1)])
+    stable.push([time, at(...P(lo, qg(lo)), 1)])
+    unstable.push([time, at(...P(hi, qg(hi)), 1)])
+  }
+  stable.unshift([0, stable[0]![1]])
+  unstable.unshift([0, unstable[0]![1]])
+  line.push([HOLD, at(xcCrit - xc0, 0, 1)], [RUN[0], at(xcEnd - xc0, 0, 1)])
+  line.push([OUT[0], at(xcEnd - xc0, 0, 1)], [OUT[1], at(xcEnd - xc0, 0, 0)], [0.9, at(0, 0, 0)], [IN[0], at(0, 0, 0)], [1, at(0, 0, 1)])
+  unstable.push([HOLD, at(...P(xStar, qg(xStar)), 1)], [RUN[0], at(...P(xStar, qg(xStar)), 0)], [IN[0], at(...P(xStar, qg(xStar)), 0)])
+  unstable.push([1, unstable[0]![1]])
+
+  // L'emballement : dT/dt proportionnel à qg - qe, la droite arrêtée en xcEnd. On intègre jusqu'à ce que le point sorte
+  // du cadre, et le temps de calcul devient le temps de l'animation : le goulot près de la tangence, puis l'explosion.
+  const path: Array<readonly [number, number]> = []
+  let x = xStar
+  let tau = 0
+  const exit = H + 10
+  while (qg(x) < exit) {
+    path.push([tau, x])
+    const dx = 0.35
+    tau += dx / gap(x, xcEnd)
+    x += dx
+  }
+  path.push([tau, x])
+  stable.push([HOLD, at(...P(xStar, qg(xStar)), 1)])
+  const keep = Math.max(1, Math.floor(path.length / 18))
+  path.forEach(([s, px], i) => {
+    if (i % keep === 0 || i === path.length - 1) {
+      stable.push([RUN[0] + (RUN[1] - RUN[0]) * (s / tau), at(...P(px, qg(px)), 1)])
+    }
+  })
+  const [ex, ey] = P(x, qg(x))
+  stable.push([RUN[1] + 0.005, at(ex, ey, 0)], [IN[0], stable[0]![1].replace(/opacity:1/, 'opacity:0')], [1, stable[0]![1]])
+
+  // Une traînée derrière le point qui s'emballe : des échos du même trajet (les keyframes du point stable, décalées
+  // d'un petit retard), plus pâles, sous un voile qui ne les laisse voir que pendant l'emballement.
+  const veil = keyframes('voile', [
+    [0, 'opacity:0'],
+    [RUN[0], 'opacity:0'],
+    [RUN[0] + 0.002, 'opacity:1'],
+    [RUN[1] + 0.004, 'opacity:1'],
+    [RUN[1] + 0.006, 'opacity:0'],
+    [1, 'opacity:0'],
+  ])
+  const trail = [1, 2, 3, 4]
+    .map(k => {
+      const timing = `${cycle}s linear ${num(-cycle * (1 - 0.0045 * k))}s infinite`
+      return (
+        `<g style="opacity:0;animation:${veil} ${timing}"><g opacity="${num(0.75 - 0.15 * k)}">` +
+        `<g fill="${k % 2 === 0 ? OR : RUBIS}" style="animation:stable ${timing}">` +
+        `${glyph(k < 3 ? 'o' : '.', `x="${-CHAR / 2}" y="${k < 3 ? 3.5 : 1}"`)}</g></g></g>`
+      )
+    })
+    .join('')
+
+  // La gerbe, au point de sortie : deux couronnes, la seconde plus large et plus lente. Chaque étincelle est tournée une
+  // fois pour toutes vers sa direction, puis glisse en ligne droite : deux trajectoires servent à toutes.
+  const burst = (r: number, life: number): string =>
+    keyframes(`gerbe${r}`, [
+      [0, at(0, 0, 0)],
+      [RUN[1] - 0.004, at(0, 0, 0)],
+      [RUN[1], at(0, 0, 1)],
+      [RUN[1] + life * 0.6, at(r * 0.8, 0, 0.8)],
+      [RUN[1] + life, at(r, 0, 0)],
+      [1, at(r, 0, 0)],
+    ])
+  const near = burst(32, 0.1)
+  const far = burst(56, 0.15)
+  const SPARKS: ReadonlyArray<readonly [string, string]> = [
+    ['*', OR],
+    ['+', RUBIS],
+    ['*', ROSE],
+  ]
+  const spark = (angle: number, name: string, c: string, color: string): string =>
+    `<g transform="rotate(${angle})"><g fill="${color}" style="opacity:0;animation:${name} ${cycle}s linear infinite">` +
+    `${glyph(c, `x="${-CHAR / 2}" y="4.9" transform="rotate(${-angle})"`)}</g></g>`
+  const sparks =
+    Array.from({ length: 12 }, (_, i) => spark(i * 30 + 8, near, ...SPARKS[i % 3]!)).join('') +
+    Array.from({ length: 8 }, (_, i) => spark(i * 45 + 25, far, '.', OR)).join('')
+
+  // La courbe qg s'avive pendant l'emballement.
+  const glow = keyframes('avive', [
+    [0, 'opacity:.6'],
+    [RUN[0], 'opacity:.6'],
+    [RUN[1], 'opacity:1'],
+    [OUT[1], 'opacity:.6'],
+    [1, 'opacity:.6'],
+  ])
+
+  const curve: Array<readonly [number, number]> = []
+  const xEnd = (W * Math.log((H + 30) / a)) / beta
+  const xLabel = (W * Math.log((H - 30) / a)) / beta
+  for (let i = 0; i <= 80; i += 1) {
+    const cx = (xEnd * i) / 80
+    curve.push(P(cx, qg(cx)))
+  }
+  const removal: Array<readonly [number, number]> = [P(xc0, 0), P(xc0 + (H + 8) / m, H + 8)]
+
+  const axes = ['^', ...Array<string>(10).fill('|'), `+${'-'.repeat(29)}> T`]
+  const marker = (c: string, color: string, stops: Array<readonly [number, string]>, name: string): string =>
+    `<g fill="${color}" style="${stops[0]![1]};animation:${keyframes(name, stops)} ${cycle}s linear infinite">` +
+    `${glyph(c, `x="${-CHAR / 2}" y="3.5"`)}</g>`
+
+  return (
+    `<g class="semenov">${trame(axes, CHAR, 0, 17, CRAIE)}<g fill="${CRAIE}">${glyphs('q', CHAR * 3, 6)}</g>` +
+    `<g fill="${RUBIS}" style="opacity:.6;animation:${glow} ${cycle}s linear infinite">` +
+    `<path d="${trace(curve)}" ${TRAIT} stroke="${RUBIS}"/>${glyphs('qg', X0 + xLabel - 3 * CHAR, Y0 - H + 30)}</g>` +
+    `<g style="animation:${keyframes('refroidit', line)} ${cycle}s linear infinite">` +
+    `<g fill="${EAU}"><path d="${trace(removal)}" ${TRAIT} stroke="${EAU}" stroke-dasharray="5.48 1.72"/>` +
+    `${glyphs('qe', removal[1]![0] + 4, removal[1]![1] + 6)}</g>` +
+    `<g fill="${CRAIE}">${glyphs('Tc', X0 + xc0 - CHAR, Y0 + 24)}</g></g>` +
+    marker('x', OR, unstable, 'instable') +
+    trail +
+    marker('o', COBALT, stable, 'stable') +
+    `<g transform="translate(${num(ex)} ${num(ey)})">${sparks}</g>` +
+    `<g fill="${CRAIE}">${glyphs('qg = r(-dH) ~ exp(-E/RT)', 0, Y0 + 46)}` +
+    `${glyphs('qe = US/V (T - Tc)', 0, Y0 + 63)}</g></g>`
   )
 }
 
 // gonfle : rotation seule. Une échelle animée (scale) oblige Chromium à rastériser de nouveau les caractères des pelotes à
 // chaque image (près d'un cœur de processeur en continu) ; rotation et opacité restent au compositeur. En portrait, la
-// boucle et le papillon sont masqués : leurs animations sont arrêtées aussi (!important : elles sont dans l'attribut style).
+// boucle, la spinodale et Semenov sont masqués : leurs animations sont arrêtées aussi (!important : elles sont dans l'attribut style).
 const STYLE = `
 .scene{opacity:.62}
 @media (prefers-color-scheme:dark){.scene{opacity:.8}}
-.boucle,.papillon,.reacteur{opacity:.8}
+.boucle,.reacteur,.semenov{opacity:.8}
+.spinodale{opacity:.62}
 @keyframes tourne{to{transform:rotate(360deg)}}
 @keyframes respire{0%,100%{opacity:.45}50%{opacity:1}}
 @keyframes gonfle{from{transform:rotate(-5deg)}to{transform:rotate(6deg)}}
@@ -371,24 +916,26 @@ const STYLE = `
 @keyframes pale{0%{opacity:1}50%,100%{opacity:0}}
 @keyframes bulle{0%{transform:translate(0,0);opacity:0}15%{opacity:.9}100%{transform:translate(5px,-72px);opacity:0}}
 @keyframes trace{0%{opacity:0}2%{opacity:1}80%{opacity:1}90%,100%{opacity:0}}
-@media (max-aspect-ratio:1/1){.pelotes-place{transform:translate(800px,280px) scale(.8)}.boucle-place,.papillon-place{display:none}:is(.boucle-place,.papillon-place) *{animation:none!important}}
+@media (max-aspect-ratio:1/1){.pelotes-place{transform:translate(800px,280px) scale(.8)}.boucle-place,.spinodale-place,.semenov-place{display:none}:is(.boucle-place,.spinodale-place,.semenov-place) *{animation:none!important}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}.pose2{display:none}}
 `
 
 const BODY: string =
   `<g class="scene">` +
   `<g class="pelotes-place" transform="translate(1290 300)">${pelotes()}</g>` +
-  `<g class="reacteur-place" transform="translate(50 760)">${reacteur()}</g>` +
+  `<g class="reacteur-place" transform="translate(95 115)">${reacteur()}</g>` +
   `<g class="boucle-place" transform="translate(1180 730)">${boucle()}</g>` +
-  `<g class="papillon-place" transform="translate(50 330)">${papillon()}</g>` +
+  // l'échelle est fixe, jamais animée : les caractères ne sont rastérisés qu'une fois
+  `<g class="spinodale-place" transform="translate(46.2 331) scale(.85)">${spinodale()}</g>` +
+  `<g class="semenov-place" transform="translate(55 660)">${semenov()}</g>` +
   `</g>`
 
 // Les contours, une fois chacun ; les <use> prennent la couleur (fill) de leur groupe.
 const DEFS: string = `<defs>${[...used]
   .sort()
   .map(c => `<path id="avg${c.charCodeAt(0)}" d="${GLYPHES[c]}"/>`)
-  .join('')}</defs>`
+  .join('')}${PATTERNS.join('')}</defs>`
 
 export const SCENE: string =
   `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">` +
-  `<style>${STYLE}</style>${DEFS}${BODY}</svg>`
+  `<style>${STYLE}${KEYFRAMES.join('\n')}</style>${DEFS}${BODY}</svg>`
