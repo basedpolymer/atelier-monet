@@ -35,7 +35,7 @@ Le fond n'est redessiné qu'au début et à la fin d'un tour ; les mouvements co
 
 Le fond est un seul SVG, animé en CSS par des transformations et des changements d'opacité. Ses caractères sont des formes, pas du texte : chaque lettre est le contour d'un caractère de Latin Modern Mono (`glyphes.py` les écrit dans `hooks/scene.ts`), et les plus nombreux (`-`, `.`, `o`, `+`) sont tracés au trait. Rien ne se sélectionne, ne se copie ni ne se lit à voix haute. Il s'immobilise si le système demande moins d'animations ; sur téléphone, seuls restent les pelotes et un motif.
 
-L'app de bureau surveille le fond et l'immobilise s'il lui coûte trop à redessiner (plus de 5,56 ms par image), s'il clignote ou s'il dépasse 131 072 caractères. Celui-ci coûte de 2 à 4 ms selon le tirage et ne dépasse pas 97 000 caractères. Dans l'app, il bouge au début de chaque tour et après chaque réponse, puis l'app finit par l'immobiliser, au bout d'une demi-minute à deux minutes ; le tour suivant le relance.
+L'app de bureau surveille le fond et l'immobilise s'il lui coûte trop à redessiner (plus de 5,56 ms par image), s'il clignote ou s'il dépasse 131 072 caractères. Celui-ci coûte de 2 à 4 ms selon le tirage et ne dépasse pas 97 000 caractères. Sur une machine au calme, il tourne sans s'arrêter (plus de sept minutes mesurées, 0,4 ms par image dans l'app). Si la machine sature et que l'affichage saccade, l'app peut l'immobiliser ; le début ou la fin du tour suivant le relance.
 
 ## Installation
 
