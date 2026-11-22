@@ -20,16 +20,43 @@ Thème pour Claude Code, dans l'esprit LaTeX et ASCII, aux couleurs de [Catppucc
 L'heure de début de la session sert de graine. Elle tire :
 
 - la conformation des trois pelotes, toujours présentes, et les rythmes de leurs replis ;
-- une réaction, toujours présente elle aussi, parmi quatre : estérification, Diels-Alder, ouverture de l'oxyde d'éthylène par un alcoolate, addition d'un radical sur le styrène. Les fragments s'approchent, les liaisons se rompent et se forment, puis tout recommence ;
-- un à trois motifs parmi huit, leur place et leurs paramètres : un réacteur agité, une réponse indicielle, une décomposition spinodale (Cahn-Hilliard, simulée par `spinodale.py`), un diagramme de Semenov jusqu'à l'emballement, une distillation de McCabe et Thiele à reflux total, la distribution des temps de séjour d'une cascade de réacteurs, un plan d'expériences 2³ dont les essais s'allument dans un ordre tiré au sort, la boucle de synthèse de l'ammoniac.
+- une réaction, toujours présente elle aussi, parmi quatre ;
+- un à trois motifs parmi huit, leur place à l'écran et leurs paramètres.
 
-## Le fond suit le travail de Claude
+Deux sessions n'ont donc ni les mêmes dessins ni les mêmes mouvements. Le thème change de couleurs avec le système : Latte le jour, Frappé la nuit.
 
-- Pendant un tour, la pale du réacteur tourne et des bulles montent ; la réponse indicielle se trace. Entre deux tours, ils sont au repos. Chaque session a au moins l'un des deux.
-- Les pelotes s'allongent au fil des tours, et leur rayon avec elles (R ~ a.N^(3/5)) ; une compaction de la conversation les coupe en deux.
-- Le mot de la ligne d'attente est un geste d'atelier ou de laboratoire (« Annealing », « Purging with nitrogen », « Casting the film »…), qui change à chaque tour.
+## Ce qui bouge
 
-Le fond n'est redessiné qu'au début et à la fin d'un tour ; les mouvements continus reprennent où ils en étaient.
+Toujours là :
+
+- **Les pelotes de polymère.** Trois chaînes de monomères (`o-o-o`). Chaque moitié de chaîne est faite de quatre segments emboîtés qui pivotent autour de leurs jointures : de quelques degrés et lentement près du centre (une oscillation en 23 à 31 s), plus largement et plus vite vers le bout libre (6 à 8 s). Les périodes ne se recoupent pas, la pelote ne repasse pas par la même pose. Chaque chaîne balance aussi d'un bloc et s'éclaircit puis s'assombrit, comme si elle respirait. Autour, un cercle de croix et de points marque le rayon de la pelote et fait un tour en douze minutes.
+- **La réaction**, en formule topologique : les liaisons sont des traits, un sommet sans lettre est un carbone. Elle se joue en boucle de 22 s : les réactifs, la liaison qui se rompt, les fragments qui se déplacent, les liaisons qui se forment (en doré), les produits, puis tout s'efface et recommence.
+  - Estérification : l'alcool prend la place de OH, qui part en eau.
+  - Diels-Alder : un diène et un alcène ferment un cycle à six, trois doubles liaisons en donnent une.
+  - Ouverture de l'oxyde d'éthylène par un alcoolate : le cycle s'ouvre, la charge passe au bout de la chaîne.
+  - Addition d'un radical sur le styrène : le radical passe au carbone qui porte le cycle.
+
+Tirés au sort, un à trois par session :
+
+- **Réacteur agité.** La surface du liquide ondule. La pale et les bulles dépendent du travail de Claude (voir plus bas).
+- **Réponse indicielle** d'une boucle de régulation. La courbe se trace point par point pendant que Claude travaille. Son amortissement est tiré : tantôt elle oscille, tantôt elle rejoint la consigne presque sans la dépasser.
+- **Décomposition spinodale**, vue au microscope : sept instants d'une simulation de Cahn-Hilliard (`spinodale.py`) se fondent l'un dans l'autre. Le mélange homogène se module, se sépare en deux phases entrelacées, puis les domaines grossissent de plus en plus lentement, avant le retour au mélange homogène. Un cycle dure une minute.
+- **Diagramme de Semenov.** La droite d'évacuation de la chaleur glisse vers l'exponentielle d'Arrhenius ; les points stable et instable se rapprochent et se rejoignent à la tangence ; puis la température s'emballe le long de la courbe, avec une traînée, et sort du cadre en gerbe. La pente de la droite est tirée.
+- **Distillation de McCabe et Thiele**, à reflux total. Les étages théoriques se tracent un à un, du distillat au résidu, puis s'effacent. Leur nombre dépend de la volatilité relative tirée, et s'affiche (« N min »).
+- **Distribution des temps de séjour** d'une cascade de réacteurs. Quatre courbes apparaissent l'une après l'autre, d'un seul réacteur à une quinzaine : la distribution se resserre vers l'écoulement piston.
+- **Plan d'expériences 2³.** Les huit essais sont les sommets d'un cube ; ils s'allument un à un, numérotés, dans un ordre tiré au sort.
+- **Boucle de synthèse de l'ammoniac.** Trois bulles de gaz font le trajet : réacteur, séparateur, recyclage, second passage, sortie.
+
+## Ce qui réagit à la session
+
+Le fond ne répond ni au clic ni à la souris. Il suit la conversation :
+
+- **Pendant un tour de Claude**, la pale du réacteur tourne et des bulles montent ; la réponse indicielle se trace depuis le début, puis recommence. Entre deux tours, la pale s'arrête, les bulles disparaissent et la courbe reste posée, entière. Chaque session a au moins l'un de ces deux motifs. Les tours des sous-agents ne comptent pas.
+- **Au fil des tours**, les pelotes s'allongent par les deux bouts, et leur cercle grandit avec elles (R ~ a.N^(3/5)). Elles sont à moitié là au premier tour et complètes vers le quinzième.
+- **Une compaction de la conversation** coupe les chaînes en deux.
+- **La ligne d'attente** remplace « Working » par un geste d'atelier ou de laboratoire, selon ce que fait Claude : « Annealing » ou « Nucleating » quand il réfléchit, « Purging with nitrogen » quand il envoie sa requête, « Stirring the reactor » ou « Sampling the batch » pendant un outil, « Extruding » ou « Casting the film » quand il écrit. Le mot change à chaque tour.
+
+Le fond n'est redessiné qu'au début et à la fin d'un tour ; les mouvements continus reprennent où ils en étaient. L'app montre d'abord le nouveau dessin en image fixe quelques secondes, puis il s'anime.
 
 ## Comment il est fait
 
