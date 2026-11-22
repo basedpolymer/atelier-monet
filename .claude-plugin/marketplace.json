@@ -15,7 +15,7 @@
     {
       "name": "atelier-vitrail",
       "source": "./plugins/atelier-vitrail",
-      "description": "Thème de Claude Code : plâtre d'atelier le jour, nuit de vitrail le soir, fond animé en caractères ASCII."
+      "description": "Thème de Claude Code aux couleurs de Catppuccin (Latte le jour, Frappé la nuit), fond animé en caractères ASCII, tiré au sort à chaque session."
     }
   ]
 }

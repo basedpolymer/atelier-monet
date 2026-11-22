@@ -1,25 +1,40 @@
 // Le fond du thème : un seul SVG fait de caractères ASCII, animé en CSS. Les caractères sont des formes, pas du
 // texte : chaque lettre est le contour d'un caractère de Latin Modern Mono (bloc GLYPHES, écrit par glyphes.py), posé
-// par <use>. Rien à sélectionner, copier, chercher, traduire ni lire à voix haute.
-// Les motifs viennent du génie chimique ; les couleurs, de la peinture.
+// par <use>, ou, pour les plus nombreux (- . o +), tracé au trait. Rien à sélectionner, copier, chercher, traduire ni
+// lire à voix haute. Les motifs viennent du génie chimique ; les couleurs, de Catppuccin (Latte le jour, Frappé la nuit).
 //
-//   en haut à droite : des pelotes de polymère qui oscillent et tournent,
-//                      leur rayon en pointillé, et le motif du PET dessous
-//   en bas à droite  : une réponse indicielle qui se trace, et sa boucle
-//   à gauche, de haut en bas, décalés les uns des autres :
-//                      un réacteur agité, sa surface, ses bulles, sa pale ;
-//                      une décomposition spinodale vue au microscope, de la trempe au grossissement ;
-//                      un diagramme de Semenov, la droite d'évacuation glisse jusqu'à l'emballement
+//   à droite, en haut : des pelotes de polymère qui se replient segment par segment, leur rayon en pointillé, et le
+//                          motif du PET dessous ; elles s'allongent au fil des tours, une compaction les coupe en deux
+//   dessous et à gauche  : deux à quatre motifs tirés du catalogue (CATALOGUE) par la graine de la session : un
+//                          réacteur, agité et bullant pendant un tour ; une réponse indicielle, qui se trace pendant
+//                          que Claude travaille ; une décomposition spinodale ; un diagramme de Semenov ; une
+//                          distillation de McCabe et Thiele ; une distribution des temps de séjour ; un plan
+//                          d'expériences 2^3 ; la boucle de synthèse de l'ammoniac ; et toujours une réaction
+//                          en formule topologique, tirée elle aussi
+//
+// scene(état, portrait) rend le SVG. La graine de la session tire les motifs, les conformations et les paramètres ; le
+// temps écoulé depuis le début de la session garde chaque mouvement où il en était quand register.tsx redessine le fond.
 
-// Couleurs de verre : lisibles sur le plâtre clair comme sur le fond sombre.
-const COBALT = '#3e6fc4'
-const RUBIS = '#b5452f'
-const OR = '#c2912e'
-const VIOLET = '#7b5fb0'
-const VERT = '#3a8a6a'
-const EAU = '#3f8f96'
-const ROSE = '#c77a8f'
-const CRAIE = '#8a857d'
+// Les couleurs de Catppuccin. Chaque couleur est une classe, à laquelle la feuille de style donne sa valeur Latte (jour)
+// ou Frappé (nuit). Elle fixe color ; les traits et les formes pleines la prennent par currentColor.
+const PALETTE: Readonly<Record<string, readonly [string, string]>> = {
+  cb: ['#1e66f5', '#8caaee'], // blue
+  cr: ['#d20f39', '#e78284'], // red
+  cy: ['#df8e1d', '#e5c890'], // yellow
+  cm: ['#8839ef', '#ca9ee6'], // mauve
+  cg: ['#40a02b', '#a6d189'], // green
+  ct: ['#179299', '#81c8be'], // teal
+  cf: ['#dd7878', '#eebebe'], // flamingo
+  cc: ['#7c7f93', '#838ba7'], // overlay 2 et overlay 1, pour les axes et les légendes
+}
+const COBALT = 'cb'
+const RUBIS = 'cr'
+const OR = 'cy'
+const VIOLET = 'cm'
+const VERT = 'cg'
+const EAU = 'ct'
+const ROSE = 'cf'
+const CRAIE = 'cc'
 
 const CHAR = 8.4 // chasse d'un caractère (Latin Modern Mono à 16 px)
 
@@ -122,25 +137,131 @@ const GLYPHES: Readonly<Record<string, string>> = {
 }
 // glyphes : fin
 
-// Les caractères employés : leurs contours seuls vont dans <defs>.
-const used = new Set<string>()
+// Ce que le dessin en cours a employé : les caractères dont les contours vont dans <defs>, les motifs, les @keyframes
+// calculées. scene() les vide avant chaque dessin.
+let used = new Set<string>()
+let PATTERNS: string[] = []
+let MOTIFS = new Map<string, string>()
+let KEYFRAMES: string[] = []
+// L'instant de la session, en secondes, où commence ce dessin.
+let T = 0
+
 const num = (v: number): string => String(Math.round(v * 100) / 100)
+
+// Le retard d'une animation continue : celui qu'elle aurait si elle tournait depuis le début de la session. Un fond
+// redessiné reprend ainsi chaque mouvement là où il en était, sans saut.
+const late = (s: number): string => `${num(s - T)}s`
 
 function glyph(c: string, attributes: string): string {
   used.add(c)
   return `<use href="#avg${c.charCodeAt(0)}" ${attributes}/>`
 }
 
-// Une ligne de caractères depuis (x, y), ligne de base, un toutes les CHAR ; une espace ne dessine rien.
-function glyphs(row: string, x: number, y: number): string {
-  let out = ''
-  for (let j = 0; j < row.length; j += 1) {
-    const c = row[j]!
-    if (GLYPHES[c] !== undefined) {
-      out += glyph(c, `x="${num(x + j * CHAR)}" y="${num(y)}"`)
-    }
+// Le tiret, le point, le o et le +, les caractères les plus nombreux, ne sont pas des <use> mais des traits, relevés sur
+// leurs contours de Latin Modern Mono : le tiret et les branches du + sont des barres de 1,12 à bouts ronds, le o un
+// anneau elliptique (à mi-chemin des contours extérieur, 3,28 × 3,57, et intérieur, 2,18 × 2,59), le point un disque
+// de rayon 1. Ils sont réunis en deux <path> par ligne ou par segment de chaîne, écrits en coordonnées relatives au
+// dixième de pixel. L'app de bureau redessine le fond dans un petit canevas à chaque image pour surveiller les flashs,
+// et le fige si cela coûte plus de 5,56 ms en moyenne : avec un <use> par caractère, il en fallait près de dix.
+// place(lx, ly) rend la position d'un point du caractère, donné dans sa case.
+type Place = (lx: number, ly: number) => readonly [number, number]
+
+// un nombre de pixels au dixième, sans zéro de tête ; une suite de nombres, le signe moins servant de séparateur
+const f = (v: number): string => String(Math.round(v * 10) / 10).replace(/^(-?)0\./, '$1.')
+const pair = (x: number, y: number): string => {
+  const b = f(y)
+  return `${f(x)}${b.startsWith('-') ? '' : ' '}${b}`
+}
+const after = (s: string): string => (s.startsWith('-') ? s : ` ${s}`)
+
+class Pen {
+  private line = '' // traits de 1,1 : tirets, +, o
+  private dot = '' // traits de longueur nulle, 2 de large : points
+  // le point courant de chaque chemin, en dixièmes de pixel
+  private atLine: [number, number] = [0, 0]
+  private atDot: [number, number] = [0, 0]
+
+  private moveLine(p: readonly [number, number]): void {
+    const X = Math.round(p[0] * 10)
+    const Y = Math.round(p[1] * 10)
+    this.line += this.line === '' ? `M${pair(X / 10, Y / 10)}` : `m${pair((X - this.atLine[0]) / 10, (Y - this.atLine[1]) / 10)}`
+    this.atLine = [X, Y]
   }
-  return out
+
+  segment(a: readonly [number, number], b: readonly [number, number]): void {
+    this.moveLine(a)
+    const X = Math.round(b[0] * 10)
+    const Y = Math.round(b[1] * 10)
+    this.line += `l${pair((X - this.atLine[0]) / 10, (Y - this.atLine[1]) / 10)}`
+    this.atLine = [X, Y]
+  }
+
+  ring(place: Place, angle: number): void {
+    const a = place(4.19 - 2.73, -3.47)
+    const b = place(4.19 + 2.73, -3.47)
+    this.moveLine(a)
+    const dx = (Math.round(b[0] * 10) - this.atLine[0]) / 10
+    const dy = (Math.round(b[1] * 10) - this.atLine[1]) / 10
+    const arc = `a2.73 3.08 ${(((Math.round(angle) % 180) + 180) % 180).toString()} 1 0`
+    // après z, le point courant revient au début de l'anneau : atLine ne bouge pas
+    this.line += `${arc}${after(pair(dx, dy))}${arc}${after(pair(-dx, -dy))}z`
+  }
+
+  point(p: readonly [number, number]): void {
+    const X = Math.round(p[0] * 10)
+    const Y = Math.round(p[1] * 10)
+    this.dot +=
+      this.dot === '' ? `M${pair(X / 10, Y / 10)}h0` : `m${pair((X - this.atDot[0]) / 10, (Y - this.atDot[1]) / 10)}h0`
+    this.atDot = [X, Y]
+  }
+
+  draw(): string {
+    return (this.line === '' ? '' : `<path class="s" d="${this.line}"/>`) + (this.dot === '' ? '' : `<path class="d" d="${this.dot}"/>`)
+  }
+}
+
+// Trace c avec le stylo s'il fait partie des caractères au trait ; sinon, rend false.
+function stroke(pen: Pen, c: string, place: Place, angle: number): boolean {
+  switch (c) {
+    case '-':
+      pen.segment(place(1.46, -4.9), place(6.93, -4.9))
+      return true
+    case '+':
+      pen.segment(place(1.17, -4.9), place(7.22, -4.9))
+      pen.segment(place(4.19, -7.94), place(4.19, -1.86))
+      return true
+    case '.':
+      pen.point(place(4.2, -1))
+      return true
+    case 'o':
+      pen.ring(place, angle)
+      return true
+    default:
+      return false
+  }
+}
+
+// Une ligne de caractères depuis (x, y), ligne de base, un toutes les CHAR ; une espace ne dessine rien. Une suite de
+// tirets est une seule barre.
+function glyphs(row: string, x: number, y: number): string {
+  const pen = new Pen()
+  let out = ''
+  for (let j = 0; j < row.length; ) {
+    const c = row[j]!
+    const x0 = x + j * CHAR
+    const place: Place = (lx, ly) => [x0 + lx, y + ly]
+    let k = j + 1
+    if (c === '-') {
+      while (row[k] === '-') {
+        k += 1
+      }
+      pen.segment(place(1.46, -4.9), place((k - j - 1) * CHAR + 6.93, -4.9))
+    } else if (!stroke(pen, c, place, 0) && GLYPHES[c] !== undefined) {
+      out += glyph(c, `x="${num(x0)}" y="${num(y)}"`)
+    }
+    j = k
+  }
+  return out + pen.draw()
 }
 
 function lines(rows: readonly string[], x: number, y: number, step: number): string {
@@ -148,10 +269,9 @@ function lines(rows: readonly string[], x: number, y: number, step: number): str
 }
 
 // Une grille de caractères fixes. Les suites d'un même caractère, trois ou plus en ligne puis en colonne, deviennent un
-// rectangle rempli par le motif de ce caractère (un <pattern> calé sur la grille) ; les autres restent des <use>. Même
-// dessin, beaucoup moins d'éléments. La case du motif va de 12 px au-dessus de la ligne de base à step - 12 en dessous.
-const MOTIFS = new Map<string, string>()
-
+// rectangle rempli par le motif de ce caractère (un <pattern> calé sur la grille) ; les autres sont dessinés un à un.
+// Même dessin, beaucoup moins d'éléments. La case du motif va de 12 px au-dessus de la ligne de base à step - 12 en
+// dessous. Le contenu d'un motif hérite de <defs>, pas du rectangle : il porte lui-même sa classe de couleur.
 function motif(c: string, color: string, x: number, y: number, step: number): string {
   const key = `${c} ${color} ${num(x % CHAR)} ${num(y % step)} ${step}`
   let found = MOTIFS.get(key)
@@ -160,12 +280,11 @@ function motif(c: string, color: string, x: number, y: number, step: number): st
     MOTIFS.set(key, found)
     PATTERNS.push(
       `<pattern id="${found}" patternUnits="userSpaceOnUse" x="${num(x)}" y="${num(y - 12)}" width="${CHAR}" height="${step}">` +
-        `${glyph(c, `y="12" fill="${color}"`)}</pattern>`,
+        `${glyph(c, `y="12" class="${color}"`)}</pattern>`,
     )
   }
   return found
 }
-const PATTERNS: string[] = []
 
 function trame(rows: readonly string[], x: number, y: number, step: number, color: string): string {
   const grid = rows.map(row => [...row])
@@ -210,7 +329,7 @@ function trame(rows: readonly string[], x: number, y: number, step: number, colo
     }
   }
   return (
-    `<g fill="${color}">${lines(
+    `<g class="${color}">${lines(
       grid.map(row => row.join('')),
       x,
       y,
@@ -220,12 +339,14 @@ function trame(rows: readonly string[], x: number, y: number, step: number, colo
 }
 
 // Ce que faisait <textPath> : chaque caractère a son milieu sur la courbe, à pitch de son voisin, et tourne avec sa
-// tangente ; at(d) rend le point et l'angle (degrés) à la distance d du départ, ou null au-delà de la fin.
+// tangente ; at(d) rend le point et l'angle (degrés) à la distance d du départ, ou null au-delà de la fin. from et to
+// bornent les caractères dessinés, sans changer leur place.
 type At = (d: number) => readonly [number, number, number] | null
 
-function along(row: string, at: At, pitch: number): string {
+function along(row: string, at: At, pitch: number, from = 0, to = row.length): string {
+  const pen = new Pen()
   let out = ''
-  for (let k = 0; k < row.length; k += 1) {
+  for (let k = Math.max(0, from); k < Math.min(to, row.length); k += 1) {
     const c = row[k]!
     if (GLYPHES[c] === undefined) {
       continue
@@ -234,9 +355,15 @@ function along(row: string, at: At, pitch: number): string {
     if (p === null) {
       break
     }
-    out += glyph(c, `x="${-CHAR / 2}" transform="translate(${num(p[0])} ${num(p[1])}) rotate(${num(p[2])})"`)
+    const [px, py, angle] = p
+    const cos = Math.cos((angle * Math.PI) / 180)
+    const sin = Math.sin((angle * Math.PI) / 180)
+    const place: Place = (lx, ly) => [px + (lx - CHAR / 2) * cos - ly * sin, py + (lx - CHAR / 2) * sin + ly * cos]
+    if (!stroke(pen, c, place, angle)) {
+      out += glyph(c, `x="${-CHAR / 2}" transform="translate(${num(px)} ${num(py)}) rotate(${num(angle)})"`)
+    }
   }
-  return out
+  return out + pen.draw()
 }
 
 function polyline(points: ReadonlyArray<readonly [number, number]>): At {
@@ -249,7 +376,7 @@ function polyline(points: ReadonlyArray<readonly [number, number]>): At {
       return null
     }
     let i = 1
-    while (sums[i]! < d) {
+    while (i < sums.length - 1 && sums[i]! < d) {
       i += 1
     }
     const [ax, ay] = points[i - 1]!
@@ -259,34 +386,61 @@ function polyline(points: ReadonlyArray<readonly [number, number]>): At {
   }
 }
 
-// Un générateur à graine : le même dessin à chaque chargement.
+// Un générateur à graine (mulberry32) : le même dessin pour la même graine, et des suites sans lien pour deux graines
+// voisines.
 function seeded(seed: number): () => number {
-  let state = seed
+  let a = seed >>> 0
   return () => {
-    state = (state * 1664525 + 1013904223) % 4294967296
-    return state / 4294967296
+    a = (a + 0x6d2b79f5) >>> 0
+    let t = a
+    t = Math.imul(t ^ (t >>> 15), t | 1)
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
   }
 }
 
-// Une chaîne : marche aléatoire à angle persistant, ramenée vers le centre
-// quand elle s'éloigne, puis lissée ; les monomères suivent le tracé.
-function chain(index: number, seed: number, steps: number, color: string, seconds: number): string {
-  const random = seeded(seed)
-  let x = (random() - 0.5) * 120
-  let y = (random() - 0.5) * 120
-  let angle = random() * Math.PI * 2
-  const points: Array<[number, number]> = [[x, y]]
-  for (let i = 0; i < steps; i += 1) {
-    angle += (random() - 0.5) * 2.4
-    const away = Math.hypot(x, y)
-    if (away > 170) {
-      const home = Math.atan2(-y, -x)
-      angle += Math.atan2(Math.sin(home - angle), Math.cos(home - angle)) * 0.6
+// Les jointures d'une moitié de chaîne, du milieu vers le bout : amplitude (degrés, une @keyframes plieN par valeur),
+// période la plus courte et la plus longue (secondes).
+const PLIS: ReadonlyArray<readonly [number, number, number]> = [
+  [5, 23, 31],
+  [8, 15, 19],
+  [11, 9, 13],
+  [15, 6, 8],
+]
+
+// Une chaîne : deux marches aléatoires à angle persistant, parties dos à dos d'un même point près du centre et
+// ramenées vers lui quand elles s'en éloignent, puis lissées ; les monomères suivent le tracé. Elle croît par les deux
+// bouts, comme sous un amorceur bifonctionnel en polymérisation anionique vivante : growth, de 0 à 1, en montre la
+// part du milieu.
+//
+// Elle se replie par segments, à la manière des modes de Rouse : chaque moitié est une suite de quatre segments
+// emboîtés, chacun tournant autour de la jointure qui le relie au précédent. Le premier, au milieu, oscille peu et
+// lentement ; le dernier, au bout libre, davantage et plus vite. Les périodes, tirées de la graine, ne se recoupent
+// pas : la pelote ne repasse jamais par la même pose. Rotation seule, que le compositeur sait faire.
+function chain(index: number, random: () => number, steps: number, color: string, seconds: number, growth: number): string {
+  const walk = (x0: number, y0: number, angle0: number, n: number): Array<[number, number]> => {
+    let x = x0
+    let y = y0
+    let angle = angle0
+    const points: Array<[number, number]> = [[x, y]]
+    for (let i = 0; i < n; i += 1) {
+      angle += (random() - 0.5) * 2.4
+      if (Math.hypot(x, y) > 170) {
+        const home = Math.atan2(-y, -x)
+        angle += Math.atan2(Math.sin(home - angle), Math.cos(home - angle)) * 0.6
+      }
+      x += Math.cos(angle) * 30
+      y += Math.sin(angle) * 30
+      points.push([x, y])
     }
-    x += Math.cos(angle) * 30
-    y += Math.sin(angle) * 30
-    points.push([x, y])
+    return points
   }
+  const x0 = (random() - 0.5) * 60
+  const y0 = (random() - 0.5) * 60
+  const angle0 = random() * Math.PI * 2
+  const half = Math.floor(steps / 2)
+  const back = walk(x0, y0, angle0 + Math.PI, half).reverse()
+  const points = [...back, ...walk(x0, y0, angle0, steps - half).slice(1)]
 
   // Courbes de Bézier quadratiques par les milieux, aplaties en dix segments chacune.
   const flat: Array<[number, number]> = [points[0]!]
@@ -308,17 +462,58 @@ function chain(index: number, seed: number, steps: number, color: string, second
     sy = ey
     length += 30
   }
-  const beads = 'o-'.repeat(Math.floor((length * 0.92) / (2 * CHAR)))
+
+  // o-o-…-o, centré sur la courbe : le milieu de la chaîne tombe au point de départ des deux marches.
+  const pairs = Math.floor((length * 0.92) / (2 * CHAR))
+  const beads = 'o-'.repeat(pairs).slice(0, -1)
+  const curve = polyline(flat)
+  const offset = (length - beads.length * CHAR) / 2
+  const at: At = d => curve(d + offset)
+  const middle = (beads.length - 1) / 2
+  // la part visible, symétrique autour du milieu, commence et finit par un o
+  let from = Math.floor(middle - (beads.length * growth) / 2)
+  from = Math.max(0, Math.min(from - (from % 2), middle - 2))
+  const to = beads.length - from
+
+  // Chaque moitié : quatre segments, du milieu vers le bout, et la jointure (une limite entre deux caractères) autour de
+  // laquelle chacun tourne. Les tirages se font tous, visibles ou non, pour qu'une chaîne qui grandit garde ses plis.
+  const split = Math.round(middle)
+  const part = Math.ceil(split / PLIS.length)
+  const half_ = (sign: 1 | -1): string => {
+    let inner = ''
+    const bounds = [...PLIS.keys(), PLIS.length].map(n => (n === PLIS.length ? (sign > 0 ? beads.length : 0) : split + sign * n * part))
+    const folds = PLIS.map(([amplitude, lo, hi]) => {
+      const period = lo + (hi - lo) * random()
+      return { amplitude, period, phase: random() * period }
+    })
+    for (let level = PLIS.length - 1; level >= 0; level -= 1) {
+      const a = bounds[level]!
+      const b = bounds[level + 1]!
+      const [lo, hi] = sign > 0 ? [a, b] : [b, a]
+      const drawn = along(beads, at, CHAR, Math.max(lo, from), Math.min(hi, to)) + inner
+      const joint = at(a * CHAR) ?? at(Math.max(0, a * CHAR - 1)) ?? [0, 0, 0]
+      const { amplitude, period, phase } = folds[level]!
+      inner =
+        drawn === ''
+          ? ''
+          : `<g style="transform-origin:${num(joint[0])}px ${num(joint[1])}px;` +
+            `animation:plie${amplitude} ${num(period)}s ease-in-out ${late(-phase)} infinite alternate">${drawn}</g>`
+    }
+    return inner
+  }
+  const right = half_(1)
+  const left = half_(-1)
 
   return (
-    `<g style="animation:gonfle ${seconds}s ease-in-out ${-index * 5}s infinite alternate">` +
-    `<g fill="${color}" style="animation:respire ${9 + index * 3}s ease-in-out ${-index * 2.1}s infinite">` +
-    `${along(beads, polyline(flat), CHAR)}</g></g>`
+    `<g style="animation:gonfle ${seconds}s ease-in-out ${late(-index * 5)} infinite alternate">` +
+    `<g class="${color}" style="animation:respire ${9 + index * 3}s ease-in-out ${late(-index * 2.1)} infinite">` +
+    `${left}${right}</g></g>`
   )
 }
 
-function pelotes(): string {
-  const radius = 236
+// Le rayon des pelotes suit la loi de Flory, R ~ a.N^(3/5) : il grandit avec elles.
+function pelotes(random: () => number, growth: number): string {
+  const radius = 236 * growth ** 0.6
   const circumference = 2 * Math.PI * radius
   const dots = '+ . '.repeat(Math.floor(circumference / (4 * CHAR)))
   // le cercle part de (radius, 0) et tourne dans le sens des aiguilles d'une montre ; les caractères sont espacés
@@ -333,18 +528,21 @@ function pelotes(): string {
 
   return (
     `<g class="pelotes">` +
-    `<g style="animation:tourne 720s linear infinite">` +
-    `<g fill="${OR}">${along(dots, ring, circumference / dots.length)}</g></g>` +
-    chain(0, 625, 46, COBALT, 23) +
-    chain(1, 1925, 40, RUBIS, 29) +
-    chain(2, 1888, 34, VIOLET, 19) +
-    `<g fill="${CRAIE}" opacity=".8">` +
+    `<g style="animation:tourne 720s linear ${late(0)} infinite">` +
+    `<g class="${OR}">${along(dots, ring, circumference / dots.length)}</g></g>` +
+    chain(0, random, 46, COBALT, 23, growth) +
+    chain(1, random, 40, RUBIS, 29, growth) +
+    chain(2, random, 34, VIOLET, 19, growth) +
+    `<g class="${CRAIE}" opacity=".8">` +
     `${glyphs('R ~ a.N^(3/5)', -70, radius + 34)}` +
     `${glyphs('-[-O-CH2-CH2-O-CO-C6H4-CO-]n-', -126, radius + 58)}</g></g>`
   )
 }
 
-function reacteur(): string {
+// Le réacteur travaille avec Claude : pendant un tour, la pale tourne (deux poses qui alternent) et des bulles montent ;
+// entre deux tours, il est au repos. Les bulles repartent du fond à chaque tour. Sans animation (le système en demande
+// moins, ou l'app montre le fond en image fixe), la seconde pose et les bulles restent cachées.
+function reacteur(random: () => number, working: boolean): string {
   const vessel = [
     '   A ==>==+',
     '          |',
@@ -359,51 +557,70 @@ function reacteur(): string {
     '               +==>== A + B',
   ]
   const surface =
-    `<g fill="${EAU}" style="animation:glisse 14s ease-in-out infinite alternate">` +
+    `<g class="${EAU}" style="animation:glisse 14s ease-in-out ${late(0)} infinite alternate">` +
     `${glyphs('~~ ~ ~~~ ~ ~~ ~~~ ~ ~~', 4 * CHAR, 54)}</g>`
 
-  // L'arbre et la pale, en deux poses qui alternent.
-  const shaft = `<g fill="${RUBIS}">${lines(['|', '|', '|'], 10 * CHAR, 68, 17)}`
-  const blades =
-    `<g style="animation:pale 2.8s steps(1) infinite">${glyphs('----+----', 6 * CHAR, 119)}</g>` +
-    `<g class="pose2" style="animation:pale 2.8s steps(1) -1.4s infinite">${glyphs(' \\--+--/ ', 6 * CHAR, 119)}</g></g>`
+  const shaft = `<g class="${RUBIS}">${lines(['|', '|', '|'], 10 * CHAR, 68, 17)}`
+  const blades = working
+    ? `<g style="animation:pale 2.8s steps(1) ${late(0)} infinite">${glyphs('----+----', 6 * CHAR, 119)}</g>` +
+      `<g class="pose2" style="opacity:0;animation:pale 2.8s steps(1) ${late(-1.4)} infinite">${glyphs(' \\--+--/ ', 6 * CHAR, 119)}</g></g>`
+    : `${glyphs('----+----', 6 * CHAR, 119)}</g>`
 
-  const spots: ReadonlyArray<readonly [number, string, string, number]> = [
-    [4, 'o', COBALT, 9],
-    [8, '.', VIOLET, 7],
-    [14, 'o', ROSE, 11],
-    [18, 'O', COBALT, 13],
-    [22, '.', VERT, 8],
-    [25, 'o', VIOLET, 10],
-  ]
-  const bubbles = spots
-    .map(
-      ([column, glyph, color, seconds], i) =>
-        `<g fill="${color}" style="animation:bulle ${seconds}s ease-in ${(-i * 1.9).toFixed(1)}s infinite">` +
-        `${glyphs(glyph, column * CHAR, 130)}</g>`,
-    )
-    .join('')
+  // six bulles, tirées de la graine : colonne, caractère, couleur, durée de la montée
+  const colors = [COBALT, VIOLET, ROSE, VERT, EAU]
+  const spots = Array.from({ length: 6 }, (_, i) => {
+    const column = 3 + i * 4 + Math.floor(random() * 3)
+    const c = ['o', '.', 'O', 'o', '.'][Math.floor(random() * 5)]!
+    const color = colors[Math.floor(random() * colors.length)]!
+    const seconds = 7 + random() * 6
+    return [column, c, color, seconds] as const
+  })
+  const bubbles = working
+    ? spots
+        .map(
+          ([column, c, color, seconds], i) =>
+            `<g class="${color}" style="opacity:0;animation:bulle ${num(seconds)}s ease-in ${num(i * 0.9)}s infinite">` +
+            `${glyphs(c, column * CHAR, 130)}</g>`,
+        )
+        .join('')
+    : ''
 
   return `<g class="reacteur">${trame(vessel, 0, 0, 17, CRAIE)}${surface}${shaft}${blades}${bubbles}</g>`
 }
 
-function boucle(): string {
-  // Réponse indicielle d'un second ordre sous-amorti, point par point.
+// La réponse indicielle d'un second ordre, point par point : son amortissement et sa pulsation sont tirés de la graine,
+// tantôt oscillante, tantôt presque sans dépassement. Pendant un tour, ton message est l'échelon : la réponse se trace
+// à partir de lui, et recommence tant que Claude travaille ; entre deux tours, elle reste posée.
+function boucle(random: () => number, working: boolean): string {
   const columns = 34
   const cycle = 16
+  const zeta = 0.2 + random() * 0.45
+  const sigma = 3.6 + random() * 1.4 // zeta.omega : de quoi se stabiliser dans le cadre
+  const omega = (sigma / zeta) * Math.sqrt(1 - zeta * zeta)
+  const groups: Record<string, string> = { [COBALT]: '', [VIOLET]: '' }
   let curve = ''
   for (let i = 0; i < columns; i += 1) {
     const t = i / (columns - 1)
-    const value = 1 - Math.exp(-4.2 * t) * Math.cos(13 * t)
+    const value = 1 - Math.exp(-sigma * t) * (Math.cos(omega * t) + (sigma / omega) * Math.sin(omega * t))
     const px = 3 * CHAR + i * CHAR
     const py = 120 - 72 * value
-    curve +=
-      `<g fill="${i % 2 === 0 ? COBALT : VIOLET}" style="animation:trace ${cycle}s linear ${(i * 0.16).toFixed(2)}s infinite backwards">` +
-      `${glyphs('*', px, py)}</g>`
+    const color = i % 2 === 0 ? COBALT : VIOLET
+    if (working) {
+      curve +=
+        `<g class="${color}" style="animation:trace ${cycle}s linear ${num(i * 0.16)}s infinite backwards">` +
+        `${glyphs('*', px, py)}</g>`
+    } else {
+      groups[color] += glyphs('*', px, py)
+    }
+  }
+  if (!working) {
+    curve = Object.entries(groups)
+      .map(([color, stars]) => `<g class="${color}">${stars}</g>`)
+      .join('')
   }
 
   const axes = ['^', '|', '|', '|', '|', '|', '|', '+-------------------------------------> t']
-  const setpoint = `<g fill="${OR}">${glyphs('- - - - - - - - - - - - - - - - - -', 3 * CHAR, 48)}</g>`
+  const setpoint = `<g class="${OR}">${glyphs('- - - - - - - - - - - - - - - - - -', 3 * CHAR, 48)}</g>`
   const diagram = [
     'yc -->(+)-->[ C(p) ]-->[ G(p) ]--+--> y',
     '       ^                         |',
@@ -411,23 +628,21 @@ function boucle(): string {
   ]
 
   return (
-    `<g class="boucle"><g fill="${CRAIE}">${lines(axes, CHAR, 6, 17)}${lines(diagram, 0, 168, 17)}</g>` +
+    `<g class="boucle"><g class="${CRAIE}">${lines(axes, CHAR, 6, 17)}${lines(diagram, 0, 168, 17)}</g>` +
     `${setpoint}${curve}</g>`
   )
 }
 
 // Les trajectoires calculées ont chacune leurs @keyframes, ajoutées à la feuille de style. Toutes en translate et en
 // opacité, avec une progression linéaire entre des points calculés : rien que le compositeur ne sache faire seul.
-const KEYFRAMES: string[] = []
-
 function keyframes(name: string, stops: ReadonlyArray<readonly [number, string]>): string {
   KEYFRAMES.push(`@keyframes ${name}{${stops.map(([t, d]) => `${num(t * 100)}%{${d}}`).join('')}}`)
   return name
 }
 
 // Un trait continu a l'épaisseur et les bouts arrondis du tiret de Latin Modern Mono : le même dessin qu'une file de
-// tirets qui se chevauchent, en un seul élément.
-const TRAIT = 'fill="none" stroke-width="1.12" stroke-linecap="round" stroke-linejoin="round"'
+// tirets qui se chevauchent, en un seul élément. Sa couleur est celle de la classe qui l'entoure.
+const TRAIT = 'fill="none" stroke="currentColor" stroke-width="1.12" stroke-linecap="round" stroke-linejoin="round"'
 const trace = (points: ReadonlyArray<readonly [number, number]>): string =>
   `M${points.map(([x, y]) => `${num(x)} ${num(y)}`).join('L')}`
 
@@ -702,7 +917,7 @@ function spinodale(): string {
       })
       .join('')
     return (
-      `<g style="opacity:${k === still ? 1 : 0};animation:${name} ${cycle}s linear infinite">` +
+      `<g style="opacity:${k === still ? 1 : 0};animation:${name} ${cycle}s linear ${late(0)} infinite">` +
       `<g transform="translate(0 ${-TOP}) scale(${CHAR} ${step})">${paths}</g></g>`
     )
   })
@@ -715,15 +930,15 @@ function spinodale(): string {
       ([c, color], n) =>
         `<pattern id="sp-${n}" patternUnits="userSpaceOnUse" width="${CHAR}" height="${step}" ` +
         `patternTransform="scale(${1 / CHAR} ${1 / step})">` +
-        `${glyph(c, `y="${TOP}" fill="${color}"`)}</pattern>`,
+        `${glyph(c, `y="${TOP}" class="${color}"`)}</pattern>`,
     )
     .join('')
 
   return (
     `<g class="spinodale">${patterns}` +
-    `<circle cx="${num(center[0])}" cy="${num(center[1])}" r="${radius}" ${TRAIT} stroke="${CRAIE}" opacity=".7"/>` +
+    `<circle class="${CRAIE}" cx="${num(center[0])}" cy="${num(center[1])}" r="${radius}" ${TRAIT} opacity=".7"/>` +
     frames.join('') +
-    `<g fill="${CRAIE}">${glyphs("dc/dt = M.lap( f'(c) - k.lap c )", center[0] - 15.5 * CHAR, center[1] + radius + 30)}` +
+    `<g class="${CRAIE}">${glyphs("dc/dt = M.lap( f'(c) - k.lap c )", center[0] - 15.5 * CHAR, center[1] + radius + 30)}` +
     `${glyphs('L(t) ~ t^(1/3)', center[0] - 7 * CHAR, center[1] + radius + 54)}</g></g>`
   )
 }
@@ -732,17 +947,15 @@ function spinodale(): string {
 // (Arrhenius) ; la puissance évacuée par la paroi, qe = US/V (T - Tc), est une droite qui coupe l'axe en Tc. Le point
 // stable (o) est l'intersection basse, l'instable (x) la haute. Tc monte : la droite glisse, les deux points se
 // rapprochent, se rejoignent à la tangence (le point de non-retour), puis il n'y a plus d'intersection : la température
-// s'emballe le long de l'exponentielle, d'abord lentement puis d'un coup, et sort du cadre en gerbe.
-function semenov(): string {
+// s'emballe le long de l'exponentielle, d'abord lentement puis d'un coup, et sort du cadre en gerbe. La pente de la
+// droite (l'échange à la paroi) et la durée du cycle sont tirées de la graine.
+function semenov(random: () => number): string {
   const W = 250
   const H = 172
   const a = 5
   const beta = Math.log(H / a) / 0.85
-  const m = 1.3
+  const m = 1.15 + random() * 0.35
   const qg = (x: number): number => a * Math.exp((beta * x) / W)
-  const X0 = CHAR * 1.5
-  const Y0 = 11 * 17 - 4.9
-  const P = (x: number, y: number): readonly [number, number] => [X0 + x, Y0 - y]
 
   const xStar = (W / beta) * Math.log((m * W) / (a * beta)) // tangence : qg' = m
   const xcCrit = xStar - qg(xStar) / m
@@ -764,12 +977,13 @@ function semenov(): string {
     return (lo + hi) / 2
   }
 
-  const cycle = 48
+  const cycle = Math.round(44 + random() * 8)
   const SLIDE = [0.03, 0.5] as const // la droite glisse de xc0 à la tangence
   const HOLD = 0.56
   const RUN = [0.58, 0.72] as const // l'emballement
   const OUT = [0.84, 0.88] as const
   const IN = [0.94, 1] as const
+  const timing = `${cycle}s linear ${late(0)} infinite`
 
   const line: Array<readonly [number, string]> = [[0, at(0, 0, 1)]]
   const stable: Array<readonly [number, string]> = []
@@ -827,10 +1041,10 @@ function semenov(): string {
   ])
   const trail = [1, 2, 3, 4]
     .map(k => {
-      const timing = `${cycle}s linear ${num(-cycle * (1 - 0.0045 * k))}s infinite`
+      const echo = `${cycle}s linear ${late(-cycle * (1 - 0.0045 * k))} infinite`
       return (
-        `<g style="opacity:0;animation:${veil} ${timing}"><g opacity="${num(0.75 - 0.15 * k)}">` +
-        `<g fill="${k % 2 === 0 ? OR : RUBIS}" style="animation:stable ${timing}">` +
+        `<g style="opacity:0;animation:${veil} ${echo}"><g opacity="${num(0.75 - 0.15 * k)}">` +
+        `<g class="${k % 2 === 0 ? OR : RUBIS}" style="animation:stable ${echo}">` +
         `${glyph(k < 3 ? 'o' : '.', `x="${-CHAR / 2}" y="${k < 3 ? 3.5 : 1}"`)}</g></g></g>`
       )
     })
@@ -855,7 +1069,7 @@ function semenov(): string {
     ['*', ROSE],
   ]
   const spark = (angle: number, name: string, c: string, color: string): string =>
-    `<g transform="rotate(${angle})"><g fill="${color}" style="opacity:0;animation:${name} ${cycle}s linear infinite">` +
+    `<g transform="rotate(${angle})"><g class="${color}" style="opacity:0;animation:${name} ${timing}">` +
     `${glyph(c, `x="${-CHAR / 2}" y="4.9" transform="rotate(${-angle})"`)}</g></g>`
   const sparks =
     Array.from({ length: 12 }, (_, i) => spark(i * 30 + 8, near, ...SPARKS[i % 3]!)).join('') +
@@ -881,61 +1095,549 @@ function semenov(): string {
 
   const axes = ['^', ...Array<string>(10).fill('|'), `+${'-'.repeat(29)}> T`]
   const marker = (c: string, color: string, stops: Array<readonly [number, string]>, name: string): string =>
-    `<g fill="${color}" style="${stops[0]![1]};animation:${keyframes(name, stops)} ${cycle}s linear infinite">` +
+    `<g class="${color}" style="${stops[0]![1]};animation:${keyframes(name, stops)} ${timing}">` +
     `${glyph(c, `x="${-CHAR / 2}" y="3.5"`)}</g>`
 
   return (
-    `<g class="semenov">${trame(axes, CHAR, 0, 17, CRAIE)}<g fill="${CRAIE}">${glyphs('q', CHAR * 3, 6)}</g>` +
-    `<g fill="${RUBIS}" style="opacity:.6;animation:${glow} ${cycle}s linear infinite">` +
-    `<path d="${trace(curve)}" ${TRAIT} stroke="${RUBIS}"/>${glyphs('qg', X0 + xLabel - 3 * CHAR, Y0 - H + 30)}</g>` +
-    `<g style="animation:${keyframes('refroidit', line)} ${cycle}s linear infinite">` +
-    `<g fill="${EAU}"><path d="${trace(removal)}" ${TRAIT} stroke="${EAU}" stroke-dasharray="5.48 1.72"/>` +
+    `<g class="semenov">${trame(axes, CHAR, 0, 17, CRAIE)}<g class="${CRAIE}">${glyphs('q', CHAR * 3, 6)}</g>` +
+    `<g class="${RUBIS}" style="opacity:.6;animation:${glow} ${timing}">` +
+    `<path d="${trace(curve)}" ${TRAIT}/>${glyphs('qg', X0 + xLabel - 3 * CHAR, Y0 - H + 30)}</g>` +
+    `<g style="animation:${keyframes('refroidit', line)} ${timing}">` +
+    `<g class="${EAU}"><path d="${trace(removal)}" ${TRAIT} stroke-dasharray="5.48 1.72"/>` +
     `${glyphs('qe', removal[1]![0] + 4, removal[1]![1] + 6)}</g>` +
-    `<g fill="${CRAIE}">${glyphs('Tc', X0 + xc0 - CHAR, Y0 + 24)}</g></g>` +
+    `<g class="${CRAIE}">${glyphs('Tc', X0 + xc0 - CHAR, Y0 + 24)}</g></g>` +
     marker('x', OR, unstable, 'instable') +
     trail +
     marker('o', COBALT, stable, 'stable') +
     `<g transform="translate(${num(ex)} ${num(ey)})">${sparks}</g>` +
-    `<g fill="${CRAIE}">${glyphs('qg = r(-dH) ~ exp(-E/RT)', 0, Y0 + 46)}` +
+    `<g class="${CRAIE}">${glyphs('qg = r(-dH) ~ exp(-E/RT)', 0, Y0 + 46)}` +
     `${glyphs('qe = US/V (T - Tc)', 0, Y0 + 63)}</g></g>`
   )
 }
 
-// gonfle : rotation seule. Une échelle animée (scale) oblige Chromium à rastériser de nouveau les caractères des pelotes à
-// chaque image (près d'un cœur de processeur en continu) ; rotation et opacité restent au compositeur. En portrait, la
-// boucle, la spinodale et Semenov sont masqués : leurs animations sont arrêtées aussi (!important : elles sont dans l'attribut style).
+// Les quatre diagrammes suivants partagent le repère de Semenov : deux axes en caractères, l'origine en (X0, Y0).
+const X0 = CHAR * 1.5
+const Y0 = 11 * 17 - 4.9
+const P = (x: number, y: number): readonly [number, number] => [X0 + x, Y0 - y]
+
+function repere(abscisse: string, ordonnee: string): string {
+  const axes = ['^', ...Array<string>(10).fill('|'), `+${'-'.repeat(29)}> ${abscisse}`]
+  return `${trame(axes, CHAR, 0, 17, CRAIE)}<g class="${CRAIE}">${glyphs(ordonnee, CHAR * 3, 6)}</g>`
+}
+
+// Des éléments qui apparaissent l'un après l'autre, tiennent ensemble, puis s'effacent ensemble : l'élément i paraît
+// à (i + 0,5) pas ; le cycle dure le temps de tous les montrer, plus une pause. Sans animation, tous sont visibles.
+function tour(name: string, count: number, pace: number, rest: number): (i: number) => string {
+  const cycle = count * pace + rest
+  return i => {
+    const t = ((i + 0.5) * pace) / cycle
+    const stops: Array<readonly [number, string]> = [
+      [0, 'opacity:0'],
+      [t, 'opacity:0'],
+      [t + 0.6 / cycle, 'opacity:1'],
+      [1 - 2.5 / cycle, 'opacity:1'],
+      [1 - 1 / cycle, 'opacity:0'],
+      [1, 'opacity:0'],
+    ]
+    return `animation:${keyframes(`${name}${i}`, stops)} ${num(cycle)}s linear ${late(0)} infinite`
+  }
+}
+
+// Une distillation à reflux total, par la construction de McCabe et Thiele : la courbe d'équilibre d'un mélange de
+// volatilité relative a (tirée de la graine), la diagonale, et les étages théoriques tracés un à un du distillat au
+// résidu. Leur nombre est le minimum de Fenske : il change avec a.
+function distillation(random: () => number): string {
+  const alpha = 1.8 + random() * 1.7
+  const Q = (x: number, y: number): readonly [number, number] => P(x * 236, y * 172)
+  const curve: Array<readonly [number, number]> = []
+  for (let i = 0; i <= 40; i += 1) {
+    const x = i / 40
+    curve.push(Q(x, (alpha * x) / (1 + (alpha - 1) * x)))
+  }
+  const xD = 0.94
+  const xB = 0.06
+  const stairs: Array<ReadonlyArray<readonly [number, number]>> = []
+  for (let x = xD; x > xB && stairs.length < 14; ) {
+    const next = x / (alpha - (alpha - 1) * x) // le liquide en équilibre avec la vapeur de titre x
+    stairs.push([Q(x, x), Q(next, x), Q(next, next)])
+    x = next
+  }
+  const show = tour('etage', stairs.length, 1.5, 9)
+
+  return (
+    `<g class="distillation">${repere('x', 'y')}` +
+    `<g class="${CRAIE}"><path d="${trace([Q(0, 0), Q(1, 1)])}" ${TRAIT} stroke-dasharray="5.48 1.72"/>` +
+    `${glyphs('xB', Q(xB, 0)[0] - CHAR, Y0 + 24)}${glyphs('xD', Q(xD, 0)[0] - CHAR, Y0 + 24)}</g>` +
+    `<g class="${COBALT}"><path d="${trace(curve)}" ${TRAIT}/></g>` +
+    stairs.map((s, i) => `<g class="${i % 2 === 0 ? OR : VERT}" style="${show(i)}"><path d="${trace(s)}" ${TRAIT}/></g>`).join('') +
+    `<g class="${CRAIE}">${glyphs('y = a.x / (1 + (a-1).x)', 0, Y0 + 46)}` +
+    `${glyphs(`N min = ${stairs.length}`, 0, Y0 + 63)}</g></g>`
+  )
+}
+
+// La distribution des temps de séjour d'une cascade de N réacteurs agités : E(t) = N (N t)^(N-1) exp(-N t) / (N-1)!,
+// en temps réduit. Un seul réacteur donne une exponentielle ; plus il y en a, plus la courbe se resserre autour de
+// t = tau, vers l'écoulement piston. Les courbes se tracent l'une après l'autre ; les deux plus grands N sont tirés.
+function sejour(random: () => number): string {
+  const counts = [1, 2, 3 + Math.floor(random() * 3), 8 + Math.floor(random() * 9)]
+  const E = (n: number, t: number): number => {
+    let factorial = 1
+    for (let k = 2; k < n; k += 1) {
+      factorial *= k
+    }
+    return (n * (n * t) ** (n - 1) * Math.exp(-n * t)) / factorial
+  }
+  const top = E(counts[3]!, 1) * 1.06
+  const colors = [COBALT, VERT, OR, RUBIS]
+  const show = tour('dts', counts.length, 3.5, 10)
+  const curves = counts
+    .map((n, i) => {
+      const points: Array<readonly [number, number]> = []
+      for (let k = 0; k <= 60; k += 1) {
+        const t = (k / 60) * 3
+        points.push(P((t / 3) * 240, Math.min(1, E(n, t) / top) * 172))
+      }
+      return `<g class="${colors[i]!}" style="${show(i)}"><path d="${trace(points)}" ${TRAIT}/></g>`
+    })
+    .join('')
+
+  return (
+    `<g class="sejour">${repere('t/tau', 'E')}${curves}` +
+    `<g class="${CRAIE}">${glyphs('|', X0 + 80 - CHAR / 2, Y0 + 5)}${glyphs('1', X0 + 80 - CHAR / 2, Y0 + 24)}` +
+    `${glyphs('E = N (N t)^(N-1) exp(-N t) / (N-1)!', 0, Y0 + 46)}` +
+    `${glyphs(`N = ${counts.join(', ')}`, 0, Y0 + 63)}</g></g>`
+  )
+}
+
+// Un plan factoriel complet 2^3 : les huit essais sont les sommets d'un cube, un facteur par arête. Ils sont faits dans
+// un ordre tiré au sort (la graine), comme il se doit, et s'allument dans cet ordre avec leur numéro.
+function plan(random: () => number): string {
+  const corner = (i: number, j: number, k: number): readonly [number, number] => [30 + i * 128 + k * 62, 172 - j * 112 - k * 46]
+  const corners = Array.from({ length: 8 }, (_, n) => corner(n & 1, (n >> 1) & 1, (n >> 2) & 1))
+  let edges = ''
+  for (let n = 0; n < 8; n += 1) {
+    for (const bit of [1, 2, 4]) {
+      if ((n & bit) === 0) {
+        edges += trace([corners[n]!, corners[n | bit]!])
+      }
+    }
+  }
+  const order = corners.map((_, n) => n)
+  for (let n = 7; n > 0; n -= 1) {
+    const m = Math.floor(random() * (n + 1))
+    ;[order[n], order[m]] = [order[m]!, order[n]!]
+  }
+  const colors = [COBALT, RUBIS, VERT, VIOLET, OR, EAU, ROSE, COBALT]
+  const show = tour('essai', 8, 2, 9)
+  const runs = order
+    .map((n, i) => {
+      const [x, y] = corners[n]!
+      return (
+        `<g transform="translate(${num(x)} ${num(y)})"><g class="${colors[i]!}" style="${show(i)}">` +
+        `${glyph('*', `x="${-CHAR / 2}" y="6.5"`)}${glyphs(String(i + 1), 7, -5)}</g></g>`
+      )
+    })
+    .join('')
+  const [ox, oy] = corners[0]!
+
+  return (
+    `<g class="plan"><g class="${CRAIE}"><path d="${edges}" ${TRAIT} stroke-dasharray="5.48 2.92"/>` +
+    `${glyphs('x1', ox + 52, oy + 20)}${glyphs('x2', ox - 26, oy - 50)}${glyphs('x3', ox + 128 + 40, oy - 8)}` +
+    `${glyphs('y = b0 + b1.x1 + b2.x2 + b3.x3', 0, 222)}${glyphs('  + b12.x1.x2 + ... + e', 0, 239)}</g>` +
+    `${runs}</g>`
+  )
+}
+
+// La boucle de synthèse de l'ammoniac : le gaz frais rejoint le recyclage, traverse le réacteur (R), puis le
+// séparateur (S) d'où sort l'ammoniac ; ce qui n'a pas réagi repart en tête. Trois bulles de gaz font le trajet : un
+// passage, un tour de boucle, un second passage, la sortie.
+function synthese(): string {
+  const rows = [
+    'N2,H2 =>=+=>=[ R ]=>=.',
+    '         ^           |',
+    '         |         ( S )=>= NH3',
+    '         |           |',
+    "         '-----<-----'",
+  ]
+  const C = (column: number, row: number): readonly [number, number] => [column * CHAR + CHAR / 2, row * 17 - 4.9]
+  const route = [C(6, 0), C(21, 0), C(21, 4), C(9, 4), C(9, 0), C(21, 0), C(21, 2), C(30, 2)]
+  const lengths = route.slice(1).map((p, i) => Math.hypot(p[0] - route[i]![0], p[1] - route[i]![1]))
+  const total = lengths.reduce((a, b) => a + b, 0)
+  const stops: Array<readonly [number, string]> = [[0, at(...route[0]!, 0)]]
+  let done = 0
+  route.slice(1).forEach((p, i) => {
+    done += lengths[i]!
+    const t = 0.04 + 0.9 * (done / total)
+    stops.push([i === 0 ? 0.04 + 0.9 * (lengths[0]! / total) : t, at(...p, i === route.length - 2 ? 0 : 1)])
+  })
+  stops.splice(1, 0, [0.04, at(...route[0]!, 1)])
+  stops.push([1, at(...route[route.length - 1]!, 0)])
+  const name = keyframes('boucle-nh3', stops)
+  const cycle = 27
+  const tokens = [COBALT, EAU, VIOLET]
+    .map(
+      (color, i) =>
+        `<g class="${color}" style="opacity:0;animation:${name} ${cycle}s linear ${late((i * cycle) / 3)} infinite">` +
+        `${glyph('o', `x="${-CHAR / 2}" y="3.5"`)}</g>`,
+    )
+    .join('')
+
+  return (
+    `<g class="synthese">${trame(rows, 0, 0, 17, CRAIE)}${tokens}` +
+    `<g class="${CRAIE}">${glyphs('N2 + 3 H2 <=> 2 NH3', 0, 4 * 17 + 32)}${glyphs('dH = -92 kJ/mol', 0, 4 * 17 + 49)}</g></g>`
+  )
+}
+
+// Une réaction en formule topologique : les liaisons sont des traits, un sommet sans lettre est un carbone, les
+// hydrogènes des carbones ne sont pas écrits. Chaque molécule est faite de fragments rigides. Le dessin est donné dans
+// l'état final ; depart dit de combien chaque fragment en est écarté avant de réagir, arrivee où part un groupe qui
+// s'en va. Un atome : x, y, fragment, puis sa lettre avant et après (si elle change) et le rang du caractère posé sur
+// le sommet. Une liaison : deux atomes et sa nature, 's' simple, 'd' double, 'casse' rompue, 'forme' formée, 'pi-' et
+// 'pi+' double qui devient simple et l'inverse ; puis le point vers lequel se décale le second trait d'une double.
+type Vers = readonly [number, number]
+type Atome = readonly [number, number, number, string?, string?, number?, number?]
+type Liaison = readonly [number, number, 's' | 'd' | 'casse' | 'forme' | 'pi-' | 'pi+', Vers?]
+type Reaction = {
+  readonly atomes: readonly Atome[]
+  readonly liaisons: readonly Liaison[]
+  readonly depart: readonly Vers[]
+  readonly arrivee?: readonly Vers[]
+  readonly legende: string
+}
+
+const CYCLE: Vers = [81.6, 100] // le centre du cycle du styrène
+const REACTIONS: readonly Reaction[] = [
+  // l'estérification de Fischer, celle qui fait le PET : l'alcool prend la place de OH, qui part en eau
+  {
+    atomes: [
+      [10, 52, 0],
+      [30.8, 40, 0],
+      [30.8, 14, 0, 'O'],
+      [51.6, 52, 1, 'HO', 'O', 1, 0],
+      [72.4, 40, 1],
+      [93.2, 52, 1],
+      [51.6, 52, 2, 'OH', 'H2O', 0, 2],
+    ],
+    liaisons: [
+      [0, 1, 's'],
+      [1, 2, 'd'],
+      [3, 4, 's'],
+      [4, 5, 's'],
+      [1, 6, 'casse'],
+      [1, 3, 'forme'],
+    ],
+    depart: [[0, 0], [74, 0], [0, 0]],
+    arrivee: [[0, 0], [0, 0], [52, -38]],
+    legende: "RCOOH + R'OH <=> RCOOR' + H2O",
+  },
+  // Diels-Alder : un diène et un alcène ferment un cycle à six, trois doubles liaisons en donnent une
+  {
+    atomes: [
+      [50, 16, 0],
+      [70.8, 28, 1],
+      [70.8, 52, 1],
+      [50, 64, 0],
+      [29.2, 52, 0],
+      [29.2, 28, 0],
+    ],
+    liaisons: [
+      [0, 5, 'pi-', [50, 40]],
+      [5, 4, 'pi+', [50, 40]],
+      [4, 3, 'pi-', [50, 40]],
+      [1, 2, 'pi-', [50, 40]],
+      [0, 1, 'forme'],
+      [3, 2, 'forme'],
+    ],
+    depart: [[0, 0], [46, 0]],
+    legende: '[4+2] : C4H6 + C2H4 -> C6H10',
+  },
+  // la propagation anionique du poly(oxyde d'éthylène) : l'alcoolate ouvre le cycle, la charge passe au bout
+  {
+    atomes: [
+      [50, 52, 0, 'RO', undefined, 1],
+      [70.8, 40, 1],
+      [91.6, 52, 1],
+      [112.4, 40, 2, 'O'],
+      [50, 38, 0, '-', ''],
+      [112.4, 26, 2, '', '-'],
+    ],
+    liaisons: [
+      [1, 2, 's'],
+      [1, 3, 'casse'],
+      [2, 3, 'casse'],
+      [2, 3, 'forme'],
+      [0, 1, 'forme'],
+    ],
+    depart: [[-30, 0], [0, 0], [-21.2, -11.3]],
+    legende: 'RO- + C2H4O -> RO-CH2-CH2-O-',
+  },
+  // la propagation radicalaire du polystyrène : le radical s'additionne sur le vinyle et passe au carbone benzylique
+  {
+    atomes: [
+      [40, 52, 0, 'R'],
+      [40, 39, 0, '.', ''],
+      [60.8, 40, 1],
+      [81.6, 52, 1],
+      [81.6, 76, 1],
+      [102.4, 88, 1],
+      [102.4, 112, 1],
+      [81.6, 124, 1],
+      [60.8, 112, 1],
+      [60.8, 88, 1],
+      [93, 42, 1, '', '.'],
+    ],
+    liaisons: [
+      [2, 3, 'pi-', [60, 70]],
+      [3, 4, 's'],
+      [4, 5, 'd', CYCLE],
+      [5, 6, 's'],
+      [6, 7, 'd', CYCLE],
+      [7, 8, 's'],
+      [8, 9, 'd', CYCLE],
+      [9, 4, 's'],
+      [0, 2, 'forme'],
+    ],
+    depart: [[-30, 0], [0, 0]],
+    legende: 'R. + CH2=CHPh -> R-CH2-CHPh.',
+  },
+]
+
+// La réaction de la session, tirée de la graine, en boucle : les réactifs, les liaisons qui se rompent, les fragments
+// qui se déplacent, les liaisons qui se forment, les produits ; puis tout s'efface et recommence. Sans animation, ce
+// sont les produits qui restent.
+function reaction(random: () => number): string {
+  const { atomes, liaisons, depart, arrivee, legende } = REACTIONS[Math.floor(random() * REACTIONS.length)]!
+  const timing = `22s linear ${late(0)} infinite`
+  const fade = (name: string, values: readonly number[]): string =>
+    keyframes(name, ([0, ...TIMES[name]!, 1] as const).map((t, i) => [t, `opacity:${values[Math.min(i, values.length - 1)]!}`] as const))
+  const TIMES: Record<string, readonly number[]> = {
+    'rx-casse': [0.18, 0.24, 0.95, 0.96],
+    'rx-forme': [0.5, 0.58, 0.95, 0.96],
+    'rx-avant': [0.3, 0.38, 0.95, 0.96],
+    'rx-apres': [0.38, 0.46, 0.95, 0.96],
+    'rx-tout': [0.88, 0.93, 0.97],
+  }
+  const casse = `opacity:0;animation:${fade('rx-casse', [1, 1, 0, 0, 1, 1])} ${timing}`
+  const forme = `animation:${fade('rx-forme', [0, 0, 1, 1, 0, 0])} ${timing}`
+  const avant = `opacity:0;animation:${fade('rx-avant', [1, 1, 0, 0, 1, 1])} ${timing}`
+  const apres = `animation:${fade('rx-apres', [0, 0, 1, 1, 0, 0])} ${timing}`
+  const tout = `animation:${fade('rx-tout', [1, 1, 0, 0, 1])} ${timing}`
+
+  const end = (f: number): Vers => arrivee?.[f] ?? [0, 0]
+  const lettered = (i: number): boolean => (atomes[i]![3] ?? '') !== '' || (atomes[i]![4] ?? '') !== ''
+  // le trait d'une liaison, raccourci devant une lettre ; le second trait d'une double, décalé et plus court
+  const bond = ([a, b, , toward]: Liaison, shift: (f: number) => Vers, second: boolean): string => {
+    const [ax, ay, af] = atomes[a]!
+    const [bx, by, bf] = atomes[b]!
+    let p: Vers = [ax + shift(af)[0], ay + shift(af)[1]]
+    let q: Vers = [bx + shift(bf)[0], by + shift(bf)[1]]
+    const length = Math.hypot(q[0] - p[0], q[1] - p[1])
+    const u: Vers = [(q[0] - p[0]) / length, (q[1] - p[1]) / length]
+    const cut = (i: number): number => (lettered(i) ? 8.5 : 0) + (second ? 3 : 0)
+    p = [p[0] + u[0] * cut(a), p[1] + u[1] * cut(a)]
+    q = [q[0] - u[0] * cut(b), q[1] - u[1] * cut(b)]
+    if (second) {
+      const side = toward === undefined || (toward[0] - p[0]) * -u[1] + (toward[1] - p[1]) * u[0] > 0 ? 1 : -1
+      const n: Vers = [-u[1] * 3.8 * side, u[0] * 3.8 * side]
+      p = [p[0] + n[0], p[1] + n[1]]
+      q = [q[0] + n[0], q[1] + n[1]]
+    }
+    return trace([p, q])
+  }
+  const still = (): Vers => [0, 0]
+  const path = (d: string, style = ''): string => (d === '' ? '' : `<path d="${d}" ${TRAIT}${style === '' ? '' : ` style="${style}"`}/>`)
+  const label = (text: string | undefined, x: number, y: number, k = 0): string =>
+    text === undefined || text === '' ? '' : glyphs(text, x - (k + 0.5) * CHAR, y + 5.3)
+
+  const colors = [COBALT, RUBIS, VERT]
+  const fragments = depart
+    .map((from, f) => {
+      const inside = liaisons.filter(([a, b, kind]) => atomes[a]![2] === f && atomes[b]![2] === f && kind !== 'casse' && kind !== 'forme')
+      const lines =
+        path(inside.map(l => bond(l, still, false) + (l[2] === 'd' ? bond(l, still, true) : '')).join('')) +
+        path(inside.filter(l => l[2] === 'pi-').map(l => bond(l, still, true)).join(''), casse) +
+        path(inside.filter(l => l[2] === 'pi+').map(l => bond(l, still, true)).join(''), forme)
+      const letters = atomes
+        .filter(atome => atome[2] === f)
+        .map(([x, y, , before, after, k0, k1]) =>
+          after === undefined
+            ? label(before, x, y, k0)
+            : (before === '' ? '' : `<g style="${avant}">${label(before, x, y, k0)}</g>`) +
+              (after === '' ? '' : `<g style="${apres}">${label(after, x, y, k1)}</g>`),
+        )
+        .join('')
+      const to = end(f)
+      const moves = from[0] !== to[0] || from[1] !== to[1]
+      const style = moves
+        ? ` style="transform:translate(${num(to[0])}px,${num(to[1])}px);animation:${keyframes(
+            `rx-f${f}`,
+            ([0, 0.26, 0.5, 0.95, 0.96, 1] as const).map((t, i) => {
+              const [x, y] = i === 2 || i === 3 ? to : from
+              return [t, `transform:translate(${num(x)}px,${num(y)}px)`] as const
+            }),
+          )} ${timing}"`
+        : ''
+      return `<g class="${colors[f % colors.length]!}"${style}>${lines}${letters}</g>`
+    })
+    .join('')
+  const between = (kind: 'casse' | 'forme', shift: (f: number) => Vers): string =>
+    liaisons
+      .filter(l => l[2] === kind)
+      .map(l => bond(l, shift, false))
+      .join('')
+  const bottom = Math.max(...atomes.map(atome => atome[1]))
+
+  return (
+    `<g class="reaction"><g style="${tout}">${fragments}` +
+    `<g class="${CRAIE}">${path(between('casse', f => depart[f]!), casse)}</g>` +
+    `<g class="${OR}">${path(between('forme', end), forme)}</g></g>` +
+    `<g class="${CRAIE}">${glyphs(legende, 0, bottom + 30)}</g></g>`
+  )
+}
+
+// Le catalogue des petits motifs. haut et bas : l'étendue verticale du dessin autour de son origine ; largeur : la
+// sienne ; travail : il change selon que Claude travaille ou non.
+type Motif = {
+  readonly nom: string
+  readonly haut: number
+  readonly bas: number
+  readonly largeur: number
+  readonly travail: boolean
+  readonly dessin: (random: () => number, working: boolean) => string
+}
+
+const CATALOGUE: readonly Motif[] = [
+  { nom: 'reacteur', haut: -14, bas: 180, largeur: 250, travail: true, dessin: reacteur },
+  { nom: 'boucle', haut: -8, bas: 206, largeur: 355, travail: true, dessin: boucle },
+  // l'échelle est fixe, jamais animée : les caractères ne sont rastérisés qu'une fois
+  { nom: 'spinodale', haut: -17, bas: 280, largeur: 245, travail: false, dessin: () => `<g transform="translate(6) scale(.85)">${spinodale()}</g>` },
+  { nom: 'semenov', haut: -14, bas: 250, largeur: 300, travail: false, dessin: semenov },
+  { nom: 'distillation', haut: -14, bas: 250, largeur: 290, travail: false, dessin: distillation },
+  { nom: 'sejour', haut: -14, bas: 250, largeur: 325, travail: false, dessin: sejour },
+  { nom: 'plan', haut: -8, bas: 244, largeur: 265, travail: false, dessin: plan },
+  { nom: 'synthese', haut: -14, bas: 122, largeur: 265, travail: false, dessin: synthese },
+]
+
+// La réaction n'est pas tirée : chaque session en montre une.
+// Elle est agrandie d'une échelle fixe, jamais animée.
+const REACTION: Motif = {
+  nom: 'reaction',
+  haut: 0,
+  bas: 224,
+  largeur: 355,
+  travail: false,
+  dessin: random => `<g transform="scale(1.4)">${reaction(random)}</g>`,
+}
+
+// Ce que montre une session, d'après sa graine : la réaction, et un à trois motifs du catalogue dont un au moins suit
+// le travail de Claude. L'ordre est tiré aussi : le premier va en bas à droite, sous les pelotes ; les autres à
+// gauche, de haut en bas.
+export function tirage(graine: number): readonly Motif[] {
+  const random = seeded(graine * 8 + 5)
+  const shuffle = (list: Motif[]): Motif[] => {
+    for (let n = list.length - 1; n > 0; n -= 1) {
+      const m = Math.floor(random() * (n + 1))
+      ;[list[n], list[m]] = [list[m]!, list[n]!]
+    }
+    return list
+  }
+  const pool = shuffle([...CATALOGUE])
+  const r = random()
+  const drawn = pool.slice(0, r < 0.3 ? 1 : r < 0.75 ? 2 : 3)
+  if (!drawn.some(motif => motif.travail)) {
+    drawn[drawn.length - 1] = pool.find(motif => motif.travail)!
+  }
+  return shuffle([REACTION, ...drawn])
+}
+
+// Les motifs placés. À gauche, ils se partagent la hauteur, décalés les uns des autres ; chacun tire sa propre suite
+// de nombres, d'après sa place dans le catalogue : il est le même quels que soient ses voisins.
+function motifs(graine: number, working: boolean, portrait: boolean): string {
+  const [right, ...left] = tirage(graine)
+  const random = seeded(graine * 8 + 6)
+  const draw = (motif: Motif, x: number, y: number): string =>
+    `<g class="${motif.nom}-place" transform="translate(${num(x)} ${num(y - motif.haut)})">` +
+    `${motif.dessin(seeded(graine * 8 + 17 + CATALOGUE.indexOf(motif)), working)}</g>`
+  if (portrait) {
+    return draw(right!, 800 - right!.largeur / 2, 540)
+  }
+  const TOP = 70
+  const ROOM = 895
+  const total = left.reduce((sum, motif) => sum + motif.bas - motif.haut, 0)
+  const gap = Math.min(90, (ROOM - total) / (left.length + 1))
+  let y = TOP + (ROOM - total - gap * (left.length - 1)) / 2
+  let out = draw(right!, 1180 + (355 - right!.largeur) / 2, 640 + (325 - (right!.bas - right!.haut)) / 2)
+  for (const motif of left) {
+    out += draw(motif, 42 + random() * 60, y)
+    y += motif.bas - motif.haut + gap
+  }
+  return out
+}
+
+// Les classes de couleur, puis les deux sortes de traits. gonfle et plieN : rotation seule. Une échelle animée (scale)
+// oblige Chromium à rastériser de nouveau les caractères des pelotes à chaque image (près d'un cœur de processeur en
+// continu) ; rotation et opacité restent au compositeur. Pas de @media sur la taille (max-aspect-ratio…) : l'app
+// rendrait alors le fond à huit fois sa taille, deux fois plus cher à redessiner, et le figerait. Le portrait est une
+// scène à part, choisie par register.tsx.
+const couleurs = (mode: 0 | 1): string =>
+  Object.entries(PALETTE)
+    .map(([name, values]) => `.${name}{color:${values[mode]}}`)
+    .join('')
+
 const STYLE = `
-.scene{opacity:.62}
-@media (prefers-color-scheme:dark){.scene{opacity:.8}}
-.boucle,.reacteur,.semenov{opacity:.8}
+svg{fill:currentColor}
+${couleurs(0)}
+.s{fill:none;stroke:currentColor;stroke-width:1.1;stroke-linecap:round;stroke-linejoin:round}
+.d{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.scene{opacity:.8}
+@media (prefers-color-scheme:dark){${couleurs(1)}}
+.boucle,.reacteur,.semenov,.distillation,.sejour,.plan,.synthese,.reaction{opacity:.8}
 .spinodale{opacity:.62}
 @keyframes tourne{to{transform:rotate(360deg)}}
 @keyframes respire{0%,100%{opacity:.45}50%{opacity:1}}
 @keyframes gonfle{from{transform:rotate(-5deg)}to{transform:rotate(6deg)}}
+${PLIS.map(([n]) => `@keyframes plie${n}{from{transform:rotate(-${n}deg)}to{transform:rotate(${n}deg)}}`).join('\n')}
 @keyframes glisse{from{transform:translateX(-12px)}to{transform:translateX(12px)}}
 @keyframes pale{0%{opacity:1}50%,100%{opacity:0}}
 @keyframes bulle{0%{transform:translate(0,0);opacity:0}15%{opacity:.9}100%{transform:translate(5px,-72px);opacity:0}}
 @keyframes trace{0%{opacity:0}2%{opacity:1}80%{opacity:1}90%,100%{opacity:0}}
-@media (max-aspect-ratio:1/1){.pelotes-place{transform:translate(800px,280px) scale(.8)}.boucle-place,.spinodale-place,.semenov-place{display:none}:is(.boucle-place,.spinodale-place,.semenov-place) *{animation:none!important}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important}.pose2{display:none}}
 `
 
-const BODY: string =
-  `<g class="scene">` +
-  `<g class="pelotes-place" transform="translate(1290 300)">${pelotes()}</g>` +
-  `<g class="reacteur-place" transform="translate(95 115)">${reacteur()}</g>` +
-  `<g class="boucle-place" transform="translate(1180 730)">${boucle()}</g>` +
-  // l'échelle est fixe, jamais animée : les caractères ne sont rastérisés qu'une fois
-  `<g class="spinodale-place" transform="translate(46.2 331) scale(.85)">${spinodale()}</g>` +
-  `<g class="semenov-place" transform="translate(55 660)">${semenov()}</g>` +
-  `</g>`
+// Ce que register.tsx sait de la session. graine : tirée au début de la session ; temps : secondes écoulées depuis ;
+// travail : un tour est en cours ; croissance : la part visible des chaînes, de 0 à 1.
+export type Etat = {
+  readonly graine: number
+  readonly temps: number
+  readonly travail: boolean
+  readonly croissance: number
+}
 
-// Les contours, une fois chacun ; les <use> prennent la couleur (fill) de leur groupe.
-const DEFS: string = `<defs>${[...used]
-  .sort()
-  .map(c => `<path id="avg${c.charCodeAt(0)}" d="${GLYPHES[c]}"/>`)
-  .join('')}${PATTERNS.join('')}</defs>`
+export const ETAT_INITIAL: Etat = { graine: 625, temps: 0, travail: false, croissance: 1 }
 
-export const SCENE: string =
-  `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">` +
-  `<style>${STYLE}${KEYFRAMES.join('\n')}</style>${DEFS}${BODY}</svg>`
+// Le fond pour un état. portrait : le téléphone, où seules restent les pelotes, recentrées, et un motif dessous.
+export function scene(etat: Etat, portrait = false): string {
+  used = new Set()
+  PATTERNS = []
+  MOTIFS = new Map()
+  KEYFRAMES = []
+  // chaque partie tire sa propre suite : changer l'une ne déplace pas les autres
+  const stream = (n: number): (() => number) => seeded(etat.graine * 8 + n)
+  T = etat.temps + stream(0)() * 3600
+
+  const PELOTES = pelotes(stream(1), Math.min(1, Math.max(0.05, etat.croissance)))
+  const body =
+    `<g class="scene"><g class="pelotes-place" transform="${portrait ? 'translate(800 270) scale(.8)' : 'translate(1290 300)'}">` +
+    `${PELOTES}</g>${motifs(etat.graine, etat.travail, portrait)}</g>`
+
+  // Les contours, une fois chacun ; les <use> prennent la couleur (fill) de leur groupe.
+  const defs = `<defs>${[...used]
+    .sort()
+    .map(c => `<path id="avg${c.charCodeAt(0)}" d="${GLYPHES[c]}"/>`)
+    .join('')}${PATTERNS.join('')}</defs>`
+
+  return (
+    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid slice">` +
+    `<style>${STYLE}${KEYFRAMES.join('\n')}</style>${defs}${body}</svg>`
+  )
+}

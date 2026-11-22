@@ -1,7 +1,7 @@
 {
   "name": "atelier-vitrail",
-  "version": "0.3.0",
-  "description": "Thème LaTeX et ASCII : plâtre d'atelier le jour, nuit de vitrail le soir, avec des pelotes de polymère, un réacteur agité, une réponse indicielle, une décomposition spinodale et un emballement thermique en caractères, doucement animés.",
+  "version": "0.4.0",
+  "description": "Thème LaTeX et ASCII aux couleurs de Catppuccin (Latte le jour, Frappé la nuit) : des pelotes de polymère qui se replient, une réaction en formule topologique et des schémas de génie chimique en caractères, tirés au sort à chaque session et animés au rythme du travail de Claude.",
   "author": {
     "name": "basedpolymer"
   }

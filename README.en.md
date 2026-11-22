@@ -7,7 +7,7 @@ The skills and tools I use with my AI agents, gathered in a Claude Code plugin m
 | Tool | Kind | What it does |
 |---|---|---|
 | [textured](plugins/textured/skills/textured) | skill | LaTeX-style HTML documents, reports and full courses: formulas, interactive figures, revision priorities, A4 PDF, covers; live example: [basedpolymer.eu/textured](https://basedpolymer.eu/textured/en) |
-| [atelier-vitrail](plugins/atelier-vitrail) | theme | Claude Code in workshop plaster by day and stained-glass night in the evening, over an animated ASCII background |
+| [atelier-vitrail](plugins/atelier-vitrail) | theme | Claude Code in Catppuccin colours (Latte by day, Frappé by night), over an animated ASCII background drawn afresh for each session |
 
 The tools' instructions and interfaces are in French; Claude follows them whatever language you write in.
 

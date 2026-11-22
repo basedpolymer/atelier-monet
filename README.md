@@ -7,7 +7,7 @@ Les skills et outils que j'utilise avec mes agents IA, réunis en un marketplace
 | Outil | Genre | Ce qu'il fait |
 |---|---|---|
 | [textured](plugins/textured/skills/textured) | skill | documents, rapports et cours complets en HTML au style LaTeX : formules, jouets interactifs, priorités de révision, PDF A4, couvertures ; exemple en ligne : [basedpolymer.eu/textured](https://basedpolymer.eu/textured) |
-| [atelier-vitrail](plugins/atelier-vitrail) | thème | Claude Code en plâtre d'atelier le jour, en nuit de vitrail le soir, sur un fond animé en caractères ASCII |
+| [atelier-vitrail](plugins/atelier-vitrail) | thème | Claude Code aux couleurs de Catppuccin (Latte le jour, Frappé la nuit), sur un fond animé en caractères ASCII, tiré au sort à chaque session |
 
 ## textured
 
