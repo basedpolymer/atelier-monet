@@ -1028,12 +1028,6 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
         # base (latin-1 et ponctuation) des deux polices du premier écran ; le complément se charge à la demande
         liens = "".join(f'<link rel="preload" href="{assets}/polices/{f}-base.woff2" as="font" type="font/woff2" crossorigin>\n'
                         for f in ("lmroman10-regular", "lmsans10-bold"))
-        # les deux polices de KaTeX que presque toute formule emploie, demandées avec la page : arrivées après la
-        # première mise en page, elles la feraient refaire (coûteux sur une longue page) ; les autres viennent à la demande
-        for police_k, signe in (("KaTeX_Main-Regular", r'class="(?:mord|mrel|mbin|mopen|mclose|mpunct)">[^<\s]'),
-                                ("KaTeX_Math-Italic", r'class="mord mathnormal"')):
-            if n_formules and re.search(signe, page):
-                liens += f'<link rel="preload" href="{assets}/katex/fonts/{police_k}.woff2" as="font" type="font/woff2" crossorigin>\n'
         if n_formules or outils:
             liens += f'<link rel="stylesheet" href="{assets}/katex.css">\n'
         liens += f'<link rel="stylesheet" href="{assets}/textured.css">\n'
