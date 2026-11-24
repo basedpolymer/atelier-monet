@@ -4,21 +4,36 @@
    Toutes les tailles sont en em ou rem : rien ne fixe la taille de la racine (zoom et taille de texte du système respectés). */
 
 /*@ polices */
-@font-face { font-family: "TX Roman"; font-weight: 400; font-style: normal; font-display: swap; src: url("polices/lmroman10-regular.woff2") format("woff2"); }
-@font-face { font-family: "TX Roman"; font-weight: 700; font-style: normal; font-display: swap; src: url("polices/lmroman10-bold.woff2") format("woff2"); }
-@font-face { font-family: "TX Roman"; font-weight: 400; font-style: italic; font-display: swap; src: url("polices/lmroman10-italic.woff2") format("woff2"); }
-@font-face { font-family: "TX Roman"; font-weight: 700; font-style: italic; font-display: swap; src: url("polices/lmroman10-bolditalic.woff2") format("woff2"); }
-@font-face { font-family: "TX Penche"; font-weight: 400; font-display: swap; src: url("polices/lmromanslant10-regular.woff2") format("woff2"); }
-@font-face { font-family: "TX Penche"; font-weight: 700; font-display: swap; src: url("polices/lmromanslant10-bold.woff2") format("woff2"); }
-@font-face { font-family: "TX Sans"; font-weight: 400; font-style: normal; font-display: swap; src: url("polices/lmsans10-regular.woff2") format("woff2"); }
-@font-face { font-family: "TX Sans"; font-weight: 700; font-style: normal; font-display: swap; src: url("polices/lmsans10-bold.woff2") format("woff2"); }
-@font-face { font-family: "TX Sans"; font-weight: 400; font-style: italic; font-display: swap; src: url("polices/lmsans10-oblique.woff2") format("woff2"); }
-@font-face { font-family: "TX Sans"; font-weight: 700; font-style: italic; font-display: swap; src: url("polices/lmsans10-boldoblique.woff2") format("woff2"); }
-@font-face { font-family: "TX Mono"; font-weight: 400; font-display: swap; src: url("polices/lmmono10-regular.woff2") format("woff2"); }
-@font-face { font-family: "TX Chorus"; font-style: italic; font-display: block; src: url("polices/texgyrechorus-mediumitalic.woff2") format("woff2"); }
-/* polices de repli ramenées à l'œil de Latin Modern : pas de saut de mise en page pendant le chargement */
-@font-face { font-family: "TX Repli"; src: local("Georgia"); size-adjust: 90%; }
-@font-face { font-family: "TX Repli Sans"; src: local("Helvetica Neue"), local("Arial"); size-adjust: 87%; }
+/* Latin Modern en deux parts (polices.py, ne pas modifier à la main) : base (latin-1, ponctuation du français),
+   complément chargé seulement si la page en affiche un caractère */
+@font-face { font-family: "TX Roman"; font-weight: 400; font-style: normal; font-display: swap; src: url("polices/lmroman10-regular-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Roman"; font-weight: 400; font-style: normal; font-display: swap; src: url("polices/lmroman10-regular-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Roman"; font-weight: 700; font-style: normal; font-display: swap; src: url("polices/lmroman10-bold-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Roman"; font-weight: 700; font-style: normal; font-display: swap; src: url("polices/lmroman10-bold-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Roman"; font-weight: 400; font-style: italic; font-display: swap; src: url("polices/lmroman10-italic-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Roman"; font-weight: 400; font-style: italic; font-display: swap; src: url("polices/lmroman10-italic-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Roman"; font-weight: 700; font-style: italic; font-display: swap; src: url("polices/lmroman10-bolditalic-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Roman"; font-weight: 700; font-style: italic; font-display: swap; src: url("polices/lmroman10-bolditalic-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Penche"; font-weight: 400; font-display: swap; src: url("polices/lmromanslant10-regular-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Penche"; font-weight: 400; font-display: swap; src: url("polices/lmromanslant10-regular-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Penche"; font-weight: 700; font-display: swap; src: url("polices/lmromanslant10-bold-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Penche"; font-weight: 700; font-display: swap; src: url("polices/lmromanslant10-bold-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Sans"; font-weight: 400; font-style: normal; font-display: swap; src: url("polices/lmsans10-regular-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Sans"; font-weight: 400; font-style: normal; font-display: swap; src: url("polices/lmsans10-regular-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Sans"; font-weight: 700; font-style: normal; font-display: swap; src: url("polices/lmsans10-bold-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Sans"; font-weight: 700; font-style: normal; font-display: swap; src: url("polices/lmsans10-bold-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Sans"; font-weight: 400; font-style: italic; font-display: swap; src: url("polices/lmsans10-oblique-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Sans"; font-weight: 400; font-style: italic; font-display: swap; src: url("polices/lmsans10-oblique-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Sans"; font-weight: 700; font-style: italic; font-display: swap; src: url("polices/lmsans10-boldoblique-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Sans"; font-weight: 700; font-style: italic; font-display: swap; src: url("polices/lmsans10-boldoblique-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0132-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2120, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE, U+FB00-FB04; }
+@font-face { font-family: "TX Mono"; font-weight: 400; font-display: swap; src: url("polices/lmmono10-regular-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: "TX Mono"; font-weight: 400; font-display: swap; src: url("polices/lmmono10-regular-ext.woff2") format("woff2"); unicode-range: U+0100-0130, U+0134-0137, U+0139-0148, U+014A-0151, U+0154-0165, U+0168-017F, U+0192, U+02C7, U+02D8-02D9, U+02DB, U+0391-03A1, U+03A3-03A9, U+03BC, U+1E0C-1E0F, U+1E24-1E27, U+1E2A-1E2B, U+1E2E-1E2F, U+1E36-1E39, U+1E42-1E47, U+1E58-1E5D, U+1E62-1E63, U+1E6C-1E6F, U+1E80-1E85, U+1E92-1E93, U+1E97, U+1EA0-1EF9, U+2103, U+2116-2117, U+211E, U+2126-2127, U+212E, U+2217, U+221A, U+221E, U+2222, U+2300, U+2329-232A, U+25CB, U+25E6, U+266A, U+26AD-26AE; }
+@font-face { font-family: "TX Chorus"; font-style: italic; font-display: block; src: url("polices/texgyrechorus-mediumitalic-base.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2190-2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+/* polices de repli calées sur Latin Modern (largeur moyenne d'une phrase française et hauteurs, mesurées avec
+   fontTools) : le texte garde ses lignes quand Latin Modern arrive */
+@font-face { font-family: "TX Repli"; src: local("Georgia"); size-adjust: 99.2%; ascent-override: 113.6%; descent-override: 29.2%; line-gap-override: 0%; }
+@font-face { font-family: "TX Repli Sans"; font-weight: 400; src: local("Helvetica Neue"), local("HelveticaNeue"), local("Arial"), local("ArialMT"); size-adjust: 93.6%; ascent-override: 123.3%; descent-override: 30%; line-gap-override: 0%; }
+@font-face { font-family: "TX Repli Sans"; font-weight: 700; src: local("Helvetica Neue Bold"), local("HelveticaNeue-Bold"), local("Arial Bold"), local("Arial-BoldMT"); size-adjust: 96.5%; ascent-override: 117.5%; descent-override: 30.2%; line-gap-override: 0%; }
 
 /*@ base */
 :root {
@@ -142,17 +157,19 @@ main ul ul ul > li::marker { content: "\2217\2002"; }
 dt { font-family: var(--sans); font-weight: 700; margin-top: .6em; }
 dd { margin: 0 0 .4em 1.9em; }
 
-/* liens encadrés : corail pour le web, gris pour les renvois internes */
+/* liens encadrés : corail pour le web, gris pour les renvois internes. Le cadre est une bordure (pas une ombre
+   intérieure) : les outils d'accessibilité y voient ce qui distingue le lien du texte sans la couleur ; le survol
+   l'épaissit par une ombre, sans faire bouger le texte. */
 a { color: var(--lien); text-underline-offset: .15em; }
 main a[href] {
-  color: inherit; text-decoration: none; padding: 0 .15em; border-radius: .15em;
-  background: var(--ref-fond); box-shadow: inset 0 0 0 1.1px var(--ref-cadre);
+  color: inherit; text-decoration: none; padding: 0 calc(.15em - 1.1px); border-radius: .15em;
+  background: var(--ref-fond); border: 1.1px solid var(--ref-cadre); box-shadow: none;
   -webkit-box-decoration-break: clone; box-decoration-break: clone;
 }
-main a[href]:hover { box-shadow: inset 0 0 0 1.7px var(--ref-cadre); }
-main a[href^="http"], main a[href^="mailto:"] { background: var(--url-fond); box-shadow: inset 0 0 0 1.1px var(--url-cadre); }
-main a[href^="http"]:hover, main a[href^="mailto:"]:hover { box-shadow: inset 0 0 0 1.7px var(--url-cadre); }
-main :is(h1, h2, h3, h4) a[href], main a.nu { background: none; box-shadow: none; padding: 0; }
+main a[href]:hover { box-shadow: inset 0 0 0 .6px var(--ref-cadre); }
+main a[href^="http"], main a[href^="mailto:"] { background: var(--url-fond); border-color: var(--url-cadre); }
+main a[href^="http"]:hover, main a[href^="mailto:"]:hover { box-shadow: inset 0 0 0 .6px var(--url-cadre); }
+main :is(h1, h2, h3, h4, h5, h6) a[href], main a.nu { background: none; border: 0; box-shadow: none; padding: 0; }
 
 /* mise en page : une colonne ; le plan passe dans la marge sur grand écran */
 .page { max-width: calc(var(--col) + 2 * var(--marge)); margin-inline: auto; padding-inline: var(--marge); }
@@ -234,7 +251,7 @@ footer.pied p { margin: .2em 0; }
   .page { max-width: var(--col); padding: .9em 0 0; }
   .titre { margin-top: 0; }
   main { padding-bottom: 0; }
-  main a[href] { background: none; box-shadow: none; padding: 0; }
+  main a[href] { background: none; border: 0; box-shadow: none; padding: 0; }
   main a[href^="http"]::after { content: " (" attr(href) ")"; font-size: .85em; color: var(--doux); overflow-wrap: anywhere; }
   p, li, dd { orphans: 3; widows: 3; }
   h2, h3, h4, .bloc-titre { break-after: avoid; }
@@ -397,7 +414,7 @@ details > .corps > :last-child { margin-bottom: 0; }
 
 /*@ exercices | class="(exo|reponse)\b */
 .exo { margin: 1.5em 0; padding: .75em 1em .85em; border: .8px solid var(--cadre); border-radius: 4px; background: var(--papier); }
-.exo > :is(h3, h4):first-child { margin-top: 0; font-size: 1em; color: var(--exo-bord); }
+.exo > :is(h2, h3, h4):first-child { margin-top: 0; font-size: 1em; color: var(--exo-bord); }
 .exo .meta { margin-top: -.2em; font: 400 .82em var(--sans); color: var(--doux); text-align: left; }
 .exo > :last-child { margin-bottom: 0; }
 .reponse { font-weight: 700; }
@@ -410,9 +427,11 @@ details > .corps > :last-child { margin-bottom: 0; }
 }
 .hs { background: var(--pastel-fond); border-radius: 2px; padding: 0 .2em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
 .hs::before { content: "hors source : "; font: 400 .76em var(--sans); color: var(--doux); }
-main a.footnote-ref, main a[role="doc-noteref"] { background: var(--cite-fond); box-shadow: inset 0 0 0 1px var(--cite-cadre); font: 400 .78em var(--sans); }
+main a.footnote-ref, main a[role="doc-noteref"] { background: var(--cite-fond); border: 1px solid var(--cite-cadre); padding: 0 calc(.15em - 1px); font: 400 .78em var(--sans); }
+main a.footnote-ref:hover, main a[role="doc-noteref"]:hover { box-shadow: inset 0 0 0 .6px var(--cite-cadre); }
 a.footnote-ref sup { font-size: 1em; vertical-align: baseline; }
-main a.footnote-back { background: none; box-shadow: none; color: var(--doux); }
+/* retour à l'appel de note : pastille grise des renvois internes, flèche en gris doux */
+main a.footnote-back { color: var(--doux); }
 section.footnotes, .refs { margin-top: 2.5em; font-size: .92em; }
 section.footnotes > hr { margin: 0 0 1em; height: 1.2px; background: var(--trait); width: 30%; }
 section.footnotes > hr::after { content: none; }
@@ -423,7 +442,7 @@ section.footnotes > hr::after { content: none; }
 main a.carte, .carte { display: block; padding: .85em 1em; border: .8px solid var(--cadre); border-radius: 4px; background: var(--papier); color: var(--encre); text-decoration: none; box-shadow: none; }
 main a.carte:hover { box-shadow: var(--ombre); }
 .carte .n { font: 400 .76em var(--sans); letter-spacing: .06em; text-transform: uppercase; color: var(--doux); }
-.carte :is(h3, h4) { margin: .2em 0 .35em; font-size: 1.08em; }
+.carte :is(h2, h3, h4) { margin: .2em 0 .35em; font-size: 1.08em; }
 .carte p { margin: 0; font-size: .92em; color: var(--doux); text-align: left; }
 .points { display: grid; grid-template-columns: repeat(auto-fit, minmax(15em, 1fr)); gap: .2em 2em; margin: 1em 0; padding: 0; list-style: none; }
 .points > li { padding: .65em 0 .55em; border-top: 1px solid var(--trait); text-align: left; }
@@ -438,7 +457,7 @@ main a.bouton:hover, .bouton:hover { background: var(--fond); color: var(--encre
 
 /*@ pied-nav | class="pied-nav\b */
 .pied-nav { display: flex; justify-content: space-between; gap: 1em; margin-top: 3em; padding-top: 1em; border-top: 1px solid var(--trait); font: 400 .92em var(--sans); }
-main .pied-nav a { max-width: 48%; background: none; box-shadow: none; padding: 0; }
+main .pied-nav a { max-width: 48%; background: none; border: 0; box-shadow: none; padding: 0; }
 main .pied-nav a:hover { color: var(--doux); }
 .pied-nav .suiv { margin-left: auto; text-align: right; }
 .pied-nav small { display: block; color: var(--doux); }
@@ -473,7 +492,7 @@ main .pied-nav a:hover { color: var(--doux); }
 /*@ jouets | class="(jouet|commandes|legende|verdict|lire)\b */
 /* figure interactive : cadre, curseurs, légende, lecture ; le script de la figure est fourni par la page */
 .jouet { margin: 1.5em 0; padding: .8em 1em 1em; border: 1px solid var(--jouet-bord); border-radius: 4px; background: var(--papier); }
-.jouet > :is(h3, h4):first-child { margin: 0 0 .5em; font-size: 1em; color: var(--jouet-bord); }
+.jouet > :is(h2, h3, h4):first-child { margin: 0 0 .5em; font-size: 1em; color: var(--jouet-bord); }
 .jouet canvas, figure canvas { display: block; width: 100%; background: var(--papier); border: 1px solid var(--grille); border-radius: 3px; touch-action: pan-y; }
 .jouet > svg { display: block; height: auto; margin-inline: auto; }
 .commandes { display: grid; grid-template-columns: repeat(auto-fit, minmax(14em, 1fr)); gap: .4em 1.2em; margin: .6em 0; font: 400 .88em var(--sans); }
@@ -491,7 +510,7 @@ main .pied-nav a:hover { color: var(--doux); }
 .legende > span.tirets::before { background: repeating-linear-gradient(90deg, var(--c) 0 4px, transparent 4px 7px); }
 .legende > span.point::before { width: .6em; height: .6em; border-radius: 50%; }
 .jouet { position: relative; }
-.jouet > :is(h3, h4):first-child { padding-right: 7.5em; }
+.jouet > :is(h2, h3, h4):first-child { padding-right: 7.5em; }
 .jouet .reinit { position: absolute; top: .6em; right: .6em; }
 .commandes label:has(> select) { grid-template-columns: fit-content(50%) minmax(0, 1fr); }
 .commandes label:has(> select) > select { width: 100%; text-overflow: ellipsis; }
@@ -513,7 +532,7 @@ ol.chapitres { margin: 1em 0 1.4em; padding: 0; list-style: none; columns: 2 18e
 ol.chapitres > li { display: flex; gap: .6em; align-items: baseline; margin: 0 0 .35em; break-inside: avoid; text-align: left; }
 main ol.chapitres > li::marker { content: none; }
 ol.chapitres .n { flex: none; min-width: 1.6em; font: 700 .9em var(--sans); color: var(--pastel-encre); font-variant-numeric: tabular-nums; }
-main ol.chapitres a { flex: 1; padding: 0; background: none; box-shadow: none; }
+main ol.chapitres a { flex: 1; padding: 0; background: none; border: 0; box-shadow: none; }
 main ol.chapitres a:hover { box-shadow: none; text-decoration: underline; text-decoration-color: var(--pastel-trait); text-underline-offset: .2em; }
 
 /*@ prio | data-prio=|class="(prio|priorites)\b */
@@ -522,7 +541,7 @@ main ol.chapitres a:hover { box-shadow: none; text-decoration: underline; text-d
 .prio.p3 { color: var(--accent); }
 .prio.p2 { color: var(--orange); }
 .prio.p1 { color: var(--gris); font-weight: 400; }
-:is(h4, summary) .prio { font-size: .78em; }
+:is(h4, summary, :is(.exo, .jouet, .carte) > :is(h2, h3)) .prio { font-size: .78em; }
 .prio-cache { display: none !important; }
 :is(h2, h3).prio-sous { color: var(--doux); opacity: .6; }
 .tete [data-action="prio"][data-niveau="2"], .tete [data-action="prio"][data-niveau="3"] { color: var(--accent); }
@@ -578,5 +597,5 @@ html:not(.js) .avertissement .avert-ok { display: none; }
 .schema-defile.suite-d { mask-image: linear-gradient(to right, #000 calc(100% - 2.5rem), transparent); }
 .schema-defile.suite-g { mask-image: linear-gradient(to left, #000 calc(100% - 2.5rem), transparent); }
 .schema-defile.suite-g.suite-d { mask-image: linear-gradient(to right, transparent, #000 2.5rem, #000 calc(100% - 2.5rem), transparent); }
-.exo.elargi > :is(p, ul, ol, h4, .meta, .piege, .remarque, .retenir, .def, .res, details) { max-width: var(--col); margin-inline: auto; }
+.exo.elargi > :is(p, ul, ol, h2, h3, h4, .meta, .piege, .remarque, .retenir, .def, .res, details) { max-width: var(--col); margin-inline: auto; }
 

@@ -45,6 +45,9 @@ Règles :
 - Deux graphes côte à côte : `<div class="deux-graphes"><figure><canvas></canvas><figcaption>…</figcaption></figure>…</div>`.
   Des boutons dans les commandes : `<div class="ligne-boutons"><button type="button">Nouveau tirage</button></div>`.
 - Jouet plus large que la colonne : `<div class="jouet large">`.
+- Le titre s'écrit `<h4>` : `textured.py` lui donne le niveau de sa place (h3 sous une section `##`), et décale
+  d'autant les titres écrits dans le jouet. Un libellé fait d'une formule (`\(k\)`) donne aussi son nom au curseur
+  (`aria-label`, posé à la construction) ; un titre créé par le script du jouet prend le niveau du titre plus un.
 - Couleurs : noms `bleu`, `rouge`, `vert`, `orange`, `violet`, `gris`, `cyan`, `encre`, `doux`, `trait`, `grille`,
   `papier`, `fond`, `accent`, et l'encre de la page `tirage`, `pastel`, `pastel-encre`, `pastel-fond`. Une courbe, un
   marqueur ou une entrée de légende sans couleur prend `tirage`. Tout suit le thème clair ou sombre (redessin

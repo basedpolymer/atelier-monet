@@ -27,7 +27,7 @@ import tempfile
 import unicodedata
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 
 import couverture
 import icone
@@ -71,6 +71,10 @@ LOCALES = {
     "lmmono10-regular": "LMMono10-Regular", "texgyrechorus-mediumitalic": "TeXGyreChorus-MediumItalic",
 }
 TOUJOURS = {"lmroman10-regular", "lmroman10-bold", "lmromanslant10-regular", "lmsans10-regular", "lmsans10-bold"}
+# polices de KaTeX exportées pour un site (--exporter) : un fichier par fonte, nommé comme dans la distribution de KaTeX
+STYLES_KATEX = {("400", "normal"): "Regular", ("700", "normal"): "Bold", ("400", "italic"): "Italic", ("700", "italic"): "BoldItalic"}
+# images : largeur de la colonne (41em à .9375rem, 44em à .875rem en densité compacte), pour « sizes » de srcset
+TAILLES_IMAGE = "(min-width: 41rem) 38.5rem, calc(100vw - 2.5rem)"
 PROTEGE = re.compile(r"<(script|style|pre|textarea)\b[^>]*>.*?</\1\s*>", re.S | re.I)
 PROTEGE_MATH = re.compile(r"<(script|style|pre|textarea|code)\b[^>]*>.*?</\1\s*>", re.S | re.I)
 LISTE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h1M6 4h7.5M2.5 8h1M6 8h7.5M2.5 12h1M6 12h7.5"/></svg>'
@@ -296,6 +300,28 @@ def titres(corps, meta):
     return corps, plan, etiquettes
 
 
+def niveaux_blocs(corps, plan):
+    """Titre d'un jouet, d'un exercice ou d'une carte (<h4> de la source, ou posé par blocs_titres) : un niveau sous la
+    section qui le contient (h3 sous un h2, h4 sous un h3), et les titres qu'il contient décalés d'autant. Les titres
+    se suivent alors sans saut pour les lecteurs d'écran (un h4 juste après un h2 en serait un)."""
+    places = []
+    for niveau, ident, _ in plan:
+        m = re.search(rf'<h{niveau}\b[^>]*\bid="{re.escape(ident)}"', corps)
+        if m:
+            places.append((m.start(), niveau))
+    places.sort()
+    for m in reversed(list(re.finditer(r"<(div|section|aside)\b([^>]*)>(\s*)<h4\b", corps, re.I))):
+        if not any(c in TITRE_H4 for c in attributs(m.group(2)).get("class", "").split()):
+            continue
+        avant = [n for p, n in places if p < m.start()]
+        ecart = (avant[-1] if avant else 1) + 1 - 4
+        fin = fin_balise(corps, m.start(3), m.group(1)) if ecart < 0 else None
+        if fin:
+            dedans = re.sub(r"<(/?)h([4-6])\b", lambda x: f"<{x.group(1)}h{int(x.group(2)) + ecart}", corps[m.start(3):fin[0]])
+            corps = corps[:m.start(3)] + dedans + corps[fin[0]:]
+    return corps
+
+
 def figures_tableaux(corps, T, etiquettes):
     compte = {"fig": 0, "tab": 0}
 
@@ -423,12 +449,30 @@ def images(corps, dossier, embarquer):
                 if t and "width" not in a and "height" not in a:
                     l, h = (t[0] // 2, t[1] // 2) if "@2x" in chemin.name else t
                     attrs += f' width="{l}" height="{h}"'
+                    a["width"] = str(t[0])
                 mime = types.get(chemin.suffix.lower())
                 if embarquer and mime and len(donnees) <= 1_500_000:
                     uri = f"data:{mime};base64,{base64.b64encode(donnees).decode()}"
                     attrs = attrs.replace(f'src="{src}"', f'src="{uri}"')
                 elif embarquer:
                     avis.append(f"image laissée en lien (plus de 1,5 Mo ou format inconnu) : {src}")
+        # « largeurs="800 1200" » : réductions nom-800.ext, nom-1200.ext à côté de l'image (liée), en srcset ; la page
+        # en colonne n'en demande pas plus qu'elle n'affiche (« sizes » de la source, sinon la colonne)
+        if "data-largeurs" in a:
+            attrs = re.sub(r'\s*data-largeurs="[^"]*"', "", attrs)
+            pleine = a.get("width", "")
+            if 'src="data:' in attrs:
+                pass
+            elif not pleine.isdigit():
+                avis.append(f"largeurs sans width : srcset non écrit pour {src[:60]} (ajouter width=… height=…)")
+            else:
+                racine, ext = os.path.splitext(src)
+                tailles = sorted({int(w) for w in re.findall(r"\d+", a["data-largeurs"]) if 0 < int(w) < int(pleine)})
+                for w in tailles:
+                    if not re.match(r"(https?:|/)", src) and not (dossier / html.unescape(f"{racine}-{w}{ext}")).is_file():
+                        avis.append(f"réduction introuvable : {racine}-{w}{ext}")
+                jeu = ", ".join([f"{racine}-{w}{ext} {w}w" for w in tailles] + [f"{src} {pleine}w"])
+                attrs += f' srcset="{jeu}"' + ("" if "sizes" in a else f' sizes="{TAILLES_IMAGE}"')
         return f"<img{attrs}>"
 
     return hors(PROTEGE, corps, lambda t: re.sub(r"<img\b([^>]*?)\s*/?>", un, t))
@@ -466,6 +510,56 @@ def formules(page):
 
     page = re.sub(r"\x00(\d+)\x00", poser, page)
     return page, len(trouvees)
+
+
+class TexteLu(HTMLParser):
+    """Texte d'un fragment tel qu'un lecteur d'écran l'entend : une formule par son MathML (sans l'annotation TeX ni le
+    rendu visuel, masqué), sans les champs, options, sorties ni boutons."""
+    SAUTE = {"annotation", "select", "option", "output", "textarea", "button", "script", "style"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.pile, self.morceaux = [], []
+
+    def handle_starttag(self, tag, attrs):
+        if tag not in VIDES:
+            cache = tag in self.SAUTE or dict(attrs).get("aria-hidden") == "true"
+            self.pile.append(cache or bool(self.pile and self.pile[-1]))
+
+    def handle_endtag(self, tag):
+        if tag not in VIDES and self.pile:
+            self.pile.pop()
+
+    def handle_data(self, data):
+        if not (self.pile and self.pile[-1]):
+            self.morceaux.append(data)
+
+    def texte(self):
+        # sans les caractères de format (opérateurs invisibles du MathML : application de fonction, produit…)
+        texte = "".join(c for c in "".join(self.morceaux) if unicodedata.category(c) != "Cf")
+        return re.sub(r"\s+", " ", texte).strip()
+
+
+def noms_commandes(page):
+    """Curseur, liste ou case dont le libellé (<label>) contient une formule : aria-label avec le texte du libellé,
+    formules comprises. Les outils d'accessibilité ne comptent pas le MathML dans le nom d'un champ : un libellé fait
+    d'une seule formule (\\(k\\), \\(\\mathrm{p}K_a\\)) laisserait le curseur sans nom."""
+    def un(m):
+        if 'class="katex' not in m.group(2):
+            return m.group(0)
+        lu = TexteLu()
+        lu.feed(m.group(2))
+        nom = lu.texte()
+        if not nom:
+            return m.group(0)
+
+        def champ(c):
+            if re.search(r'\baria-label(?:ledby)?=|\btype="(?:hidden|button|submit|reset)"', c.group(2)):
+                return c.group(0)
+            return f'<{c.group(1)}{c.group(2)} aria-label="{html.escape(nom)}">'
+        dedans = re.sub(r"<(input|select|textarea)\b([^>]*?)\s*/?>", champ, m.group(2))
+        return f"<label{m.group(1)}>{dedans}</label>"
+    return hors(PROTEGE, page, lambda t: re.sub(r"<label\b([^>]*)>(.*?)</label\s*>", un, t, flags=re.S))
 
 
 # ---------- contrôle ----------
@@ -556,21 +650,49 @@ def minifier(css):
     return "".join(morceaux).strip()
 
 
-def styles(corps, mode, utiles):
-    garde = []
+def plages(valeur):
+    """unicode-range « U+0000-00FF, U+0131, U+25?? » → [(0, 255), (305, 305), (9472, 9727)]."""
+    r = []
+    for p in valeur.split(","):
+        m = re.fullmatch(r"\s*U\+([0-9A-Fa-f?]+)(?:-([0-9A-Fa-f]+))?\s*", p)
+        if m:
+            debut = int(m.group(1).replace("?", "0"), 16)
+            fin = int(m.group(2), 16) if m.group(2) else int(m.group(1).replace("?", "F"), 16)
+            r.append((debut, fin))
+    return r
+
+
+def styles(corps, mode, utiles, caracteres=frozenset()):
+    """Feuille de la page : blocs utiles, polices embarquées (seules celles que la page emploie). Latin Modern est
+    coupée en une base et un complément (polices.py) : une page qui n'a aucun caractère du complément n'embarque que la
+    base ; sinon, la police entière (plus légère que les deux parts réunies)."""
+    garde, rares = [], {ord(c) for c in caracteres if ord(c) > 0xFF}
     for nom, motif, contenu in decouper("\n".join((ASSETS / f).read_text(encoding="utf-8") for f in FEUILLES)):
         if nom == "polices":
+            entieres = set()
+            for m in re.finditer(r'url\("polices/([\w-]+)-ext\.woff2"\)[^}]*unicode-range:\s*([^;}]+)', contenu):
+                if any(a <= c <= b for c in rares for a, b in plages(m.group(2))):
+                    entieres.add(m.group(1))
+
             def face(m):
                 fichier = re.search(r'url\("polices/([\w-]+)\.woff2"\)', m.group(0))
                 if not fichier:
                     return m.group(0)
                 nomf = fichier.group(1)
+                famille, part = re.fullmatch(r"(.*?)(?:-(base|ext))?", nomf).groups()
                 if mode == "locales":
-                    return m.group(0).replace(f'url("polices/{nomf}.woff2") format("woff2")', f'local("{LOCALES[nomf]}")')
-                if nomf not in utiles:
+                    # la police installée a tous ses caractères : une face par fonte, sans plage
+                    if part == "ext":
+                        return ""
+                    regle = re.sub(r"\s*unicode-range:[^;}]*;?", "", m.group(0))
+                    return regle.replace(f'url("polices/{nomf}.woff2") format("woff2")', f'local("{LOCALES[famille]}")')
+                if famille not in utiles or part == "ext":
                     return ""
-                donnees = base64.b64encode((ASSETS / "polices" / f"{nomf}.woff2").read_bytes()).decode()
-                return m.group(0).replace(f'url("polices/{nomf}.woff2")', f'url("data:font/woff2;base64,{donnees}")')
+                regle, source = m.group(0), nomf
+                if famille in entieres:
+                    regle, source = re.sub(r"\s*unicode-range:[^;}]*;?", "", regle), famille
+                donnees = base64.b64encode((ASSETS / "polices" / f"{source}.woff2").read_bytes()).decode()
+                return regle.replace(f'url("polices/{nomf}.woff2")', f'url("data:font/woff2;base64,{donnees}")')
             garde.append(re.sub(r"@font-face\s*\{[^}]*\}", face, contenu))
         elif not motif or re.search(motif, corps):
             garde.append(contenu)
@@ -679,10 +801,24 @@ def cours_de(src):
             "fichier_index": nom_sortie(idx).name, "chapitres": chapitres, "source_index": texte_index}
 
 
+def lien_cours(f, cours, assets):
+    """Adresse d'une page du cours vue d'une autre : le nom du fichier ; sur un site (--assets), sans « .html » (pas de
+    redirection à chaque clic là où les adresses sont sans extension) et depuis la racine du site quand l'accueil du
+    cours donne son adresse (url:), pour valoir avec ou sans barre finale."""
+    if not assets:
+        return f
+    nom, accueil = re.sub(r"\.html?$", "", f), f == cours["fichier_index"]
+    if cours["index"].get("url"):
+        racine = urlparse(cours["index"]["url"]).path.rstrip("/")
+        return (racine or "/") if accueil else f"{racine}/{nom}"
+    return "./" if accueil else nom
+
+
 def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     lang = meta.get("lang", "fr")[:2].lower()
     T = TEXTES.get(lang, TEXTES["en"])
     e = html.escape
+    assets = (options.assets or meta.get("assets") or "").rstrip("/")
 
     # titre : en-tête, sinon l'unique h1 du corps ; plusieurs h1 → tous les titres descendent d'un niveau
     h1 = re.findall(r"<h1\b[^>]*>(.*?)</h1\s*>", corps, re.S)
@@ -708,6 +844,7 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
 
     corps = blocs_titres(corps, T)
     corps, plan, etiquettes = titres(corps, meta)
+    corps = niveaux_blocs(corps, plan)
     corps = figures_tableaux(corps, T, etiquettes)
     corps = renvois(corps, etiquettes)
     corps = images(corps, dossier, options.images != "liees")
@@ -735,9 +872,15 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     if cours:
         suite = [{"f": cours["fichier_index"], "n": "", "titre": e(T["accueil"])}] + [
             {"f": c["f"], "n": c["n"], "titre": e(c["titre"]), "prio": c.get("prio", 0)} for c in cours["chapitres"]]
+        adresse = lambda f: e(lien_cours(f, cours, assets))
+        if assets:
+            # liens de la source vers une page du cours (« 01-cinetique.html#jouet ») : même adresse que la navigation
+            noms = {c["f"] for c in suite}
+            corps = re.sub(r'href="([^"#?/:]+)(#[^"]*)?"',
+                           lambda m: f'href="{adresse(m.group(1))}{m.group(2) or ""}"' if m.group(1) in noms else m.group(0), corps)
         if page_nom == cours["fichier_index"]:
             etoiles = lambda n: (f' <span class="prio p{n}" title="{T["prio_mot"]} : {T["niveaux"][n]}">{"★" * n}</span>' if n else "")
-            liste = "".join(f'<li><span class="n">{e(c["n"])}</span><a href="{e(c["f"])}">{c["titre"]}</a>'
+            liste = "".join(f'<li><span class="n">{e(c["n"])}</span><a href="{adresse(c["f"])}">{c["titre"]}</a>'
                             f'{etoiles(c["prio"])}</li>' for c in suite[1:])
             liste = f'<ol class="chapitres">{liste}</ol>' if liste else ""
             if not liste:
@@ -749,9 +892,9 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
             lien = lambda c: f'{e(c["n"])}. {c["titre"]}' if c["n"] else c["titre"]
             nav_bas = ""
             if i > 0:
-                nav_bas += f'<a class="prec" href="{e(suite[i - 1]["f"])}"><small>{T["prec"]}</small>{lien(suite[i - 1])}</a>'
+                nav_bas += f'<a class="prec" href="{adresse(suite[i - 1]["f"])}"><small>{T["prec"]}</small>{lien(suite[i - 1])}</a>'
             if i + 1 < len(suite):
-                nav_bas += f'<a class="suiv" href="{e(suite[i + 1]["f"])}"><small>{T["suiv"]}</small>{lien(suite[i + 1])}</a>'
+                nav_bas += f'<a class="suiv" href="{adresse(suite[i + 1]["f"])}"><small>{T["suiv"]}</small>{lien(suite[i + 1])}</a>'
             corps += f'\n<nav class="pied-nav" aria-label="{T["chapitre"]}s">{nav_bas}</nav>'
         elif i is None:
             avis.append(f"page hors de la suite du cours : construire « {page_nom} » sous le nom de sa source")
@@ -788,7 +931,7 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
     if lettrine:
         tete.append(f'<span class="lettrine" aria-hidden="true">{e(lettrine)}</span>')
     if cours and chapitre and not meta.get("surtitre"):
-        tete.append(f'<p class="surtitre"><a href="{e(cours["fichier_index"])}">{e(cours["nom"])}</a> · {T["chapitre"]} {e(chapitre)}</p>')
+        tete.append(f'<p class="surtitre"><a href="{e(lien_cours(cours["fichier_index"], cours, assets))}">{e(cours["nom"])}</a> · {T["chapitre"]} {e(chapitre)}</p>')
     elif meta.get("surtitre"):
         tete.append(f'<p class="surtitre">{e(meta["surtitre"])}</p>')
     tete.append(f"<h1>{titre_html}</h1>")
@@ -849,14 +992,19 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
         + (couv["html"] if couv else "") + "\n".join(tete) + "\n" + nav
         + f'<main id="contenu" tabindex="-1">\n{corps.strip()}\n</main>\n{pied}</div>'
     )
+    # caractères du texte (sans formules ni styles) : le complément de Latin Modern n'est embarqué que si l'un d'eux est
+    # dans sa plage
+    texte = re.sub(r"<style\b[^>]*>.*?</style\s*>", " ", page, flags=re.S | re.I)
+    texte = re.sub(r"\\\[.+?\\\]|\\\(.+?\\\)", " ", texte, flags=re.S)
+    caracteres = frozenset(html.unescape(re.sub(r"<[^>]+>", " ", texte)))
     page, n_formules = formules(page)
+    page = noms_commandes(page)
 
     controle = Controle()
     controle.feed(page)
     controle.bilan()
 
     # styles, polices, scripts
-    assets = (options.assets or meta.get("assets") or "").rstrip("/")
     mode = options.polices or meta.get("polices") or "embarquees"
     garde_couv = "couv-garde" in page
     utiles = (set(TOUJOURS) | controle.polices | ({"texgyrechorus-mediumitalic"} if lettrine or garde_couv else set())
@@ -877,7 +1025,8 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
                    'r.classList.add("avert-lu")}catch(e){}')
     kjs = ""
     if assets:
-        liens = "".join(f'<link rel="preload" href="{assets}/polices/{f}.woff2" as="font" type="font/woff2" crossorigin>\n'
+        # base (latin-1 et ponctuation) des deux polices du premier écran ; le complément se charge à la demande
+        liens = "".join(f'<link rel="preload" href="{assets}/polices/{f}-base.woff2" as="font" type="font/woff2" crossorigin>\n'
                         for f in ("lmroman10-regular", "lmsans10-bold"))
         if n_formules or outils:
             liens += f'<link rel="stylesheet" href="{assets}/katex.css">\n'
@@ -888,7 +1037,7 @@ def construire(meta, corps, dossier, options, cours=None, page_nom="page.html"):
         bloc_script = (f'<script src="{assets}/katex.min.js" defer></script>\n' if katex_direct else "") + \
             f'<script src="{assets}/textured.js" defer></script>'
     else:
-        css = (katex_css(page, katex_direct) if n_formules or outils else "") + styles(motifs, mode, utiles)
+        css = (katex_css(page, katex_direct) if n_formules or outils else "") + styles(motifs, mode, utiles, caracteres)
         kjs = (ASSETS / "katex.min.js").read_text(encoding="utf-8") if katex_direct else ""
         bloc_styles = f"<style>{css}</style>\n"
         bloc_script = (f"<script>{kjs}</script>\n" if kjs else "") + f"<script>\n{js}\n</script>"
@@ -1083,17 +1232,38 @@ def rendre(page, cible, mode):
 
 
 def exporter(dossier):
+    """Fichiers partagés d'un site (mode --assets) ; seuls ceux qui changent sont réécrits."""
     dossier = Path(dossier).expanduser()
     (dossier / "polices").mkdir(parents=True, exist_ok=True)
+    (dossier / "katex" / "fonts").mkdir(parents=True, exist_ok=True)
+
+    def ecrire(chemin, donnees):
+        donnees = donnees.encode("utf-8") if isinstance(donnees, str) else donnees
+        if not chemin.is_file() or chemin.read_bytes() != donnees:
+            chemin.write_bytes(donnees)
+
     css = "\n".join((ASSETS / f).read_text(encoding="utf-8") for f in FEUILLES)
-    (dossier / "textured.css").write_text(minifier(re.sub(r"/\*@.*?\*/", "", css)), encoding="utf-8")
+    ecrire(dossier / "textured.css", minifier(re.sub(r"/\*@.*?\*/", "", css)))
     js = (ASSETS / "textured.js").read_text(encoding="utf-8")
-    (dossier / "textured.js").write_text(re.sub(r"/\*.*?\*/\n?", "", js, flags=re.S).strip() + "\n", encoding="utf-8")
-    shutil.copy(ASSETS / "katex.css", dossier / "katex.css")
-    shutil.copy(ASSETS / "katex.min.js", dossier / "katex.min.js")   # formules écrites à l'exécution (Cours.tex)
+    ecrire(dossier / "textured.js", re.sub(r"/\*.*?\*/\n?", "", js, flags=re.S).strip() + "\n")
+
+    # KaTeX : les règles dans katex.css, chaque police dans son fichier (katex/fonts/, noms de la distribution de
+    # KaTeX) ; le navigateur ne charge que celles que les formules de la page emploient (assets/katex.css les embarque
+    # toutes en base64 : 260 Ko, pour les pages autonomes, qui n'en gardent que les utiles)
+    def police_katex(m):
+        regle = m.group(0)
+        famille = re.search(r'font-family:\s*"?(KaTeX_\w+)', regle).group(1)
+        poids = re.search(r"font-weight:\s*(\d+)", regle).group(1)
+        style = re.search(r"font-style:\s*(\w+)", regle).group(1)
+        nom = f"{famille}-{STYLES_KATEX[(poids, style)]}.woff2"
+        ecrire(dossier / "katex" / "fonts" / nom, base64.b64decode(re.search(r"base64,([A-Za-z0-9+/=]+)", regle).group(1)))
+        return re.sub(r"url\(data:font/woff2;base64,[A-Za-z0-9+/=]+\)", f"url(katex/fonts/{nom})", regle)
+    ecrire(dossier / "katex.css", re.sub(r"@font-face\{[^}]*\}", police_katex, (ASSETS / "katex.css").read_text(encoding="utf-8")))
+    ecrire(dossier / "katex.min.js", (ASSETS / "katex.min.js").read_bytes())   # formules écrites à l'exécution (Cours.tex)
+    # Latin Modern : fichiers complets (pour les pages qui les appellent directement) et leurs deux parts (polices.py)
     for f in (ASSETS / "polices").glob("*.woff2"):
-        shutil.copy(f, dossier / "polices" / f.name)
-    print(f"textured : feuille de style, moteur, KaTeX et polices exportés dans {dossier}")
+        ecrire(dossier / "polices" / f.name, f.read_bytes())
+    print(f"textured : feuille de style, moteur, KaTeX (règles et polices à part) et polices exportés dans {dossier}")
 
 
 def page(src, cible, o):

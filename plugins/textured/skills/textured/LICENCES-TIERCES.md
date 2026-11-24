@@ -7,8 +7,8 @@ This skill bundles the work of other authors, under their own licenses.
 |---|---|---|
 | [TeXtured](https://github.com/jdujava/TeXtured), gabarit LaTeX de Jonáš Dujava : dessin d'origine des titres, filets, lettrine, tableaux | inspiration de `assets/textured.css` | CC0 1.0 (`assets/LICENSE-TeXtured`) |
 | [LaTeX.css](https://github.com/vincentdoerig/latex-css), Vincent Dörig : quelques règles de mise en page | inspiration de `assets/textured.css` | MIT (ci-dessous) |
-| [KaTeX](https://katex.org) 0.16.11, Khan Academy et contributeurs | `assets/katex.min.js`, `assets/katex.css` (et ses polices embarquées) | MIT (ci-dessous) |
-| Latin Modern (GUST, B. Jackowski, J. M. Nowacki) et TeX Gyre Chorus (GUST) | `assets/polices/*.woff2` (conversions au format WOFF2) | GUST Font License (`assets/polices/GUST-FONT-LICENSE.txt`), c'est-à-dire LPPL 1.3c |
+| [KaTeX](https://katex.org) 0.16.11, Khan Academy et contributeurs | `assets/katex.min.js`, `assets/katex.css` (et ses polices embarquées, écrites à part par `--exporter`) | MIT (ci-dessous) |
+| Latin Modern (GUST, B. Jackowski, J. M. Nowacki) et TeX Gyre Chorus (GUST) | `assets/polices/*.woff2` (conversions au format WOFF2 ; `*-base.woff2` et `*-ext.woff2` : leurs sous-ensembles, tirés par `polices.py`, fichiers renommés comme le demande la licence) | GUST Font License (`assets/polices/GUST-FONT-LICENSE.txt`), c'est-à-dire LPPL 1.3c |
 
 ## MIT : KaTeX
 

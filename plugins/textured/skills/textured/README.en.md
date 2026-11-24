@@ -63,7 +63,7 @@ python3 textured.py doc.md --apercu      # and doc.preview.jpg (1200 × 630, og:
 python3 textured.py course/              # a whole course: index.md and its chapters
 python3 textured.py doc.md --couverture  # with a cover (couverture.md)
 python3 textured.py doc.md --planche     # doc.couvertures.html: the cover in every pattern
-python3 textured.py --exporter FOLDER    # styles and fonts for a website (--assets mode)
+python3 textured.py --exporter FOLDER    # styles and fonts for a website (--assets mode), KaTeX fonts as files
 ```
 
 `TEXTURED_NAVIGATEUR=/path/to/chrome` picks the browser for `--pdf` and `--apercu`. Examples: `exemple.md` (every
@@ -77,7 +77,8 @@ translation…). Git ignores it: write your own.
 ## Change the template
 
 `textured.py` assembles and checks, `couverture.py` lays out covers, `motifs.py` holds the patterns and their
-catalogue, `icone.py` the favicon marks; `assets/*.css` and `assets/textured.js` are split
+catalogue, `icone.py` the favicon marks; `polices.py` (fontTools) splits each Latin Modern font into a base (Latin-1,
+French punctuation) and a complement loaded on demand (`unicode-range`), and rewrites the `polices` block of `textured.css`; `assets/*.css` and `assets/textured.js` are split
 into `/*@ name | pattern */` blocks, each embedded only when its pattern appears in the page. After a change:
 `python3 tests/verifier.py --pdf` (also runs on GitHub). `SKILL.md` is read by Claude every time: keep it short and put
 details in the files read on demand (`cours.md`, `exercices.md`, `jouets.md`, `couverture.md`).

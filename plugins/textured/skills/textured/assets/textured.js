@@ -848,7 +848,10 @@
   const POLICES_CANEVAS = ['12px "TX Sans"', '600 12px "TX Sans"', "italic 12px KaTeX_Math", "12px KaTeX_Main"];
   function polices() {
     if (!document.fonts || !document.fonts.load) return { pretes: Promise.resolve(true), toutes: Promise.resolve() };
-    const toutes = Promise.all(POLICES_CANEVAS.map(f => document.fonts.load(f))).catch(() => {});
+    /* Latin Modern est coupée en deux (unicode-range) : sa part « complément » (grec, latin étendu…) ne se charge que
+       pour un texte qui la demande ; les étiquettes des canevas sont écrites dans les scripts de la page */
+    const rares = [...new Set([...document.querySelectorAll("script:not([src])")].map(s => s.textContent).join("").match(/[^\x00-\xff]/gu) || [])].join("");
+    const toutes = Promise.all(POLICES_CANEVAS.map(f => document.fonts.load(f, "a" + rares))).catch(() => {});
     return { pretes: Promise.race([toutes.then(() => true), new Promise(r => setTimeout(() => r(false), 1000))]), toutes };
   }
   function demarrer() {
@@ -958,6 +961,8 @@
     : { rec: "↺ Recommencer", tRec: "Effacer la réponse et mélanger à nouveau les propositions", eff: "↺ Effacer", tEff: "Effacer la réponse et cacher l’explication",
         rep: "Votre réponse", ver: "Vérifier", voir: "Voir la réponse", nombre: "nombre attendu", juste: "juste", faux: "pas encore", j: " — juste", f: " — faux" };
   const bouton = (texte, classe, titre) => { const b = document.createElement("button"); b.type = "button"; b.className = classe; b.textContent = texte; if (titre) b.title = titre; return b; };
+  /* texte tel qu'on le lit : une formule par son MathML, sans le rendu visuel ni la source TeX */
+  const lisible = el => { const c = el.cloneNode(true); c.querySelectorAll(".katex-html, annotation").forEach(n => n.remove()); return c.textContent.replace(/\p{Cf}/gu, "").replace(/\s+/g, " ").trim(); };
   document.querySelectorAll(".qcm").forEach(q => {
     const bonnes = String(q.dataset.bonne || "").split(",").map(s => +s.trim());
     const items = [...q.querySelectorAll(":scope > ol > li")];
@@ -977,10 +982,15 @@
       const b = document.createElement("button"); b.type = "button";
       while (li.firstChild) b.appendChild(li.firstChild);
       li.appendChild(b);
+      /* une proposition qui est une formule n'a pas de nom pour les outils d'accessibilité (le MathML n'y compte pas) :
+         aria-label, son texte lu formules comprises ; il dit aussi juste ou faux une fois répondu */
+      const nom = lisible(b);
+      b._nom = b.querySelector(".katex") ? nom : "";
+      if (b._nom) b.setAttribute("aria-label", nom);
       b.addEventListener("click", () => {
         const juste = justes.has(li);
         b.classList.add(juste ? "juste" : "faux");
-        b.setAttribute("aria-label", b.textContent + (juste ? T.j : T.f));
+        b.setAttribute("aria-label", nom + (juste ? T.j : T.f));
         if (juste || q.dataset.montrer !== "non") justes.forEach(l2 => l2.firstChild.classList.add("juste"));
         q.classList.add("repondu");
       });
@@ -989,7 +999,10 @@
     q.insertBefore(r, q.firstChild);
     q._reinit = () => {
       q.classList.remove("repondu");
-      items.forEach(li => { li.firstChild.classList.remove("juste", "faux"); li.firstChild.removeAttribute("aria-label"); });
+      items.forEach(li => {
+        const b = li.firstChild; b.classList.remove("juste", "faux");
+        if (b._nom) b.setAttribute("aria-label", b._nom); else b.removeAttribute("aria-label");
+      });
       melanger();
     };
     r.addEventListener("click", q._reinit);
@@ -1063,7 +1076,7 @@
   document.querySelectorAll(".jouet").forEach(j => {
     const b = document.createElement("button"); b.type = "button"; b.className = "reinit discret";
     b.textContent = EN ? "↺ Reset" : "↺ Réinitialiser"; b.title = EN ? "Back to the starting settings" : "Remettre les réglages de départ";
-    const titre = j.querySelector(":scope > h4, :scope > .jouet-titre");
+    const titre = j.querySelector(":scope > :is(h2, h3, h4), :scope > .jouet-titre");
     if (titre) titre.after(b); else j.insertBefore(b, j.firstChild);
     j._reinit = () => reinit(j);
     b.addEventListener("click", j._reinit);
@@ -1142,7 +1155,7 @@
   });
   const herite = e => { const a = e.parentElement && e.parentElement.closest("[data-prio]"); return a ? +a.dataset.prio : 0; };
   main.querySelectorAll("details.demo, .exo").forEach((d, k) => {
-    const n = propre(d) || herite(d), ou = d.matches("details") ? d.querySelector(":scope > summary") : d.querySelector(":scope > h4");
+    const n = propre(d) || herite(d), ou = d.matches("details") ? d.querySelector(":scope > summary") : d.querySelector(":scope > :is(h2, h3, h4)");
     if (n) d.dataset.prio = n;
     if (ou) poser(d, ou, n);
     if (!d.id) d.id = (d.matches("details") ? "demo-" : "exo-") + (k + 1);
@@ -1164,7 +1177,7 @@
     });
     liste(EN ? "Sections ★★★" : "Sections ★★★", sections);
     const exos = [...main.querySelectorAll(".exo[data-prio='3']")].map(x => {
-      const m = (x.querySelector("h4") || x).textContent.match(/(?:Exercice|Exercise)\s+([^\s—–.:]+)/);
+      const m = (x.querySelector(":scope > :is(h2, h3, h4)") || x).textContent.match(/(?:Exercice|Exercise)\s+([^\s—–.:]+)/);
       return lien(x.id, x.dataset.court || (m ? m[1] : x.id));
     });
     liste(EN ? "Exercises ★★★" : "Exercices ★★★", exos);
@@ -1184,7 +1197,7 @@
       d.append(s, corps); z.append(d);
     }
     main.querySelectorAll("[data-confirmer]").forEach(el => {
-      const cible = el.matches("h2, h3") ? (num(el) ? "§ " + num(el) : el.textContent.trim()) : (el.querySelector("h4, summary") || el).textContent.trim().slice(0, 50);
+      const cible = el.matches("h2, h3") ? (num(el) ? "§ " + num(el) : el.textContent.trim()) : (el.querySelector(":scope > :is(h2, h3, h4), summary") || el).textContent.trim().slice(0, 50);
       para("prio-reserve", reserve(el.dataset.confirmer), " ", lien(el.id, cible), " : " + el.dataset.confirmer);
     });
     para("petit", EN ? "The star button in the header hides what is below the chosen level." : "Le bouton étoile de l’en-tête masque ce qui est sous le niveau choisi.");

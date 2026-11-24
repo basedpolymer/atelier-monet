@@ -60,7 +60,7 @@ identifiant). Pas de `#` : le titre vient de l'en-tête.
 | Source citée | `[Thermo 2026, p. 12]{.src}` ; apport extérieur : `[texte]{.hs}` |
 | Note | `texte[^1]` puis `[^1]: La note.` |
 | Tableau | tableau Markdown, puis `: Légende. {#tab-id}` |
-| Image | `![Légende](fichier.png){#fig-id}` seule dans son paragraphe (embarquée) |
+| Image | `![Légende](fichier.png){#fig-id}` seule dans son paragraphe (embarquée ; liée si l'adresse part de `/` : `largeurs="800 1200"` y ajoute le srcset de `nom-800.webp`, `nom-1200.webp`) |
 | Schéma | `<figure id="fig-id"><svg viewBox="…" role="img" aria-label="…">…</svg><figcaption>Légende.</figcaption></figure>` |
 | Bloc large | `::: large` … `:::` (grande figure, grand tableau) ; `::: paysage` : de même, et sur ses propres pages en paysage dans le PDF |
 | Bouton | `[Texte](url){.bouton}` (`.bouton .second`) ; `---` : filet à losange |

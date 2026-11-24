@@ -130,6 +130,12 @@ def palette(encre, teinte, mono=False):
     if teinte == "encre":
         fond = e
         texte = NOIR if contraste(NOIR, e) >= contraste(CREME, e) else CREME
+        # encre de clarté moyenne (#00838a, #0078bf) : ni le noir ni la crème n'y atteignent 4,5:1 (le petit texte de la
+        # couverture doit se lire) ; l'aplat s'éloigne alors du texte, à teinte et saturation gardées, juste assez
+        L = oklab(e)[0]
+        while contraste(texte, fond) < 4.6 and .05 < L < .97:
+            L += .004 if texte == NOIR else -.004
+            fond = teinte_de(e, L, c)
         accent = CREME if texte == NOIR else teinte_de(e, .9, min(c * .5, .07))
         if contraste(accent, fond) < 1.8:
             # encre claire (jaune, menthe…) : la réserve ne se voit pas, une seconde encre de teinte éloignée la remplace

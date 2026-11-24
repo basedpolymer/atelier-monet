@@ -62,7 +62,7 @@ python3 textured.py doc.md --apercu      # et doc.preview.jpg (1200 × 630, og:i
 python3 textured.py cours/               # un cours entier : index.md et ses chapitres
 python3 textured.py doc.md --couverture  # avec une couverture (couverture.md)
 python3 textured.py doc.md --planche     # doc.couvertures.html : la couverture dans chaque motif
-python3 textured.py --exporter DOSSIER   # styles et polices pour un site (mode --assets)
+python3 textured.py --exporter DOSSIER   # styles et polices pour un site (mode --assets), KaTeX en fichiers à part
 ```
 
 `TEXTURED_NAVIGATEUR=/chemin/vers/chrome` impose le navigateur de `--pdf` et `--apercu`. Exemples : `exemple.md` (tous
@@ -76,7 +76,9 @@ les composants), `exemples/cours/` (un cours de deux chapitres et deux jouets).
 ## Modifier le gabarit
 
 - `textured.py` : assemblage et contrôle ; `couverture.py` : couvertures (palette, mise en page, planche) ;
-  `motifs.py` : motifs et catalogue par domaine ; `icone.py` : marques des favicons.
+  `motifs.py` : motifs et catalogue par domaine ; `icone.py` : marques des favicons ; `polices.py` (fontTools) : coupe
+  chaque police Latin Modern en une base (latin-1, ponctuation du français) et un complément chargé à la demande
+  (`unicode-range`), et réécrit le bloc `polices` de `textured.css`.
 - `assets/textured.css`, `assets/couverture.css`, `assets/textured.js` : découpés en blocs `/*@ nom | motif */` ; un bloc
   n'est embarqué que si son motif apparaît dans la page.
 - Après un changement : `python3 tests/verifier.py --pdf` (construit l'exemple, le cours d'exemple et une couverture,
