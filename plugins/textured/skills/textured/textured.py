@@ -76,7 +76,9 @@ PROTEGE_MATH = re.compile(r"<(script|style|pre|textarea|code)\b[^>]*>.*?</\1\s*>
 LISTE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 4h1M6 4h7.5M2.5 8h1M6 8h7.5M2.5 12h1M6 12h7.5"/></svg>'
 AUTO = '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="5.6"/><path d="M8 2.4a5.6 5.6 0 0 1 0 11.2z" fill="currentColor"/></svg>'
 LUNE = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M13.5 9.6A6 6 0 0 1 6.4 2.5a6 6 0 1 0 7.1 7.1z"/></svg>'
-DEPLIER = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.2 8 2.7l3.5 3.5M4.5 9.8 8 13.3l3.5-3.5"/></svg>'
+# tout déplier : chevrons vers l'extérieur ; une fois tout déplié, vers l'intérieur (tout replier)
+DEPLIER = ('<svg viewBox="0 0 16 16" aria-hidden="true"><path class="dehors" d="M4.5 6.2 8 2.7l3.5 3.5M4.5 9.8 8 13.3l3.5-3.5"/>'
+           '<path class="dedans" d="M4.5 2.7 8 6.2l3.5-3.5M4.5 13.3 8 9.8l3.5 3.5"/></svg>')
 REINIT = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.2 8a4.8 4.8 0 1 0 1.5-3.5M3 2.6v2.6h2.6"/></svg>'
 ETOILE = ('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.9l1.8 3.8 4.1.5-3 2.9.8 4.1L8 11.2l-3.7 2 .8-4.1-3-2.9 '
           '4.1-.5z"/></svg>')
@@ -1047,8 +1049,8 @@ def rendre(page, cible, mode):
         tmp = Path(tmp)
         source, produit = tmp / "page.html", tmp / ("page.pdf" if mode == "pdf" else "page.jpg")
         if mode == "apercu":
-            # l'image montre le document, pas les boutons de l'en-tête ; une couverture s'y pose à droite du titre
-            page = page.replace("</head>", "<style>.tete .outils{visibility:hidden}</style>\n</head>", 1)
+            # l'image montre le document, sans les boutons de l'en-tête ni le bandeau d'avertissement ; une couverture s'y pose à droite du titre
+            page = page.replace("</head>", "<style>.tete .outils{visibility:hidden}.avertissement{display:none}</style>\n</head>", 1)
             if 'class="couverture ' in page:
                 page = page.replace("<html ", '<html class="tx-apercu" ', 1)
         source.write_text(page, encoding="utf-8")

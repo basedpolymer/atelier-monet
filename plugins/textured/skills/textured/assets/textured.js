@@ -1091,11 +1091,23 @@
     for (let d = cible.closest("details:not([open])"); d; d = d.parentElement && d.parentElement.closest("details:not([open])")) cible = d.querySelector(":scope > summary") || d;
     window.scrollBy(0, cible.getBoundingClientRect().top - avant);
   }
+  // le bouton « déplier » montre l'état : chevrons vers l'intérieur quand tout est déplié (un clic replie alors tout)
+  const bDeplier = document.querySelector('.tete [data-action="deplier"]');
+  const etat = () => {
+    if (!bDeplier) return;
+    const tous = [...document.querySelectorAll("main details")], ouverts = tous.length > 0 && tous.every(d => d.open);
+    bDeplier.setAttribute("aria-pressed", ouverts ? "true" : "false");
+    const t = ouverts ? (EN ? "Collapse all" : "Tout replier") : (EN ? "Expand all" : "Tout déplier");
+    bDeplier.title = t; bDeplier.setAttribute("aria-label", t);
+  };
+  etat();
+  document.addEventListener("toggle", e => { if (e.target.tagName === "DETAILS") etat(); }, true);
   document.addEventListener("click", e => {
     const b = e.target.closest(".tete [data-action]"); if (!b) return;
     if (b.dataset.action === "deplier") {
       const tous = [...document.querySelectorAll("main details")], ouvrir = tous.some(d => !d.open);
       avecAncre(() => tous.forEach(d => { d.open = ouvrir; }));
+      etat();
       statut(ouvrir ? (EN ? "Everything expanded." : "Tout est déplié.") : (EN ? "Everything collapsed." : "Tout est replié."));
     } else if (b.dataset.action === "reinit") {
       const q = [...document.querySelectorAll("main :is(.qcm, .qnum)")].filter(x => x._reinit), j = [...document.querySelectorAll("main .jouet")].filter(x => x._reinit);

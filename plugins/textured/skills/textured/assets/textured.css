@@ -390,6 +390,11 @@ details > .corps > :last-child { margin-bottom: 0; }
 .etapes > .etape { counter-increment: etape; }
 .etapes > .etape::before { content: "Étape " counter(etape) ". "; font-family: var(--sans); font-weight: 700; }
 
+/* bouton « tout déplier » : chevrons vers l'extérieur, puis vers l'intérieur une fois tout déplié */
+.tete [data-action="deplier"] .dedans, .tete [data-action="deplier"][aria-pressed="true"] .dehors { display: none; }
+.tete [data-action="deplier"][aria-pressed="true"] .dedans { display: inline; }
+.tete [data-action="deplier"][aria-pressed="true"] { color: var(--accent); }
+
 /*@ exercices | class="(exo|reponse)\b */
 .exo { margin: 1.5em 0; padding: .75em 1em .85em; border: .8px solid var(--cadre); border-radius: 4px; background: var(--papier); }
 .exo > :is(h3, h4):first-child { margin-top: 0; font-size: 1em; color: var(--exo-bord); }
